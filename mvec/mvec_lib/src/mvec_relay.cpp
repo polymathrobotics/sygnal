@@ -1,3 +1,4 @@
+#include "mvec_lib/can_bitwork.hpp"
 #include "mvec_lib/mvec_relay.hpp"
 #include "mvec_lib/j1939_id.hpp"
 
@@ -83,6 +84,26 @@ bool MvecRelay::parseSpecificResponse(const socketcan::CanFrame & frame)
       // Unknown message ID, log or handle as needed
       return false;
   }
+}
+
+bool parseRelayCommandReply(const socketcan::CanFrame & frame)
+{
+  std::array<unsigned char, CAN_MAX_DLC> raw_data = frame.get_data();
+
+  uint8_t command_msg_id = raw_data[1];
+  // how do we want to use success?
+  uint8_t success = raw_data[2];
+  // Error, defaults to grid address otherwise 0xE0, 0xE1, handle later
+  uint8_t error = raw_data[3];
+  auto data = unpackData<uint16_t>(raw_data, 4*sizeof(unsigned char), mvec_max_relays + mvec_max_high_side_outputs);
+
+  // Find the failure
+  for(size_t i = 0; i < mvec_max_relays; ++i)
+  {
+    relay_command_result_[i] = ((data >> i) & 0x01);
+  }
+
+  high_side_output_result_ = ((data >> mvec_max_relays) & 0x01);
 }
 
 } // polymath::sygnal
