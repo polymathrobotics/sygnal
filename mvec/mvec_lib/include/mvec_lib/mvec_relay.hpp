@@ -3,12 +3,14 @@
 
 #include <stdint.h>
 #include <array>
+#include <chrono>
 #include "socketcan_adapter/can_frame.hpp"
 
 namespace polymath::sygnal
 {
 
 static const int mvec_max_relays=12;
+static const int mvec_max_high_side_outputs=1;
 static const int mvec_max_fuses=24;
 
 static const uint8_t mvec_broadcast_pdu = 0xFF;
@@ -68,9 +70,6 @@ private:
   const uint8_t pgn_base_value_ = 0xA0;
   const uint8_t my_address_ = 0x00;
 
-  socketcan::CanFrame relay_command_message_;
-  socketcan::CanFrame relay_query_messasge_;
-
   // Supported message receipts
   // broadcast, statuses PF: FF
   // fuse status, PS 01+pgn_base_value_, mvec_source_address
@@ -85,9 +84,14 @@ private:
   J1939_ID mvec_specific_response_id_;
 
   // Fun note, bool and uint8_t take up the same memory, but this is semantically more clear
+  std::chrono::time_point<std::chrono::steady_clock> relay_command_response_time_;
+  std::array<bool, mvec_max_relays> relay_command_result_;
+  bool high_side_output_command_result_ = false;
+
   std::array<bool, mvec_max_relays> relay_state_feedback_;
   std::array<bool, mvec_max_fuses> fuse_state_feedback_;
   std::array<bool, mvec_max_relays> relay_default_state_;
+  bool high_side_output_feedback_ = false;
 
   std::array<bool, mvec_max_relays> relay_population_state_;
   std::array<bool, mvec_max_fuses> fuse_population_state_;
