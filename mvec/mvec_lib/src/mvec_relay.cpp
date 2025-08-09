@@ -1,6 +1,5 @@
-#include "mvec_lib/can_bitwork.hpp"
 #include "mvec_lib/mvec_relay.hpp"
-#include "mvec_lib/j1939_id.hpp"
+#include "mvec_lib/can_bitwork.hpp"
 
 namespace polymath::sygnal
 {
@@ -18,9 +17,94 @@ MvecRelay::MvecRelay()
   relay_population_state_.fill(false);
   fuse_population_state_.fill(false);
 
-  relay_command_data_.fill(0);
-  relay_query_data_.fill(0);
+  relay_command_data_.fill(0xFF);
+  relay_query_data_.fill(0xFF);
+
+  // Set msg IDs and grid id and 0xFF for all others
+  relay_command_data_[0] = mvec_msg_ids::relay_command_with_feedback;
+  relay_command_data_[1] = 0x00;
+  relay_query_data_[0] = mvec_msg_ids::relay_state_query;
+  relay_query_data_[1] = 0x00;
 }
+
+void MvecRelay::set_relay_in_command(uint8_t relay_id, uint8_t relay_state)
+{
+  if (!is_relay_populated(relay_id))
+  {
+    return;
+  }
+
+  if(relay_id >= mvec_max_relays)
+  {
+    // invalid relay id
+    return;
+  }
+
+  if(relay_state > 0x01)
+  {
+    // invalid relay state
+    return;
+  }
+
+  uint8_t start_bit = 2 * sizeof(unsigned char);
+  packData<uint8_t>(relay_state, relay_command_data_, start_bit + relay_id * 2, 2);
+}
+
+void MvecRelay::set_high_side_output_in_command(uint8_t high_side_output_state)
+{
+
+  if(high_side_output_state > 0x01)
+  {
+    return;
+  }
+
+
+  uint8_t start_bit = (2 * sizeof(unsigned char)) + mvec_max_relays * 2;
+  packData<uint8_t>(high_side_output_state, relay_command_data_, start_bit, 2);
+}
+
+socketcan::CanFrame MvecRelay::getRelayCommandMessage()
+{
+  socketcan::CanFrame frame;
+
+  frame.set_can_id(mvec_specific_command_id_.get_can_id());
+  frame.set_id_as_extended();
+  frame.set_data(relay_command_data_);
+
+  return frame;
+}
+
+socketcan::CanFrame MvecRelay::getRelayQueryMessage()
+{
+  socketcan::CanFrame frame;
+
+  frame.set_can_id(mvec_specific_command_id_.get_can_id());
+  frame.set_id_as_extended();
+  frame.set_data(relay_query_data_);
+
+  return frame;
+}
+
+bool MvecRelay::get_relay_state(const uint8_t relay_id)
+{
+  return relay_state_feedback_[relay_id];
+}
+
+uint8_t MvecRelay::get_fuse_state(const uint8_t fuse_id)
+{
+  return fuse_state_feedback_[fuse_id];
+}
+
+bool MvecRelay::is_relay_populated(const uint8_t relay_id)
+{
+  return relay_population_state_[relay_id];
+}
+
+bool MvecRelay::is_fuse_populated(const uint8_t fuse_id)
+{
+  return fuse_population_state_[fuse_id];
+}
+
 
 bool MvecRelay::parseMessage(const socketcan::CanFrame & frame)
 {
@@ -28,18 +112,19 @@ bool MvecRelay::parseMessage(const socketcan::CanFrame & frame)
   // We only operate on extended IDs
   if(frame.get_id_type() != socketcan::IdType::EXTENDED)
   {
-    return;
+    return false;
   }
 
   // We only operate on data IDs
   if(frame.get_frame_type() != socketcan::FrameType::DATA)
   {
-    return;
+    return false;
   }
 
   // We want to get the 29bit CAN ID
   auto j1939_id = J1939_ID(frame.get_id());
 
+  // TODO: Send the timepoint, we want to record timepoint for each message def
   if(j1939_id == mvec_fuse_status_id_)
   {
     return parseFuseStatus(frame);
@@ -75,7 +160,7 @@ bool MvecRelay::parseSpecificResponse(const socketcan::CanFrame & frame)
   switch(message_id)
   {
     case mvec_msg_ids::response:
-      return parseRelayCommmandReply(frame);
+      return parseRelayCommandReply(frame);
     case mvec_msg_ids::population_response:
       return parsePopulationReply(frame);
     case mvec_msg_ids::relay_query_response:
@@ -86,7 +171,7 @@ bool MvecRelay::parseSpecificResponse(const socketcan::CanFrame & frame)
   }
 }
 
-bool parseRelayCommandReply(const socketcan::CanFrame & frame)
+bool MvecRelay::parseRelayCommandReply(const socketcan::CanFrame & frame)
 {
   std::array<unsigned char, CAN_MAX_DLC> raw_data = frame.get_data();
 
@@ -97,13 +182,101 @@ bool parseRelayCommandReply(const socketcan::CanFrame & frame)
   uint8_t error = raw_data[3];
   auto data = unpackData<uint16_t>(raw_data, 4*sizeof(unsigned char), mvec_max_relays + mvec_max_high_side_outputs);
 
-  // Find the failure
+  // Record the state (put into a struct in the future)
   for(size_t i = 0; i < mvec_max_relays; ++i)
   {
     relay_command_result_[i] = ((data >> i) & 0x01);
   }
+  high_side_output_command_result_ = ((data >> mvec_max_relays) & 0x01);
+  return true;
+}
 
-  high_side_output_result_ = ((data >> mvec_max_relays) & 0x01);
+bool MvecRelay::parseRelayReply(const socketcan::CanFrame & frame)
+{
+  std::array<unsigned char, CAN_MAX_DLC> raw_data = frame.get_data();
+
+  // Parse relays, Bytes 2&3
+  auto data = unpackData<uint16_t>(raw_data, 2*sizeof(unsigned char), mvec_max_relays + mvec_max_high_side_outputs);
+  for(size_t i = 0; i < mvec_max_relays; ++i)
+  {
+    relay_state_feedback_[i] = ((data >> i) & 0x01);
+  }
+  high_side_output_feedback_ = ((data >> mvec_max_relays) & 0x01);
+
+  // Parse Defaults, Bytes 4&5
+  data = unpackData<uint16_t>(raw_data, 4*sizeof(unsigned char), mvec_max_relays + mvec_max_high_side_outputs);
+  for(size_t i = 0; i < mvec_max_relays; ++i)
+  {
+    relay_default_state_[i] = ((data >> i) & 0x01);
+  }
+  high_side_output_default_state_ = ((data >> mvec_max_relays) & 0x01);
+
+  return true;
+}
+
+bool MvecRelay::parsePopulationReply(const socketcan::CanFrame & frame)
+{
+  std::array<unsigned char, CAN_MAX_DLC> raw_data = frame.get_data();
+
+  // Parse fuses, Bytes 2-4
+  auto data = unpackData<uint32_t>(raw_data, 2*sizeof(unsigned char), mvec_max_fuses);
+  for(size_t i = 0; i < mvec_max_fuses; ++i)
+  {
+    fuse_population_state_[i] = ((data >> i) & 0x01);
+  }
+  // Parse Defaults, Bytes 5&6
+  data = unpackData<uint32_t>(raw_data, 5*sizeof(unsigned char), mvec_max_relays + mvec_max_high_side_outputs);
+  for(size_t i = 0; i < mvec_max_relays; ++i)
+  {
+    relay_population_state_[i] = ((data >> i) & 0x01);
+  }
+  high_side_output_population_state_ = ((data >> mvec_max_relays) & 0x01);
+
+  return true;
+}
+
+bool MvecRelay::parseFuseStatus(const socketcan::CanFrame & frame)
+{
+  std::array<unsigned char, CAN_MAX_DLC> raw_data = frame.get_data();
+
+  // 2 bits per fuse
+  uint8_t len_data_bits = mvec_max_fuses * 2;
+
+  // Parse bytes 1-7
+  auto data = unpackData<uint64_t>(raw_data, 1*sizeof(unsigned char), len_data_bits);
+
+  for(size_t i = 0; i< mvec_max_fuses; i++)
+  {
+    fuse_state_feedback_[i] = (data >> i*2) & 0x03;
+  }
+
+  return true;
+}
+
+bool MvecRelay::parseRelayStatus(const socketcan::CanFrame & frame)
+{
+  std::array<unsigned char, CAN_MAX_DLC> raw_data = frame.get_data();
+
+  // 2 bits per fuse
+  uint8_t len_data_bits = mvec_max_relays * 4;
+
+  // Parse bytes 1-7
+  auto data = unpackData<uint64_t>(raw_data, 1*sizeof(unsigned char), len_data_bits);
+
+  for(size_t i = 0; i< mvec_max_fuses; i++)
+  {
+    relay_status_feedback_[i] = (data >> i*4) & 0x0F;
+  }
+
+  return true;
+}
+
+bool MvecRelay::parseErrorStatus(const socketcan::CanFrame & frame)
+{
+  std::array<unsigned char, CAN_MAX_DLC> raw_data = frame.get_data();
+
+  error_bits_ = unpackData<uint64_t>(raw_data, 1*sizeof(unsigned char), num_error_bits);
+  return true;
 }
 
 } // polymath::sygnal
