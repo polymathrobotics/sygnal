@@ -6,30 +6,11 @@
 #include <chrono>
 #include "socketcan_adapter/can_frame.hpp"
 #include "mvec_lib/j1939_id.hpp"
+#include "mvec_lib/mvec_constants.hpp"
+#include "mvec_lib/mvec_status_messages.hpp"
 
 namespace polymath::sygnal
 {
-
-static const int mvec_max_relays=12;
-static const int mvec_max_high_side_outputs=1;
-static const int mvec_max_fuses=24;
-
-static const uint8_t num_error_bits=13;
-
-static const uint8_t mvec_broadcast_pdu = 0xFF;
-static const uint8_t mvec_specific_pdu = 0xEF;
-
-struct mvec_msg_ids {
-  static const uint8_t relay_command_with_feedback = 0x88;
-  static const uint8_t relay_commmand_no_feedback = 0x80;
-  static const uint8_t relay_state_query = 0x96;
-  static const uint8_t population_query = 0x92;
-  static const uint8_t response = 0x01;
-  static const uint8_t population_response = 0x94;
-
-  // Not an enum because query response and command have the same id
-  static const uint8_t relay_query_response = 0x96;
-};
 
 class MvecRelay
 {
@@ -48,13 +29,25 @@ public:
 
   socketcan::CanFrame getRelayQueryMessage();
 
+  // State methods (current actual state)
   bool get_relay_state(const uint8_t relay_id);
+  bool get_high_side_output_state() const;
 
-  uint8_t get_fuse_state(const uint8_t fuse_id);
+  // Status methods (detailed status information with error codes)
+  MvecFuseStatus get_fuse_status(const uint8_t fuse_id);
+  MvecRelayStatus get_relay_status(const uint8_t relay_id);
+  uint16_t get_error_bits();
+  bool has_error(MvecErrorType error_type);
+  uint8_t get_error_grid_address();
 
+  // Population methods
   bool is_relay_populated(const uint8_t relay_id);
-
   bool is_fuse_populated(const uint8_t fuse_id);
+
+  // Get status message objects
+  const MvecFuseStatusMessage& get_fuse_status_message() const;
+  const MvecRelayStatusMessage& get_relay_status_message() const;
+  const MvecErrorStatusMessage& get_error_status_message() const;
 
   // TODO: Add set_population and get_population_command
   // TODO: Add set_default and get_default_command
@@ -70,9 +63,9 @@ private:
 
   // TODO: Make these queryable and configurable and update lookup
   // For now these are defaults
-  const uint8_t mvec_source_address_ = 0xB0;
-  const uint8_t pgn_base_value_ = 0xA0;
-  const uint8_t my_address_ = 0x00;
+  const uint8_t mvec_source_address_ = MvecProtocol::DEFAULT_SOURCE_ADDRESS;
+  const uint8_t pgn_base_value_ = MvecProtocol::DEFAULT_PGN_BASE_VALUE;
+  const uint8_t my_address_ = MvecProtocol::DEFAULT_SELF_ADDRESS;
 
   // Supported message receipts
   // broadcast, statuses PF: FF
@@ -87,19 +80,22 @@ private:
   J1939_ID mvec_specific_command_id_;
   J1939_ID mvec_specific_response_id_;
 
-  std::array<bool, mvec_max_relays> relay_command_result_;
+  std::array<bool, MvecHardware::MAX_RELAYS> relay_command_result_;
   bool high_side_output_command_result_ = false;
 
-  std::array<bool, mvec_max_relays> relay_state_feedback_;
-  std::array<uint8_t, mvec_max_relays> relay_status_feedback_;
-  std::array<uint8_t, mvec_max_fuses> fuse_state_feedback_;
-  std::array<bool, mvec_max_relays> relay_default_state_;
+  // State and population data (not duplicated in status messages)
+  std::array<bool, MvecHardware::MAX_RELAYS> relay_state_feedback_;
+  std::array<bool, MvecHardware::MAX_RELAYS> relay_default_state_;
   bool high_side_output_feedback_ = false;
   bool high_side_output_default_state_ = false;
-  uint64_t error_bits_;
 
-  std::array<bool, mvec_max_relays> relay_population_state_;
-  std::array<bool, mvec_max_fuses> fuse_population_state_;
+  // Status message objects - these contain the structured status data
+  MvecFuseStatusMessage fuse_status_message_;
+  MvecRelayStatusMessage relay_status_message_;
+  MvecErrorStatusMessage error_status_message_;
+
+  std::array<bool, MvecHardware::MAX_RELAYS> relay_population_state_;
+  std::array<bool, MvecHardware::MAX_FUSES> fuse_population_state_;
   bool high_side_output_population_state_ = false;
 
   std::array<unsigned char, CAN_MAX_DLC> relay_command_data_;
