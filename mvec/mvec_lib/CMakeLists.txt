@@ -20,6 +20,7 @@ find_package(socketcan_adapter REQUIRED)
 add_library(
   ${PROJECT_NAME} SHARED
   src/mvec_relay.cpp
+  src/mvec_status_messages.cpp
 )
 
 # Set include directories
@@ -59,5 +60,31 @@ install(
 # Export dependencies
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_export_dependencies(socketcan_adapter)
+
+# Testing
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  find_package(Catch2 2 REQUIRED)
+
+  ament_lint_auto_find_test_dependencies()
+
+  add_executable(${PROJECT_NAME}_test
+    test/test_mvec_relay.cpp
+    test/test_status_messages.cpp
+    test/test_status_enums.cpp
+  )
+  target_link_libraries(${PROJECT_NAME}_test ${PROJECT_NAME} Catch2::Catch2)
+  target_include_directories(${PROJECT_NAME}_test PRIVATE
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  )
+
+  # Add main function for Catch2 v2
+  target_compile_definitions(${PROJECT_NAME}_test PRIVATE CATCH_CONFIG_MAIN)
+
+  # Register the test with CTest
+  include(CTest)
+  include(Catch)
+  catch_discover_tests(${PROJECT_NAME}_test)
+endif()
 
 ament_package()

@@ -124,4 +124,3 @@ T unpackData(
 }  // namespace polymath::sygnal
 
 #endif  // MVEC_LIB__CAN_BITWORK_HPP_
-
