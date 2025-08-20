@@ -1,6 +1,7 @@
 # Gitlab
 /.gitlab-ci-local/
 /.gitlab-ci-local-variables.yml
+/.gitlab-ci-local-env
 /.ci/artifacts/
 
 # Colcon
@@ -20,3 +21,6 @@ __pycache__
 
 # Dev workflows
 /prom_targets.d/
+
+# Claude
+/.claude/

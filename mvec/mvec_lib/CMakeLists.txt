@@ -21,6 +21,13 @@ add_library(
   ${PROJECT_NAME} SHARED
   src/mvec_relay.cpp
   src/mvec_status_messages.cpp
+  src/mvec_fuse_status_message.cpp
+  src/mvec_relay_status_message.cpp
+  src/mvec_error_status_message.cpp
+  src/mvec_response_parser.cpp
+  src/mvec_relay_command_reply.cpp
+  src/mvec_relay_query_reply.cpp
+  src/mvec_population_reply.cpp
 )
 
 # Set include directories
