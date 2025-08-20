@@ -14,7 +14,7 @@
 namespace polymath::sygnal
 {
 
-void byteswap(unsigned char * data, size_t length)
+inline void byteswap(unsigned char * data, size_t length)
 {
   for (size_t i = 0; i < length / 2; ++i) {
     std::swap(data[i], data[length - 1 - i]);
