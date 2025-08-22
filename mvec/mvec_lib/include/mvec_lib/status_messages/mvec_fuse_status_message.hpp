@@ -8,20 +8,18 @@
 
 #include <array>
 
-#include "mvec_lib/can_bitwork.hpp"
-#include "mvec_lib/j1939_id.hpp"
-#include "mvec_lib/mvec_constants.hpp"
+#include "mvec_lib/core/can_bitwork.hpp"
+#include "mvec_lib/core/j1939_id.hpp"
+#include "mvec_lib/core/mvec_constants.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 
 namespace polymath::sygnal
 {
 
-namespace MvecFuseConstants
+namespace MvecFuseStatusConstants
 {
-inline constexpr int MAX_FUSES = 24;
-inline constexpr uint8_t FUSE_STATUS_DATA_START_BYTE = 1;
+inline constexpr uint8_t START_BYTE = 1;
 inline constexpr uint8_t BITS_PER_FUSE = 2;
-inline constexpr uint8_t FUSE_STATE_MASK = 0x03;
 }  // namespace MvecFuseConstants
 
 enum class MvecFuseStatus : uint8_t
@@ -50,7 +48,7 @@ public:
 
 private:
   J1939_ID expected_id_;
-  std::array<MvecFuseStatus, MvecFuseConstants::MAX_FUSES> fuse_statuses_;
+  std::array<MvecFuseStatus, MvecHardware::MAX_NUMBER_FUSES> fuse_statuses_;
   bool is_valid_;
 };
 

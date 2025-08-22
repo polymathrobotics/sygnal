@@ -20,14 +20,14 @@ find_package(socketcan_adapter REQUIRED)
 add_library(
   ${PROJECT_NAME} SHARED
   src/mvec_relay.cpp
-  src/mvec_status_messages.cpp
-  src/mvec_fuse_status_message.cpp
-  src/mvec_relay_status_message.cpp
-  src/mvec_error_status_message.cpp
-  src/mvec_response_parser.cpp
-  src/mvec_relay_command_reply.cpp
-  src/mvec_relay_query_reply.cpp
-  src/mvec_population_reply.cpp
+  src/core/mvec_status_messages.cpp
+  src/status_messages/mvec_fuse_status_message.cpp
+  src/status_messages/mvec_relay_status_message.cpp
+  src/status_messages/mvec_error_status_message.cpp
+  src/responses/mvec_response_base.cpp
+  src/responses/mvec_relay_command_reply.cpp
+  src/responses/mvec_relay_query_reply.cpp
+  src/responses/mvec_population_reply.cpp
 )
 
 # Set include directories
@@ -75,23 +75,41 @@ if(BUILD_TESTING)
 
   ament_lint_auto_find_test_dependencies()
 
-  add_executable(${PROJECT_NAME}_test
+  # Create separate test executables to avoid multiple main definitions
+  add_executable(${PROJECT_NAME}_test_relay
     test/test_mvec_relay.cpp
-    test/test_status_messages.cpp
-    test/test_status_enums.cpp
   )
-  target_link_libraries(${PROJECT_NAME}_test ${PROJECT_NAME} Catch2::Catch2)
-  target_include_directories(${PROJECT_NAME}_test PRIVATE
+  target_link_libraries(${PROJECT_NAME}_test_relay ${PROJECT_NAME} Catch2::Catch2)
+  target_include_directories(${PROJECT_NAME}_test_relay PRIVATE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
   )
+  target_compile_definitions(${PROJECT_NAME}_test_relay PRIVATE CATCH_CONFIG_MAIN)
 
-  # Add main function for Catch2 v2
-  target_compile_definitions(${PROJECT_NAME}_test PRIVATE CATCH_CONFIG_MAIN)
+  add_executable(${PROJECT_NAME}_test_status_messages
+    test/test_status_messages.cpp
+  )
+  target_link_libraries(${PROJECT_NAME}_test_status_messages ${PROJECT_NAME} Catch2::Catch2)
+  target_include_directories(${PROJECT_NAME}_test_status_messages PRIVATE
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  )
+  target_compile_definitions(${PROJECT_NAME}_test_status_messages PRIVATE CATCH_CONFIG_MAIN)
 
-  # Register the test with CTest
+  add_executable(${PROJECT_NAME}_test_status_enums
+    test/test_status_enums.cpp
+  )
+  target_link_libraries(${PROJECT_NAME}_test_status_enums ${PROJECT_NAME} Catch2::Catch2)
+  target_include_directories(${PROJECT_NAME}_test_status_enums PRIVATE
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  )
+  target_compile_definitions(${PROJECT_NAME}_test_status_enums PRIVATE CATCH_CONFIG_MAIN)
+
+  # Register the tests with CTest
   include(CTest)
   include(Catch)
-  catch_discover_tests(${PROJECT_NAME}_test)
+  catch_discover_tests(${PROJECT_NAME}_test_relay)
+  catch_discover_tests(${PROJECT_NAME}_test_status_messages)
+  catch_discover_tests(${PROJECT_NAME}_test_status_enums)
+
 endif()
 
 ament_package()
