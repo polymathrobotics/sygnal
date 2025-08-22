@@ -8,8 +8,6 @@
 
 #include <array>
 #include <chrono>
-#include <future>
-#include <queue>
 
 #include "mvec_lib/core/j1939_id.hpp"
 #include "mvec_lib/core/mvec_constants.hpp"
@@ -35,6 +33,7 @@ public:
 
   void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
   void set_high_side_output_in_command(uint8_t high_side_output_state);
+  void clearRelayCommands();
 
   socketcan::CanFrame getRelayCommandMessage();
 
@@ -94,7 +93,7 @@ private:
   MvecPopulationReply population_reply_;
 
   std::array<unsigned char, CAN_MAX_DLC> relay_command_data_;
-  std::array<unsigned char, CAN_MAX_DLC> relay_query_data_;
+  std::array<unsigned char, CAN_MAX_DLC> query_data_;
 };
 
 }  // namespace polymath::sygnal
