@@ -26,6 +26,7 @@ inline constexpr uint8_t RESERVED_BIT = 0;
 inline constexpr uint8_t DEFAULT_SOURCE_ADDRESS = 0xB0;
 inline constexpr uint8_t DEFAULT_PGN_BASE_VALUE = 0xA0;
 inline constexpr uint8_t DEFAULT_SELF_ADDRESS = 0x00;
+inline constexpr uint8_t DEFAULT_GRID_ADDRESS = 0x00;
 };  // namespace MvecProtocol
 
 namespace MvecMessageIds
