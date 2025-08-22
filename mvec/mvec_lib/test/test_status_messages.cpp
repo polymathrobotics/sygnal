@@ -5,8 +5,8 @@
 
 #include <catch2/catch.hpp>
 
-#include "mvec_lib/mvec_constants.hpp"
-#include "mvec_lib/mvec_status_messages.hpp"
+#include "mvec_lib/core/mvec_constants.hpp"
+#include "mvec_lib/core/mvec_status_messages.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 
 static polymath::socketcan::CanFrame createTestFrame(uint32_t can_id, const std::vector<uint8_t> & data)
@@ -33,9 +33,10 @@ TEST_CASE("FuseStatusMessage initialization", "[status_messages]")
 TEST_CASE("FuseStatusMessage parsing", "[status_messages]")
 {
   polymath::sygnal::MvecFuseStatusMessage msg;
+  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0x00, 0x55, 0xAA, 0x33, 0xCC, 0x0F, 0xF0, 0x99};
 
-  auto frame = createTestFrame(0x18A01B0, data);  // Example CAN ID
+  auto frame = createTestFrame(fuse_status_id.get_can_id(), data);
   REQUIRE(msg.parse(frame));
   REQUIRE(msg.is_valid());
 }
@@ -50,9 +51,10 @@ TEST_CASE("RelayStatusMessage initialization", "[status_messages]")
 TEST_CASE("RelayStatusMessage parsing", "[status_messages]")
 {
   polymath::sygnal::MvecRelayStatusMessage msg;
+  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
 
-  auto frame = createTestFrame(0x18A02B0, data);  // Example CAN ID
+  auto frame = createTestFrame(relay_status_id.get_can_id(), data);
   REQUIRE(msg.parse(frame));
   REQUIRE(msg.is_valid());
 }
@@ -70,7 +72,8 @@ TEST_CASE("ErrorStatusMessage parsing", "[status_messages]")
   polymath::sygnal::MvecErrorStatusMessage msg;
   std::vector<uint8_t> data = {0x00, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-  auto frame = createTestFrame(0x18A03B0, data);  // Example CAN ID
+  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x03 + 0xA0, 0xB0);
+  auto frame = createTestFrame(error_status_id.get_can_id(), data);
   REQUIRE(msg.parse(frame));
   REQUIRE(msg.is_valid());
   REQUIRE(msg.has_error(polymath::sygnal::MvecErrorType::INVALID_CONFIG));

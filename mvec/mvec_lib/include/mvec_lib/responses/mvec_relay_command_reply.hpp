@@ -4,12 +4,12 @@
 #ifndef MVEC_LIB__MVEC_RELAY_COMMAND_REPLY_HPP_
 #define MVEC_LIB__MVEC_RELAY_COMMAND_REPLY_HPP_
 
+#include <linux/can.h>
 #include <stdint.h>
-
 #include <array>
 
-#include "mvec_lib/can_bitwork.hpp"
-#include "socketcan_adapter/can_frame.hpp"
+#include "mvec_lib/core/can_bitwork.hpp"
+#include "mvec_lib/responses/mvec_response_base.hpp"
 
 namespace polymath::sygnal
 {
@@ -22,13 +22,14 @@ inline constexpr uint8_t COMMAND_REPLY_DATA_START_BYTE = 4;
 inline constexpr uint8_t RESPONSE_MESSAGE_ID = 0x01;
 }  // namespace MvecRelayCommandConstants
 
-class MvecRelayCommandReply
+class MvecRelayCommandReply : public MvecResponseBase
 {
 public:
-  MvecRelayCommandReply();
+  MvecRelayCommandReply(
+    uint8_t source_address,
+    uint8_t my_address);
 
-  bool parse(const socketcan::CanFrame & frame);
-
+public:
   uint8_t get_command_msg_id() const
   {
     return command_msg_id_;
@@ -51,10 +52,8 @@ public:
     return high_side_output_result_;
   }
 
-  bool is_valid() const
-  {
-    return is_valid_;
-  }
+protected:
+  bool parse_message_data(const std::array<unsigned char, CAN_MAX_DLC> & data) override;
 
 private:
   uint8_t command_msg_id_;
@@ -62,7 +61,6 @@ private:
   uint8_t error_;
   std::array<bool, 12> relay_results_;
   bool high_side_output_result_;
-  bool is_valid_;
 };
 
 }  // namespace polymath::sygnal

@@ -4,9 +4,8 @@
 #ifndef MVEC_LIB__MVEC_STATUS_MESSAGES_HPP_
 #define MVEC_LIB__MVEC_STATUS_MESSAGES_HPP_
 
-#include "mvec_lib/mvec_error_status_message.hpp"
-#include "mvec_lib/mvec_fuse_status_message.hpp"
-#include "mvec_lib/mvec_relay_status_message.hpp"
-#include "mvec_lib/mvec_response_parser.hpp"
+#include "mvec_lib/status_messages/mvec_error_status_message.hpp"
+#include "mvec_lib/status_messages/mvec_fuse_status_message.hpp"
+#include "mvec_lib/status_messages/mvec_relay_status_message.hpp"
 
 #endif  // MVEC_LIB__MVEC_STATUS_MESSAGES_HPP_

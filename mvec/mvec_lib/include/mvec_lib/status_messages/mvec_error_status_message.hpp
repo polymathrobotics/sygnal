@@ -6,18 +6,18 @@
 
 #include <stdint.h>
 
-#include "mvec_lib/can_bitwork.hpp"
-#include "mvec_lib/j1939_id.hpp"
-#include "mvec_lib/mvec_constants.hpp"
+#include "mvec_lib/core/can_bitwork.hpp"
+#include "mvec_lib/core/j1939_id.hpp"
+#include "mvec_lib/core/mvec_constants.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 
 namespace polymath::sygnal
 {
 
-namespace MvecErrorConstants
+namespace MvecErrorStatusConstants
 {
 inline constexpr uint8_t NUM_ERROR_BITS = 13;
-inline constexpr uint8_t ERROR_STATUS_DATA_START_BYTE = 1;
+inline constexpr uint8_t START_BYTE = 1;
 }  // namespace MvecErrorConstants
 
 namespace MvecErrorBits

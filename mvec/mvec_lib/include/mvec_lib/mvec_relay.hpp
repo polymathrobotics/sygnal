@@ -8,11 +8,17 @@
 
 #include <array>
 #include <chrono>
+#include <future>
+#include <queue>
 
-#include "mvec_lib/j1939_id.hpp"
-#include "mvec_lib/mvec_constants.hpp"
-#include "mvec_lib/mvec_status_messages.hpp"
+#include "mvec_lib/core/j1939_id.hpp"
+#include "mvec_lib/core/mvec_constants.hpp"
+#include "mvec_lib/core/mvec_status_messages.hpp"
+#include "mvec_lib/responses/mvec_population_reply.hpp"
+#include "mvec_lib/responses/mvec_relay_command_reply.hpp"
+#include "mvec_lib/responses/mvec_relay_query_reply.hpp"
 #include "socketcan_adapter/can_frame.hpp"
+#include "socketcan_adapter/socketcan_adapter.hpp"
 
 namespace polymath::sygnal
 {
@@ -25,7 +31,7 @@ public:
   virtual ~MvecRelay() = default;
 
   // return False if message is not relevant
-  bool parseMessage(const socketcan::CanFrame & can_frame);
+  MvecMessageType parseMessage(const socketcan::CanFrame & can_frame);
 
   void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
   void set_high_side_output_in_command(uint8_t high_side_output_state);
@@ -33,6 +39,8 @@ public:
   socketcan::CanFrame getRelayCommandMessage();
 
   socketcan::CanFrame getRelayQueryMessage();
+
+  socketcan::CanFrame getPopoulationQueryMessage();
 
   // Get message objects - all data access goes through these
   const MvecFuseStatusMessage & get_fuse_status_message() const
@@ -50,9 +58,19 @@ public:
     return error_status_message_;
   }
 
-  const MvecResponseParser & get_response_parser() const
+  const MvecRelayCommandReply & get_last_relay_command_reply() const
   {
-    return response_parser_;
+    return relay_command_reply_;
+  }
+
+  const MvecRelayQueryReply & get_last_relay_query_reply() const
+  {
+    return relay_query_reply_;
+  }
+
+  const MvecPopulationReply & get_last_population_reply() const
+  {
+    return population_reply_;
   }
 
 private:
@@ -60,7 +78,7 @@ private:
   // For now these are defaults
   const uint8_t mvec_source_address_ = MvecProtocol::DEFAULT_SOURCE_ADDRESS;
   const uint8_t pgn_base_value_ = MvecProtocol::DEFAULT_PGN_BASE_VALUE;
-  const uint8_t my_address_ = MvecProtocol::DEFAULT_SELF_ADDRESS;
+  const uint8_t self_address_ = MvecProtocol::DEFAULT_SELF_ADDRESS;
 
   // Command generation only - not used for parsing
   J1939_ID mvec_specific_command_id_;
@@ -69,7 +87,11 @@ private:
   MvecFuseStatusMessage fuse_status_message_;
   MvecRelayStatusMessage relay_status_message_;
   MvecErrorStatusMessage error_status_message_;
-  MvecResponseParser response_parser_;
+
+  // Response message objects
+  MvecRelayCommandReply relay_command_reply_;
+  MvecRelayQueryReply relay_query_reply_;
+  MvecPopulationReply population_reply_;
 
   std::array<unsigned char, CAN_MAX_DLC> relay_command_data_;
   std::array<unsigned char, CAN_MAX_DLC> relay_query_data_;

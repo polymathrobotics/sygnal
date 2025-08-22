@@ -6,7 +6,7 @@
 
 #include <catch2/catch.hpp>
 
-#include "mvec_lib/mvec_constants.hpp"
+#include "mvec_lib/core/mvec_constants.hpp"
 #include "mvec_lib/mvec_relay.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 
@@ -110,7 +110,7 @@ TEST_CASE("MvecRelay parse message with non-extended id", "[mvec_relay]")
   frame.set_can_id(0x123);
   frame.set_id_as_standard();
 
-  REQUIRE_FALSE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
 }
 
 TEST_CASE("MvecRelay parse message with non-data frame", "[mvec_relay]")
@@ -121,17 +121,17 @@ TEST_CASE("MvecRelay parse message with non-data frame", "[mvec_relay]")
   frame.set_id_as_extended();
   // Note: Cannot set frame type directly, this test verifies extended ID requirement
 
-  REQUIRE_FALSE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
 }
 
 TEST_CASE("MvecRelay parse fuse status message", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::BROADCAST_PDU, 0x01 + 0xA0, 0xB0);
+  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0x00, 0x55, 0xAA, 0x33, 0xCC, 0x0F, 0xF0, 0x99};
 
   auto frame = createTestFrame(fuse_status_id.get_can_id(), data);
-  REQUIRE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::FUSE_STATUS);
 
   // Test that status message was updated
   REQUIRE(relay->get_fuse_status_message().is_valid());
@@ -146,11 +146,11 @@ TEST_CASE("MvecRelay parse fuse status message", "[mvec_relay]")
 TEST_CASE("MvecRelay parse relay status message", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::BROADCAST_PDU, 0x02 + 0xA0, 0xB0);
+  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
 
   auto frame = createTestFrame(relay_status_id.get_can_id(), data);
-  REQUIRE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::RELAY_STATUS);
 
   // Test that status message was updated
   REQUIRE(relay->get_relay_status_message().is_valid());
@@ -164,11 +164,11 @@ TEST_CASE("MvecRelay parse relay status message", "[mvec_relay]")
 TEST_CASE("MvecRelay parse error status message", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::BROADCAST_PDU, 0x03 + 0xA0, 0xB0);
+  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x03 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0xB0, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00};
 
   auto frame = createTestFrame(error_status_id.get_can_id(), data);
-  REQUIRE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::ERROR_STATUS);
 
   // Test that status message was updated
   REQUIRE(relay->get_error_status_message().is_valid());
@@ -187,34 +187,34 @@ TEST_CASE("MvecRelay parse error status message", "[mvec_relay]")
 TEST_CASE("MvecRelay parse specific response relay command reply", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::SPECIFIC_PDU, 0x00, 0xB0);
+  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::QUERY_PDU, 0x00, 0xB0);
   std::vector<uint8_t> data = {0x01, 0x88, 0x01, 0x00, 0xFF, 0x0F, 0x00, 0x00};
 
   auto frame = createTestFrame(specific_response_id.get_can_id(), data);
-  REQUIRE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::RELAY_COMMAND_RESPONSE);
 }
 
 TEST_CASE("MvecRelay parse specific response population reply", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::SPECIFIC_PDU, 0x00, 0xB0);
+  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::QUERY_PDU, 0x00, 0xB0);
   std::vector<uint8_t> data = {0x94, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x00};
 
   auto frame = createTestFrame(specific_response_id.get_can_id(), data);
-  REQUIRE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::POPULATION_RESPONSE);
 }
 
 TEST_CASE("MvecRelay parse specific response relay query reply", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::SPECIFIC_PDU, 0x00, 0xB0);
+  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::QUERY_PDU, 0x00, 0xB0);
   std::vector<uint8_t> data = {0x96, 0x00, 0xFF, 0x0F, 0xAA, 0x55, 0x00, 0x00};
 
   auto frame = createTestFrame(specific_response_id.get_can_id(), data);
-  REQUIRE(relay->parseMessage(frame));
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::RELAY_QUERY_RESPONSE);
 
   // Verify response parser received and parsed the data
-  const auto & reply = relay->get_response_parser().get_relay_query_reply();
+  const auto & reply = relay->get_last_relay_query_reply();
   REQUIRE(reply.is_valid());
   for (int i = 0; i < 12; ++i) {
     REQUIRE(reply.get_relay_state(i));
@@ -224,11 +224,11 @@ TEST_CASE("MvecRelay parse specific response relay query reply", "[mvec_relay]")
 TEST_CASE("MvecRelay parse specific response unknown message id", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::SPECIFIC_PDU, 0x00, 0xB0);
+  J1939_ID specific_response_id(6, 0, polymath::sygnal::MvecProtocol::QUERY_PDU, 0x00, 0xB0);
   std::vector<uint8_t> data = {0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
   auto frame = createTestFrame(specific_response_id.get_can_id(), data);
-  REQUIRE_FALSE(relay->parseMessage(frame));
+  REQUIRE_FALSE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
 }
 
 TEST_CASE("MvecRelay parse message with unknown id", "[mvec_relay]")
@@ -238,7 +238,7 @@ TEST_CASE("MvecRelay parse message with unknown id", "[mvec_relay]")
   std::vector<uint8_t> data = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
   auto frame = createTestFrame(unknown_id.get_can_id(), data);
-  REQUIRE_FALSE(relay->parseMessage(frame));
+  REQUIRE_FALSE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
 }
 
 TEST_CASE("MvecRelay boundary test max relays", "[mvec_relay]")

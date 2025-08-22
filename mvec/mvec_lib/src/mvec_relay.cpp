@@ -3,7 +3,7 @@
 
 #include "mvec_lib/mvec_relay.hpp"
 
-#include "mvec_lib/can_bitwork.hpp"
+#include "mvec_lib/core/can_bitwork.hpp"
 
 namespace polymath::sygnal
 {
@@ -12,13 +12,15 @@ MvecRelay::MvecRelay()
 : mvec_specific_command_id_(
     MvecProtocol::DEFAULT_PRIORITY,
     MvecProtocol::DEFAULT_DATA_PAGE,
-    MvecProtocol::SPECIFIC_PDU,
+    MvecProtocol::QUERY_PDU,
     mvec_source_address_,
-    my_address_)
+    self_address_)
 , fuse_status_message_(mvec_source_address_, pgn_base_value_)
 , relay_status_message_(mvec_source_address_, pgn_base_value_)
 , error_status_message_(mvec_source_address_, pgn_base_value_)
-, response_parser_(mvec_source_address_, my_address_)
+, relay_command_reply_(mvec_source_address_, self_address_)
+, relay_query_reply_(mvec_source_address_, self_address_)
+, population_reply_(mvec_source_address_, self_address_)
 {
   relay_command_data_.fill(0xFF);
   relay_query_data_.fill(0xFF);
@@ -81,39 +83,58 @@ socketcan::CanFrame MvecRelay::getRelayQueryMessage()
   return frame;
 }
 
+socketcan::CanFrame MvecRelay::getPopoulationQueryMessage()
+{
+  socketcan::CanFrame frame;
+
+  frame.set_can_id(mvec_specific_command_id_.get_can_id());
+  frame.set_id_as_extended();
+  frame.set_data(relay_query_data_);
+
+  return frame;
+}
+
 // State methods (current actual state)
 
-bool MvecRelay::parseMessage(const socketcan::CanFrame & frame)
+MvecMessageType MvecRelay::parseMessage(const socketcan::CanFrame & frame)
 {
   // Evaluate the CAN_ID
   // We only operate on extended IDs
   if (frame.get_id_type() != socketcan::IdType::EXTENDED) {
-    return false;
+    return MvecMessageType::UNSUPPORTED;
   }
 
   // We only operate on data IDs
   if (frame.get_frame_type() != socketcan::FrameType::DATA) {
-    return false;
+    return MvecMessageType::UNSUPPORTED;
   }
 
   // Try each message parser - they will validate their own IDs internally
   if (fuse_status_message_.parse(frame)) {
-    return true;
+    return MvecMessageType::FUSE_STATUS;
   }
 
   if (relay_status_message_.parse(frame)) {
-    return true;
+    return MvecMessageType::RELAY_STATUS;
   }
 
   if (error_status_message_.parse(frame)) {
-    return true;
+    return MvecMessageType::ERROR_STATUS;
   }
 
-  if (response_parser_.parse(frame)) {
-    return true;
+  if (relay_command_reply_.parse(frame)) {
+    return MvecMessageType::RELAY_COMMAND_RESPONSE;
   }
 
-  return false;
+  if (relay_query_reply_.parse(frame)) {
+    return MvecMessageType::RELAY_QUERY_RESPONSE;
+  }
+
+  if (population_reply_.parse(frame)) {
+    return MvecMessageType::POPULATION_RESPONSE;
+  }
+
+  return MvecMessageType::UNSUPPORTED;
 }
 
 }  // namespace polymath::sygnal

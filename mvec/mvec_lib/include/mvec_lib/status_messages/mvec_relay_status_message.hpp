@@ -8,23 +8,18 @@
 
 #include <array>
 
-#include "mvec_lib/can_bitwork.hpp"
-#include "mvec_lib/j1939_id.hpp"
-#include "mvec_lib/mvec_constants.hpp"
+#include "mvec_lib/core/can_bitwork.hpp"
+#include "mvec_lib/core/j1939_id.hpp"
+#include "mvec_lib/core/mvec_constants.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 
 namespace polymath::sygnal
 {
 
-namespace MvecRelayConstants
+namespace MvecRelayStatusConstants
 {
-inline constexpr int MAX_RELAYS = 12;
-inline constexpr int MAX_HIGH_SIDE_OUTPUTS = 1;
-inline constexpr uint8_t RELAY_STATUS_DATA_START_BYTE = 1;
 inline constexpr uint8_t BITS_PER_RELAY_STATUS = 4;
-inline constexpr uint8_t RELAY_STATUS_MASK = 0x0F;
-inline constexpr uint8_t MAX_RELAY_STATE_VALUE = 0x01;
-inline constexpr uint8_t MAX_HIGH_SIDE_STATE_VALUE = 0x01;
+inline constexpr uint8_t START_BYTE = 1;
 }  // namespace MvecRelayConstants
 
 enum class MvecRelayStatus : uint8_t
@@ -61,7 +56,7 @@ public:
 
 private:
   J1939_ID expected_id_;
-  std::array<MvecRelayStatus, MvecRelayConstants::MAX_RELAYS> relay_statuses_;
+  std::array<MvecRelayStatus, MvecHardware::MAX_NUMBER_RELAYS> relay_statuses_;
   bool is_valid_;
 };
 

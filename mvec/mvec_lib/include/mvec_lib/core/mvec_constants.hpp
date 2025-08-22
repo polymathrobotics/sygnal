@@ -11,13 +11,15 @@ namespace polymath::sygnal
 
 namespace MvecHardware
 {
+inline constexpr int MAX_NUMBER_RELAYS = 12;
+inline constexpr int MAX_NUMBER_FUSES = 24;
 inline constexpr int MAX_HIGH_SIDE_OUTPUTS = 1;
 };
 
 namespace MvecProtocol
 {
-inline constexpr uint8_t BROADCAST_PDU = 0xFF;
-inline constexpr uint8_t SPECIFIC_PDU = 0xEF;
+inline constexpr uint8_t STATUS_PDU = 0xFF;
+inline constexpr uint8_t QUERY_PDU = 0xEF;
 inline constexpr uint8_t DEFAULT_PRIORITY = 6;
 inline constexpr uint8_t DEFAULT_DATA_PAGE = 0;
 inline constexpr uint8_t RESERVED_BIT = 0;
@@ -48,6 +50,17 @@ namespace MvecValueLimits
 inline constexpr uint8_t MAX_RELAY_STATE_VALUE = 0x01;
 inline constexpr uint8_t MAX_HIGH_SIDE_STATE_VALUE = 0x01;
 };  // namespace MvecValueLimits
+
+enum class MvecMessageType : int16_t
+{
+UNSUPPORTED=-1,
+FUSE_STATUS,
+ERROR_STATUS,
+RELAY_STATUS,
+RELAY_COMMAND_RESPONSE,
+RELAY_QUERY_RESPONSE,
+POPULATION_RESPONSE,
+};
 
 }  // namespace polymath::sygnal
 
