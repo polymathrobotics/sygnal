@@ -72,6 +72,7 @@ socketcan::CanFrame MvecRelay::getRelayCommandMessage()
   frame.set_can_id(mvec_specific_command_id_.get_can_id());
   frame.set_id_as_extended();
   frame.set_data(relay_command_data_);
+  frame.set_len(CAN_MAX_DLC);
 
   return frame;
 }
@@ -86,6 +87,7 @@ socketcan::CanFrame MvecRelay::getRelayQueryMessage()
   frame.set_can_id(mvec_specific_command_id_.get_can_id());
   frame.set_id_as_extended();
   frame.set_data(query_data_);
+  frame.set_len(CAN_MAX_DLC);
 
   return frame;
 }
@@ -100,6 +102,7 @@ socketcan::CanFrame MvecRelay::getPopoulationQueryMessage()
   frame.set_can_id(mvec_specific_command_id_.get_can_id());
   frame.set_id_as_extended();
   frame.set_data(query_data_);
+  frame.set_len(CAN_MAX_DLC);
 
   return frame;
 }
