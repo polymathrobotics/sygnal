@@ -8,9 +8,7 @@
 namespace polymath::sygnal
 {
 
-MvecRelayQueryReply::MvecRelayQueryReply(
-  uint8_t source_address,
-  uint8_t my_address)
+MvecRelayQueryReply::MvecRelayQueryReply(uint8_t source_address, uint8_t my_address)
 : MvecResponseBase(MvecRelayQueryConstants::RELAY_QUERY_RESPONSE_MESSAGE_ID, source_address, my_address)
 , high_side_output_state_(false)
 , high_side_output_default_(false)
@@ -23,7 +21,8 @@ bool MvecRelayQueryReply::parse_message_data(const std::array<unsigned char, CAN
 {
   // Parse relay states from bytes 2&3
   auto state_data = unpackData<uint16_t>(
-    data, MvecRelayQueryConstants::RELAY_REPLY_STATE_START_BYTE * CHAR_BIT, 
+    data,
+    MvecRelayQueryConstants::RELAY_REPLY_STATE_START_BYTE * CHAR_BIT,
     MvecHardware::MAX_NUMBER_RELAYS + MvecHardware::MAX_HIGH_SIDE_OUTPUTS);
 
   for (size_t i = 0; i < MvecHardware::MAX_NUMBER_RELAYS; ++i) {
@@ -33,7 +32,8 @@ bool MvecRelayQueryReply::parse_message_data(const std::array<unsigned char, CAN
 
   // Parse relay defaults from bytes 4&5
   auto default_data = unpackData<uint16_t>(
-    data, MvecRelayQueryConstants::RELAY_REPLY_DEFAULT_START_BYTE * CHAR_BIT, 
+    data,
+    MvecRelayQueryConstants::RELAY_REPLY_DEFAULT_START_BYTE * CHAR_BIT,
     MvecHardware::MAX_NUMBER_RELAYS + MvecHardware::MAX_HIGH_SIDE_OUTPUTS);
 
   for (size_t i = 0; i < MvecHardware::MAX_NUMBER_RELAYS; ++i) {

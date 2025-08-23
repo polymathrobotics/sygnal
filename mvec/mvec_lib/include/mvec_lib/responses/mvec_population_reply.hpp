@@ -6,6 +6,7 @@
 
 #include <linux/can.h>
 #include <stdint.h>
+
 #include <array>
 
 #include "mvec_lib/core/can_bitwork.hpp"
@@ -24,9 +25,7 @@ inline constexpr uint8_t POPULATION_RESPONSE_MESSAGE_ID = 0x94;
 class MvecPopulationReply : public MvecResponseBase
 {
 public:
-  MvecPopulationReply(
-    uint8_t source_address,
-    uint8_t my_address);
+  MvecPopulationReply(uint8_t source_address, uint8_t my_address);
 
   bool get_fuse_population(uint8_t fuse_id) const;
   bool get_relay_population(uint8_t relay_id) const;

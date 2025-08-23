@@ -8,21 +8,17 @@
 namespace polymath::sygnal
 {
 
-MvecResponseBase::MvecResponseBase(
-  uint8_t expected_message_id,
-  uint8_t source_address,
-  uint8_t my_address)
+MvecResponseBase::MvecResponseBase(uint8_t expected_message_id, uint8_t source_address, uint8_t my_address)
 : expected_id_(
     MvecProtocol::DEFAULT_PRIORITY,
     MvecProtocol::DEFAULT_DATA_PAGE,
     MvecProtocol::QUERY_PDU,
     my_address,
     source_address,
-    MvecProtocol::RESERVED_BIT),
-  expected_message_id_(expected_message_id),
-  is_valid_(false)
-{
-}
+    MvecProtocol::RESERVED_BIT)
+, expected_message_id_(expected_message_id)
+, is_valid_(false)
+{}
 
 bool MvecResponseBase::parse(const polymath::socketcan::CanFrame & frame)
 {
@@ -53,7 +49,7 @@ bool MvecResponseBase::parse(const polymath::socketcan::CanFrame & frame)
 
   // Let derived class parse the specific message content
   bool parse_success = parse_message_data(data);
-  
+
   if (parse_success) {
     set_valid(true);
   }

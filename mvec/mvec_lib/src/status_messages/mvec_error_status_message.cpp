@@ -36,7 +36,8 @@ bool MvecErrorStatusMessage::parse(const socketcan::CanFrame & frame)
 
   grid_address_ = raw_data[0];
 
-  error_bits_ = unpackData<uint16_t>(raw_data, MvecErrorStatusConstants::START_BYTE * CHAR_BIT, MvecErrorStatusConstants::NUM_ERROR_BITS);
+  error_bits_ = unpackData<uint16_t>(
+    raw_data, MvecErrorStatusConstants::START_BYTE * CHAR_BIT, MvecErrorStatusConstants::NUM_ERROR_BITS);
 
   is_valid_ = true;
   return true;

@@ -8,9 +8,7 @@
 namespace polymath::sygnal
 {
 
-MvecRelayCommandReply::MvecRelayCommandReply(
-  uint8_t source_address,
-  uint8_t my_address)
+MvecRelayCommandReply::MvecRelayCommandReply(uint8_t source_address, uint8_t my_address)
 : MvecResponseBase(MvecRelayCommandConstants::RESPONSE_MESSAGE_ID, source_address, my_address)
 , command_msg_id_(0)
 , success_(0)
@@ -28,7 +26,7 @@ bool MvecRelayCommandReply::parse_message_data(const std::array<unsigned char, C
 
   auto relay_data = unpackData<uint16_t>(
     data,
-    MvecRelayCommandConstants::COMMAND_REPLY_DATA_START_BYTE * CHAR_BIT, 
+    MvecRelayCommandConstants::COMMAND_REPLY_DATA_START_BYTE * CHAR_BIT,
     MvecHardware::MAX_NUMBER_RELAYS + MvecHardware::MAX_HIGH_SIDE_OUTPUTS);
 
   for (size_t i = 0; i < MvecHardware::MAX_NUMBER_RELAYS; ++i) {

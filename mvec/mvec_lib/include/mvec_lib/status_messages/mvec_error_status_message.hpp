@@ -18,7 +18,7 @@ namespace MvecErrorStatusConstants
 {
 inline constexpr uint8_t NUM_ERROR_BITS = 13;
 inline constexpr uint8_t START_BYTE = 1;
-}  // namespace MvecErrorConstants
+}  // namespace MvecErrorStatusConstants
 
 namespace MvecErrorBits
 {
