@@ -92,7 +92,7 @@ socketcan::CanFrame MvecRelay::getRelayQueryMessage()
   return frame;
 }
 
-socketcan::CanFrame MvecRelay::getPopoulationQueryMessage()
+socketcan::CanFrame MvecRelay::getPopulationQueryMessage()
 {
   socketcan::CanFrame frame;
 
