@@ -23,6 +23,9 @@ public:
   // passthrough to go into socketcan adpater callbacks
   MvecMessageType parse(const socketcan::CanFrame & frame);
 
+  void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
+  void clear_relay();
+
   // query response infrastructure
   std::future<MvecRelayQueryReply> get_relay_state();
   std::future<MvecRelayCommandReply> send_relay_command();

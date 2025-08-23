@@ -39,7 +39,7 @@ public:
 
   socketcan::CanFrame getRelayQueryMessage();
 
-  socketcan::CanFrame getPopoulationQueryMessage();
+  socketcan::CanFrame getPopulationQueryMessage();
 
   // Get message objects - all data access goes through these
   const MvecFuseStatusMessage & get_fuse_status_message() const

@@ -62,6 +62,17 @@ MvecMessageType MvecRelaySocketcan::parse(const socketcan::CanFrame & frame)
   return message_type;
 }
 
+void MvecRelaySocketcan::set_relay_in_command(uint8_t relay_id, uint8_t relay_state)
+{
+  // TODO: (zeerek) Where do we check against the population table? When do we initially query the population table?
+  relay_impl_.set_relay_in_command(relay_id, relay_state);
+}
+
+void MvecRelaySocketcan::clear_relay()
+{
+  relay_impl_.clearRelayCommands();
+}
+
 std::future<MvecRelayQueryReply> MvecRelaySocketcan::get_relay_state()
 {
   // Get the query message from the relay implementation
@@ -110,7 +121,7 @@ std::future<MvecPopulationReply> MvecRelaySocketcan::get_relay_population()
 {
   // Get the population query message from the relay implementation
   // TODO: (zeerek) Set invalid for received message
-  auto population_frame = relay_impl_.getPopoulationQueryMessage();
+  auto population_frame = relay_impl_.getPopulationQueryMessage();
   
   // Create a new promise and get its future
   std::promise<MvecPopulationReply> promise;

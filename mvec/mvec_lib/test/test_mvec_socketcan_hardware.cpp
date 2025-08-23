@@ -107,34 +107,31 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
   {
     std::cout << "Testing automatic status message updates..." << std::endl;
     
-    // Wait a bit for any status messages to arrive
-    std::this_thread::sleep_for(2s);
-    
     // Check if we received any status messages
     const auto& fuse_status = mvec_socketcan->get_last_fuse_status();
     const auto& relay_status = mvec_socketcan->get_last_relay_status();
     const auto& error_status = mvec_socketcan->get_last_error_status();
     
-    if (fuse_status.has_value()) {
-      std::cout << "Received fuse status message! Valid: " << fuse_status->is_valid() << std::endl;
-      if (fuse_status->is_valid()) {
-        for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_FUSES; ++i) {
-          auto status = fuse_status->get_fuse_status(i);
-          if (status != polymath::sygnal::MvecFuseStatus::NOT_USED) {
-            std::cout << "  Fuse " << i << ": " << static_cast<int>(status) << std::endl;
-          }
+    REQUIRE(fuse_status.has_value());
+    REQUIRE(relay_status.has_value());
+
+    // Error status returns NO VALUE initially
+    std::cout << "Received fuse status message! Valid: " << fuse_status->is_valid() << std::endl;
+    if (fuse_status->is_valid()) {
+      for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_FUSES; ++i) {
+        auto status = fuse_status->get_fuse_status(i);
+        if (status != polymath::sygnal::MvecFuseStatus::NOT_USED) {
+          std::cout << "  Fuse " << i << ": " << static_cast<int>(status) << std::endl;
         }
       }
     }
-    
-    if (relay_status.has_value()) {
-      std::cout << "Received relay status message! Valid: " << relay_status->is_valid() << std::endl;
-      if (relay_status->is_valid()) {
-        for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS; ++i) {
-          auto status = relay_status->get_relay_status(i);
-          if (status != polymath::sygnal::MvecRelayStatus::RELAY_LOCATION_NOT_USED) {
-            std::cout << "  Relay " << i << ": " << static_cast<int>(status) << std::endl;
-          }
+
+    std::cout << "Received relay status message! Valid: " << relay_status->is_valid() << std::endl;
+    if (relay_status->is_valid()) {
+      for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS; ++i) {
+        auto status = relay_status->get_relay_status(i);
+        if (status != polymath::sygnal::MvecRelayStatus::RELAY_LOCATION_NOT_USED) {
+          std::cout << "  Relay " << i << ": " << static_cast<int>(status) << std::endl;
         }
       }
     }
@@ -150,6 +147,29 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
     // This test doesn't require assertions since status messages are broadcast periodically
     // and may not be available immediately
     std::cout << "Status message test completed (no assertions - depends on device broadcast)" << std::endl;
+  }
+
+  SECTION("Set Relays and Validate")
+  {
+    mvec_socketcan->set_relay_in_command(8, 1);
+    mvec_socketcan->set_relay_in_command(9, 1);
+    auto relay_command_response_future = mvec_socketcan->send_relay_command();
+
+    auto status = relay_command_response_future.wait_for(5s);
+
+    REQUIRE(status == std::future_status::ready);
+    
+    auto response = relay_command_response_future.get();
+
+    // 1 is no error
+    REQUIRE(response.get_success() == 1);
+
+    auto mvec_query_future = mvec_socketcan->get_relay_state();
+    status = mvec_query_future.wait_for(5s);
+    auto relay_state = mvec_query_future.get();
+
+    REQUIRE(relay_state.get_relay_state(8) == 1);
+    REQUIRE(relay_state.get_relay_state(9) == 1);
   }
   
   // Clean up
