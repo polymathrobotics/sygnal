@@ -106,6 +106,8 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
   SECTION("Test automatic status message updates")
   {
     std::cout << "Testing automatic status message updates..." << std::endl;
+
+    std::this_thread::sleep_for(2s);
     
     // Check if we received any status messages
     const auto& fuse_status = mvec_socketcan->get_last_fuse_status();
