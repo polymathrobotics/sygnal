@@ -11,7 +11,7 @@ MvecFuseStatusMessage::MvecFuseStatusMessage(uint8_t source_address, uint8_t pgn
     MvecProtocol::DEFAULT_PRIORITY,
     MvecProtocol::DEFAULT_DATA_PAGE,
     MvecProtocol::STATUS_PDU,
-    0x01 + pgn_base_value,
+    0x00 + pgn_base_value,
     source_address)
 , is_valid_(false)
 {
