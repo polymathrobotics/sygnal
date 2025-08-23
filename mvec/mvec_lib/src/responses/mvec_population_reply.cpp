@@ -8,9 +8,7 @@
 namespace polymath::sygnal
 {
 
-MvecPopulationReply::MvecPopulationReply(
-  uint8_t source_address,
-  uint8_t my_address)
+MvecPopulationReply::MvecPopulationReply(uint8_t source_address, uint8_t my_address)
 : MvecResponseBase(MvecPopulationConstants::POPULATION_RESPONSE_MESSAGE_ID, source_address, my_address)
 , high_side_output_population_(false)
 {
@@ -21,17 +19,17 @@ MvecPopulationReply::MvecPopulationReply(
 bool MvecPopulationReply::parse_message_data(const std::array<unsigned char, CAN_MAX_DLC> & data)
 {
   // Parse fuse population from bytes 2-4
-  auto fuse_data = unpackData<uint32_t>(data, 
-    MvecPopulationConstants::POPULATION_FUSE_START_BYTE * CHAR_BIT,
-    MvecHardware::MAX_NUMBER_FUSES);
+  auto fuse_data = unpackData<uint32_t>(
+    data, MvecPopulationConstants::POPULATION_FUSE_START_BYTE * CHAR_BIT, MvecHardware::MAX_NUMBER_FUSES);
 
   for (size_t i = 0; i < MvecHardware::MAX_NUMBER_FUSES; ++i) {
     fuse_population_[i] = ((fuse_data >> i) & 0x01);
   }
 
   // Parse relay population from bytes 5&6
-  auto relay_data = unpackData<uint32_t>(data, 
-    MvecPopulationConstants::POPULATION_RELAY_START_BYTE * CHAR_BIT, 
+  auto relay_data = unpackData<uint32_t>(
+    data,
+    MvecPopulationConstants::POPULATION_RELAY_START_BYTE * CHAR_BIT,
     MvecHardware::MAX_NUMBER_RELAYS + MvecHardware::MAX_HIGH_SIDE_OUTPUTS);
 
   for (size_t i = 0; i < MvecHardware::MAX_NUMBER_RELAYS; ++i) {

@@ -228,7 +228,7 @@ TEST_CASE("MvecRelay parse specific response unknown message id", "[mvec_relay]"
   std::vector<uint8_t> data = {0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
   auto frame = createTestFrame(specific_response_id.get_can_id(), data);
-  REQUIRE_FALSE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
 }
 
 TEST_CASE("MvecRelay parse message with unknown id", "[mvec_relay]")
@@ -238,7 +238,7 @@ TEST_CASE("MvecRelay parse message with unknown id", "[mvec_relay]")
   std::vector<uint8_t> data = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
   auto frame = createTestFrame(unknown_id.get_can_id(), data);
-  REQUIRE_FALSE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
+  REQUIRE(relay->parseMessage(frame) == polymath::sygnal::MvecMessageType::UNSUPPORTED);
 }
 
 TEST_CASE("MvecRelay boundary test max relays", "[mvec_relay]")

@@ -14,7 +14,7 @@ namespace MvecHardware
 inline constexpr int MAX_NUMBER_RELAYS = 12;
 inline constexpr int MAX_NUMBER_FUSES = 24;
 inline constexpr int MAX_HIGH_SIDE_OUTPUTS = 1;
-};
+};  // namespace MvecHardware
 
 namespace MvecProtocol
 {
@@ -54,13 +54,13 @@ inline constexpr uint8_t MAX_HIGH_SIDE_STATE_VALUE = 0x01;
 
 enum class MvecMessageType : int16_t
 {
-UNSUPPORTED=-1,
-FUSE_STATUS,
-ERROR_STATUS,
-RELAY_STATUS,
-RELAY_COMMAND_RESPONSE,
-RELAY_QUERY_RESPONSE,
-POPULATION_RESPONSE,
+  UNSUPPORTED = -1,
+  FUSE_STATUS,
+  ERROR_STATUS,
+  RELAY_STATUS,
+  RELAY_COMMAND_RESPONSE,
+  RELAY_QUERY_RESPONSE,
+  POPULATION_RESPONSE,
 };
 
 }  // namespace polymath::sygnal

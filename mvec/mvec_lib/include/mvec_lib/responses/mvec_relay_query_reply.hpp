@@ -6,6 +6,7 @@
 
 #include <linux/can.h>
 #include <stdint.h>
+
 #include <array>
 
 #include "mvec_lib/core/can_bitwork.hpp"
@@ -24,9 +25,7 @@ inline constexpr uint8_t RELAY_QUERY_RESPONSE_MESSAGE_ID = 0x96;
 class MvecRelayQueryReply : public MvecResponseBase
 {
 public:
-  MvecRelayQueryReply(
-    uint8_t source_address,
-    uint8_t my_address);
+  MvecRelayQueryReply(uint8_t source_address, uint8_t my_address);
 
   bool get_relay_state(uint8_t relay_id) const;
 

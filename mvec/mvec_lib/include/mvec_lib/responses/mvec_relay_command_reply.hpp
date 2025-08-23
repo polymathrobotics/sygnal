@@ -6,6 +6,7 @@
 
 #include <linux/can.h>
 #include <stdint.h>
+
 #include <array>
 
 #include "mvec_lib/core/can_bitwork.hpp"
@@ -25,9 +26,7 @@ inline constexpr uint8_t RESPONSE_MESSAGE_ID = 0x01;
 class MvecRelayCommandReply : public MvecResponseBase
 {
 public:
-  MvecRelayCommandReply(
-    uint8_t source_address,
-    uint8_t my_address);
+  MvecRelayCommandReply(uint8_t source_address, uint8_t my_address);
 
 public:
   uint8_t get_command_msg_id() const

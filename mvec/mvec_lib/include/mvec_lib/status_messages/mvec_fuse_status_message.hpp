@@ -20,7 +20,7 @@ namespace MvecFuseStatusConstants
 {
 inline constexpr uint8_t START_BYTE = 1;
 inline constexpr uint8_t BITS_PER_FUSE = 2;
-}  // namespace MvecFuseConstants
+}  // namespace MvecFuseStatusConstants
 
 enum class MvecFuseStatus : uint8_t
 {

@@ -20,6 +20,7 @@ find_package(socketcan_adapter REQUIRED)
 add_library(
   ${PROJECT_NAME} SHARED
   src/mvec_relay.cpp
+  src/mvec_relay_socketcan.cpp
   src/core/mvec_status_messages.cpp
   src/status_messages/mvec_fuse_status_message.cpp
   src/status_messages/mvec_relay_status_message.cpp
@@ -103,12 +104,33 @@ if(BUILD_TESTING)
   )
   target_compile_definitions(${PROJECT_NAME}_test_status_enums PRIVATE CATCH_CONFIG_MAIN)
 
+  # Hardware test - only build and register if CAN_AVAILABLE environment variable is set
+  if(DEFINED ENV{CAN_AVAILABLE})
+    add_executable(${PROJECT_NAME}_test_socketcan_hardware
+      test/test_mvec_socketcan_hardware.cpp
+    )
+    target_link_libraries(${PROJECT_NAME}_test_socketcan_hardware ${PROJECT_NAME} Catch2::Catch2)
+    target_include_directories(${PROJECT_NAME}_test_socketcan_hardware PRIVATE
+      "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    )
+    target_compile_definitions(${PROJECT_NAME}_test_socketcan_hardware PRIVATE CATCH_CONFIG_MAIN)
+
+    message(STATUS "CAN_AVAILABLE environment variable detected - including hardware tests")
+  else()
+    message(STATUS "CAN_AVAILABLE not set - skipping hardware tests (set CAN_AVAILABLE=1 to enable)")
+  endif()
+
   # Register the tests with CTest
   include(CTest)
   include(Catch)
   catch_discover_tests(${PROJECT_NAME}_test_relay)
   catch_discover_tests(${PROJECT_NAME}_test_status_messages)
   catch_discover_tests(${PROJECT_NAME}_test_status_enums)
+
+  # Only register hardware test if it was built
+  if(DEFINED ENV{CAN_AVAILABLE})
+    catch_discover_tests(${PROJECT_NAME}_test_socketcan_hardware)
+  endif()
 
 endif()
 

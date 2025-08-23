@@ -20,7 +20,7 @@ namespace MvecRelayStatusConstants
 {
 inline constexpr uint8_t BITS_PER_RELAY_STATUS = 4;
 inline constexpr uint8_t START_BYTE = 1;
-}  // namespace MvecRelayConstants
+}  // namespace MvecRelayStatusConstants
 
 enum class MvecRelayStatus : uint8_t
 {

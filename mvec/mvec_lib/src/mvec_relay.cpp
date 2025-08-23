@@ -55,7 +55,8 @@ void MvecRelay::set_high_side_output_in_command(uint8_t high_side_output_state)
     return;
   }
 
-  uint8_t start_bit = MvecMessageStructure::RELAY_DATA_START_BIT + MvecHardware::MAX_NUMBER_RELAYS * MvecMessageStructure::BITS_PER_RELAY;
+  uint8_t start_bit =
+    MvecMessageStructure::RELAY_DATA_START_BIT + MvecHardware::MAX_NUMBER_RELAYS * MvecMessageStructure::BITS_PER_RELAY;
   packData<uint8_t>(high_side_output_state, relay_command_data_, start_bit, MvecMessageStructure::HIGH_SIDE_BITS);
 }
 
