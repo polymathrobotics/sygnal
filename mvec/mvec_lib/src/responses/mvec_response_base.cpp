@@ -22,8 +22,6 @@ MvecResponseBase::MvecResponseBase(uint8_t expected_message_id, uint8_t source_a
 
 bool MvecResponseBase::parse(const polymath::socketcan::CanFrame & frame)
 {
-  // Reset validity state
-  reset_validity();
 
   // Parse J1939 ID from frame
   J1939_ID frame_id(frame.get_id());

@@ -20,15 +20,14 @@ MvecFuseStatusMessage::MvecFuseStatusMessage(uint8_t source_address, uint8_t pgn
 
 bool MvecFuseStatusMessage::parse(const socketcan::CanFrame & frame)
 {
+  // TODO: (Zeerek) use frame timestamp once supported to set validity
   if (frame.get_id_type() != socketcan::IdType::EXTENDED || frame.get_frame_type() != socketcan::FrameType::DATA) {
-    is_valid_ = false;
     return false;
   }
 
   // Check if this frame matches our expected J1939 ID
   J1939_ID frame_id(frame.get_id());
   if (!(frame_id == expected_id_)) {
-    is_valid_ = false;
     return false;
   }
 
