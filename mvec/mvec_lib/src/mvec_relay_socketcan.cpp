@@ -65,6 +65,7 @@ MvecMessageType MvecRelaySocketcan::parse(const socketcan::CanFrame & frame)
 std::future<MvecRelayQueryReply> MvecRelaySocketcan::get_relay_state()
 {
   // Get the query message from the relay implementation
+  // TODO: (zeerek) Set invalid for received message
   auto query_frame = relay_impl_.getRelayQueryMessage();
   
   // Create a new promise and get its future
@@ -86,6 +87,7 @@ std::future<MvecRelayQueryReply> MvecRelaySocketcan::get_relay_state()
 std::future<MvecRelayCommandReply> MvecRelaySocketcan::send_relay_command()
 {
   // Get the command message from the relay implementation
+  // TODO: (zeerek) Set invalid for received message
   auto command_frame = relay_impl_.getRelayCommandMessage();
   
   // Create a new promise and get its future
@@ -107,6 +109,7 @@ std::future<MvecRelayCommandReply> MvecRelaySocketcan::send_relay_command()
 std::future<MvecPopulationReply> MvecRelaySocketcan::get_relay_population()
 {
   // Get the population query message from the relay implementation
+  // TODO: (zeerek) Set invalid for received message
   auto population_frame = relay_impl_.getPopoulationQueryMessage();
   
   // Create a new promise and get its future
