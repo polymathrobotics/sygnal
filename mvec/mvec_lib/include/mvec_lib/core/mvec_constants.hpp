@@ -9,23 +9,37 @@
 namespace polymath::sygnal
 {
 
+/// @brief Hardware limits for MVEC devices
 namespace MvecHardware
 {
+/// @brief Maximum number of relays supported by MVEC device
 inline constexpr int MAX_NUMBER_RELAYS = 12;
+/// @brief Maximum number of fuses supported by MVEC device
 inline constexpr int MAX_NUMBER_FUSES = 24;
+/// @brief Maximum number of high-side outputs supported
 inline constexpr int MAX_HIGH_SIDE_OUTPUTS = 1;
 };  // namespace MvecHardware
 
+/// @brief J1939 protocol constants for MVEC communication
 namespace MvecProtocol
 {
+/// @brief PDU format for broadcast status messages
 inline constexpr uint8_t STATUS_PDU = 0xFF;
+/// @brief PDU format for specific query/response messages
 inline constexpr uint8_t QUERY_PDU = 0xEF;
+/// @brief Default J1939 message priority
 inline constexpr uint8_t DEFAULT_PRIORITY = 6;
+/// @brief Default J1939 data page
 inline constexpr uint8_t DEFAULT_DATA_PAGE = 0;
+/// @brief Reserved bit value for J1939
 inline constexpr uint8_t RESERVED_BIT = 0;
+/// @brief Default source address for MVEC devices
 inline constexpr uint8_t DEFAULT_SOURCE_ADDRESS = 0xB0;
+/// @brief Base value for PGN calculation
 inline constexpr uint8_t DEFAULT_PGN_BASE_VALUE = 0xA0;
+/// @brief Default self address for controller
 inline constexpr uint8_t DEFAULT_SELF_ADDRESS = 0x00;
+/// @brief Default grid address
 inline constexpr uint8_t DEFAULT_GRID_ADDRESS = 0x00;
 };  // namespace MvecProtocol
 
@@ -52,15 +66,23 @@ inline constexpr uint8_t MAX_RELAY_STATE_VALUE = 0x01;
 inline constexpr uint8_t MAX_HIGH_SIDE_STATE_VALUE = 0x01;
 };  // namespace MvecValueLimits
 
+/// @brief Message types that can be parsed from MVEC devices
 enum class MvecMessageType : int16_t
 {
+  /// Message not recognized as MVEC format
   UNSUPPORTED = -1,
+  /// Fuse status broadcast message
   FUSE_STATUS,
+  /// Error status broadcast message
   ERROR_STATUS,
-  RELAY_STATUS,
-  RELAY_COMMAND_RESPONSE,
-  RELAY_QUERY_RESPONSE,
-  POPULATION_RESPONSE,
+  /// Relay status broadcast message
+  RELAY_STATUS,            
+  /// Response to relay command
+  RELAY_COMMAND_RESPONSE,  
+  /// Response to relay query
+  RELAY_QUERY_RESPONSE,    
+  /// Response to population query
+  POPULATION_RESPONSE,     
 };
 
 }  // namespace polymath::sygnal

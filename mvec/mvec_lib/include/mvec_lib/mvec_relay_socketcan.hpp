@@ -15,35 +15,66 @@
 namespace polymath::sygnal
 {
 
+/// @brief MVEC relay controller with async SocketCAN communication
+/// Provides high-level interface for MVEC relay control with thread-safe promise/future pattern
 class MvecRelaySocketcan
 {
 public:
+  /// @brief Constructor
+  /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
   explicit MvecRelaySocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter);
 
-  // passthrough to go into socketcan adpater callbacks
+  /// @brief Parse incoming CAN frame and fulfill waiting promises
+  /// @param frame CAN frame to parse
+  /// @return Message type that was parsed
   MvecMessageType parse(const socketcan::CanFrame & frame);
 
+  /// @brief Set relay command state
+  /// @param relay_id Relay ID (0-11)
+  /// @param relay_state Relay state (0=off, 1=on)
   void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
+  
+  /// @brief Clear all relay commands
   void clear_relay();
 
-  // query response infrastructure
+  /// @brief Query current relay states asynchronously
+  /// @return Future that will contain relay query reply
   std::future<MvecRelayQueryReply> get_relay_state();
+  
+  /// @brief Send relay command and wait for confirmation
+  /// @return Future that will contain command reply
   std::future<MvecRelayCommandReply> send_relay_command();
+  
+  /// @brief Query device population (which relays/fuses are installed)
+  /// @return Future that will contain population reply
   std::future<MvecPopulationReply> get_relay_population();
 
-  // automatically updated values
+  /// @brief Get last received fuse status message
+  /// @return Optional containing fuse status if valid data available
   const std::optional<MvecFuseStatusMessage> & get_last_fuse_status();
+  
+  /// @brief Get last received relay status message
+  /// @return Optional containing relay status if valid data available
   const std::optional<MvecRelayStatusMessage> & get_last_relay_status();
+  
+  /// @brief Get last received error status message
+  /// @return Optional containing error status if valid data available
   const std::optional<MvecErrorStatusMessage> & get_last_error_status();
 
 private:
+  /// @brief SocketCAN adapter for CAN communication
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
+  /// @brief Core MVEC relay implementation
   MvecRelay relay_impl_;
 
+  /// @brief Queue of promises waiting for relay query responses
   std::queue<std::promise<MvecRelayQueryReply>> query_reply_promises_;
+  /// @brief Queue of promises waiting for relay command responses
   std::queue<std::promise<MvecRelayCommandReply>> command_reply_promises_;
+  /// @brief Queue of promises waiting for population query responses
   std::queue<std::promise<MvecPopulationReply>> population_reply_promises_;
 
+  /// @brief Mutex protecting promise queues for thread safety
   std::mutex promises_mutex_;
 };
 

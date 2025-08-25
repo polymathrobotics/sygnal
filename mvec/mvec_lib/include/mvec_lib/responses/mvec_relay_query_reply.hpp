@@ -22,20 +22,35 @@ inline constexpr uint8_t RELAY_REPLY_DEFAULT_START_BYTE = 4;
 inline constexpr uint8_t RELAY_QUERY_RESPONSE_MESSAGE_ID = 0x96;
 }  // namespace MvecRelayQueryConstants
 
+/// @brief Parser and container for MVEC relay query responses
+/// Contains current relay states and default power-on states
 class MvecRelayQueryReply : public MvecResponseBase
 {
 public:
+  /// @brief Constructor
+  /// @param source_address Expected source address for messages
+  /// @param my_address Self address for message filtering
   MvecRelayQueryReply(uint8_t source_address, uint8_t my_address);
 
+  /// @brief Get current state of specific relay
+  /// @param relay_id Relay ID (0-11)
+  /// @return true if relay is currently on
   bool get_relay_state(uint8_t relay_id) const;
 
+  /// @brief Get current state of high side output
+  /// @return true if high side output is currently on
   bool get_high_side_output_state() const
   {
     return high_side_output_state_;
   }
 
+  /// @brief Get default power-on state of specific relay
+  /// @param relay_id Relay ID (0-11)
+  /// @return true if relay defaults to on at power-up
   bool get_relay_default(uint8_t relay_id) const;
 
+  /// @brief Get default power-on state of high side output
+  /// @return true if high side output defaults to on at power-up
   bool get_high_side_output_default() const
   {
     return high_side_output_default_;
