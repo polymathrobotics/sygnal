@@ -71,7 +71,7 @@ TEST_CASE("FuseStatusMessage with enums", "[status_enums]")
   // Create test data where first fuse is blown (0x1), second is not powered (0x2)
   std::vector<uint8_t> data = {0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 0x09 = 0b00001001 = fuse0=1, fuse1=2
 
-  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
+  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x00 + 0xA0, 0xB0);
   auto frame = createTestFrame(fuse_status_id.get_can_id(), data);
   REQUIRE(msg.parse(frame));
   REQUIRE(msg.is_valid());
@@ -88,7 +88,7 @@ TEST_CASE("RelayStatusMessage with enums", "[status_enums]")
   // Create test data where first relay is okay (0x0), second has coil open (0x1)
   std::vector<uint8_t> data = {0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 0x10 = relay0=0, relay1=1
 
-  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
+  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
   auto frame = createTestFrame(relay_status_id.get_can_id(), data);
   REQUIRE(msg.parse(frame));
   REQUIRE(msg.is_valid());
@@ -104,7 +104,7 @@ TEST_CASE("ErrorStatusMessage with enums", "[status_enums]")
   // Grid address 0x42, error bits with INVALID_CONFIG (0x01) and GRID_ID_CHANGED (0x02)
   std::vector<uint8_t> data = {0x42, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  // 0x03 = 0b00000011
 
-  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x03 + 0xA0, 0xB0);
+  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
   auto frame = createTestFrame(error_status_id.get_can_id(), data);
   REQUIRE(msg.parse(frame));
   REQUIRE(msg.is_valid());
@@ -127,9 +127,9 @@ TEST_CASE("Status data structures", "[status_enums]")
   std::vector<uint8_t> relay_data = {0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   std::vector<uint8_t> error_data = {0x42, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
-  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
-  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x03 + 0xA0, 0xB0);
+  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x00 + 0xA0, 0xB0);
+  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
+  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
   auto fuse_frame = createTestFrame(fuse_status_id.get_can_id(), fuse_data);
   auto relay_frame = createTestFrame(relay_status_id.get_can_id(), relay_data);
   auto error_frame = createTestFrame(error_status_id.get_can_id(), error_data);
