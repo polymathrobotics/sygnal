@@ -68,9 +68,12 @@ protected:
   }
 
 private:
-  J1939_ID expected_id_;  ///< Expected J1939 ID for this response type
-  uint8_t expected_message_id_;  ///< Expected message ID
-  bool is_valid_;  ///< Validity state of last parsed message
+  /// Expected J1939 ID for this response type
+  J1939_ID expected_id_;  
+  /// Expected message ID
+  uint8_t expected_message_id_;  
+  /// Validity state of last parsed message
+  bool is_valid_;  
 };
 
 }  // namespace polymath::sygnal

@@ -22,14 +22,28 @@ inline constexpr uint8_t POPULATION_RELAY_START_BYTE = 6;
 inline constexpr uint8_t POPULATION_RESPONSE_MESSAGE_ID = 0x94;
 }  // namespace MvecPopulationConstants
 
+/// @brief Parser and container for MVEC population query responses
+/// Contains information about which relays and fuses are physically installed
 class MvecPopulationReply : public MvecResponseBase
 {
 public:
+  /// @brief Constructor
+  /// @param source_address Expected source address for messages
+  /// @param my_address Self address for message filtering
   MvecPopulationReply(uint8_t source_address, uint8_t my_address);
 
+  /// @brief Check if specific fuse is populated (installed)
+  /// @param fuse_id Fuse ID (0-23)
+  /// @return true if fuse is installed
   bool get_fuse_population(uint8_t fuse_id) const;
+  
+  /// @brief Check if specific relay is populated (installed)  
+  /// @param relay_id Relay ID (0-11)
+  /// @return true if relay is installed
   bool get_relay_population(uint8_t relay_id) const;
 
+  /// @brief Check if high side output is populated (installed)
+  /// @return true if high side output is installed
   bool get_high_side_output_population() const
   {
     return high_side_output_population_;
