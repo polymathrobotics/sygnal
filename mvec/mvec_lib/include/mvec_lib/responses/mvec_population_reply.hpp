@@ -18,7 +18,7 @@ namespace polymath::sygnal
 namespace MvecPopulationConstants
 {
 inline constexpr uint8_t POPULATION_FUSE_START_BYTE = 2;
-inline constexpr uint8_t POPULATION_RELAY_START_BYTE = 5;
+inline constexpr uint8_t POPULATION_RELAY_START_BYTE = 6;
 inline constexpr uint8_t POPULATION_RESPONSE_MESSAGE_ID = 0x94;
 }  // namespace MvecPopulationConstants
 
