@@ -1,9 +1,9 @@
 // Copyright (c) 2025-present Polymath Robotics, Inc. All rights reserved
 // Proprietary. Any unauthorized copying, distribution, or modification of this software is strictly prohibited.
 
-#include <memory>
 #include <chrono>
 #include <iostream>
+#include <memory>
 #include <thread>
 
 #include <catch2/catch.hpp>
@@ -11,47 +11,44 @@
 #include "mvec_lib/mvec_relay_socketcan.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
 
-using namespace std::chrono_literals;
-
 TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
 {
   // Initialize socketcan adapter with a real CAN interface
   auto socketcan_adapter = std::make_shared<polymath::socketcan::SocketcanAdapter>("can0");
-  
+
   // Open the socket
   bool open_result = socketcan_adapter->openSocket();
-  REQUIRE(open_result); // True means success
-  
+  REQUIRE(open_result);  // True means success
+
   // Create the MvecRelaySocketcan instance
   auto mvec_socketcan = std::make_unique<polymath::sygnal::MvecRelaySocketcan>(socketcan_adapter);
-  
+
   // Set up callback to parse incoming messages
-  bool callback_result = socketcan_adapter->setOnReceiveCallback([&mvec_socketcan](std::unique_ptr<const polymath::socketcan::CanFrame> frame) {
-    mvec_socketcan->parse(*frame);
-  });
-  REQUIRE(callback_result); // True means success
-  
+  bool callback_result = socketcan_adapter->setOnReceiveCallback(
+    [&mvec_socketcan](std::unique_ptr<const polymath::socketcan::CanFrame> frame) { mvec_socketcan->parse(*frame); });
+  REQUIRE(callback_result);  // True means success
+
   // Start receiving messages
   bool start_result = socketcan_adapter->startReceptionThread();
-  REQUIRE(start_result); // True means success
-  
+  REQUIRE(start_result);  // True means success
+
   SECTION("Test population query")
   {
     std::cout << "Testing population query..." << std::endl;
-    
+
     // Send population query and get future
     auto population_future = mvec_socketcan->get_relay_population();
-    
+
     // Wait for response (with timeout)
-    auto status = population_future.wait_for(5s);
-    
+    auto status = population_future.wait_for(std::chrono::seconds(5));
+
     if (status == std::future_status::ready) {
       auto population_reply = population_future.get();
       std::cout << "Population query successful! Valid: " << population_reply.is_valid() << std::endl;
-      
+
       // Check that we got a valid response
       REQUIRE(population_reply.is_valid());
-      
+
       // Print some population information
       std::cout << "Population information received:" << std::endl;
       for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS; ++i) {
@@ -71,30 +68,30 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
       WARN("No MVEC device found - population query timed out");
     }
   }
-  
+
   SECTION("Test relay state query")
   {
     std::cout << "Testing relay state query..." << std::endl;
-    
+
     // Send relay state query and get future
     auto relay_state_future = mvec_socketcan->get_relay_state();
-    
+
     // Wait for response (with timeout)
-    auto status = relay_state_future.wait_for(5s);
-    
+    auto status = relay_state_future.wait_for(std::chrono::seconds(5));
+
     if (status == std::future_status::ready) {
       auto relay_query_reply = relay_state_future.get();
       std::cout << "Relay state query successful! Valid: " << relay_query_reply.is_valid() << std::endl;
-      
+
       // Check that we got a valid response
       REQUIRE(relay_query_reply.is_valid());
-      
+
       // Print relay states
       std::cout << "Relay states:" << std::endl;
       for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS; ++i) {
         std::cout << "  Relay " << i << ": " << relay_query_reply.get_relay_state(i) << std::endl;
       }
-      
+
       std::cout << "High side output: " << relay_query_reply.get_high_side_output_state() << std::endl;
     } else {
       std::cout << "Relay state query timed out - no MVEC device responding" << std::endl;
@@ -102,18 +99,18 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
       WARN("No MVEC device found - relay state query timed out");
     }
   }
-  
+
   SECTION("Test automatic status message updates")
   {
     std::cout << "Testing automatic status message updates..." << std::endl;
 
-    std::this_thread::sleep_for(2s);
-    
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
     // Check if we received any status messages
-    const auto& fuse_status = mvec_socketcan->get_last_fuse_status();
-    const auto& relay_status = mvec_socketcan->get_last_relay_status();
-    const auto& error_status = mvec_socketcan->get_last_error_status();
-    
+    const auto & fuse_status = mvec_socketcan->get_last_fuse_status();
+    const auto & relay_status = mvec_socketcan->get_last_relay_status();
+    const auto & error_status = mvec_socketcan->get_last_error_status();
+
     REQUIRE(fuse_status.has_value());
     REQUIRE(relay_status.has_value());
 
@@ -137,15 +134,16 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
         }
       }
     }
-    
+
     if (error_status.has_value()) {
       std::cout << "Received error status message! Valid: " << error_status->is_valid() << std::endl;
       if (error_status->is_valid()) {
         std::cout << "  Error bits: 0x" << std::hex << error_status->get_error_bits() << std::dec << std::endl;
-        std::cout << "  Grid address: 0x" << std::hex << static_cast<int>(error_status->get_grid_address()) << std::dec << std::endl;
+        std::cout << "  Grid address: 0x" << std::hex << static_cast<int>(error_status->get_grid_address()) << std::dec
+                  << std::endl;
       }
     }
-    
+
     // This test doesn't require assertions since status messages are broadcast periodically
     // and may not be available immediately
     std::cout << "Status message test completed (no assertions - depends on device broadcast)" << std::endl;
@@ -157,26 +155,26 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
     mvec_socketcan->set_relay_in_command(9, 1);
     auto relay_command_response_future = mvec_socketcan->send_relay_command();
 
-    auto status = relay_command_response_future.wait_for(5s);
+    auto status = relay_command_response_future.wait_for(std::chrono::seconds(5));
 
     REQUIRE(status == std::future_status::ready);
-    
+
     auto response = relay_command_response_future.get();
 
     // 1 is no error
     REQUIRE(response.get_success() == 1);
 
     auto mvec_query_future = mvec_socketcan->get_relay_state();
-    status = mvec_query_future.wait_for(5s);
+    status = mvec_query_future.wait_for(std::chrono::seconds(5));
     auto relay_state = mvec_query_future.get();
 
     REQUIRE(relay_state.get_relay_state(8) == 1);
     REQUIRE(relay_state.get_relay_state(9) == 1);
   }
-  
+
   // Clean up
   socketcan_adapter->joinReceptionThread();
   socketcan_adapter->closeSocket();
-  
+
   std::cout << "Hardware test completed successfully!" << std::endl;
 }

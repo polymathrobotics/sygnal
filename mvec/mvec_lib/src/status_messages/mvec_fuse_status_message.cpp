@@ -20,7 +20,7 @@ MvecFuseStatusMessage::MvecFuseStatusMessage(uint8_t source_address, uint8_t pgn
 
 bool MvecFuseStatusMessage::parse(const socketcan::CanFrame & frame)
 {
-  // TODO: (Zeerek) use frame timestamp once supported to set validity
+  /// TODO: (Zeerek) use frame timestamp once supported to set validity
   if (frame.get_id_type() != socketcan::IdType::EXTENDED || frame.get_frame_type() != socketcan::FrameType::DATA) {
     return false;
   }
