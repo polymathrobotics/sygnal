@@ -127,7 +127,7 @@ TEST_CASE("MvecRelay parse message with non-data frame", "[mvec_relay]")
 TEST_CASE("MvecRelay parse fuse status message", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
+  J1939_ID fuse_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x00 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0x00, 0x55, 0xAA, 0x33, 0xCC, 0x0F, 0xF0, 0x99};
 
   auto frame = createTestFrame(fuse_status_id.get_can_id(), data);
@@ -146,7 +146,7 @@ TEST_CASE("MvecRelay parse fuse status message", "[mvec_relay]")
 TEST_CASE("MvecRelay parse relay status message", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
+  J1939_ID relay_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x01 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
 
   auto frame = createTestFrame(relay_status_id.get_can_id(), data);
@@ -164,7 +164,7 @@ TEST_CASE("MvecRelay parse relay status message", "[mvec_relay]")
 TEST_CASE("MvecRelay parse error status message", "[mvec_relay]")
 {
   auto relay = std::make_unique<polymath::sygnal::MvecRelay>();
-  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x03 + 0xA0, 0xB0);
+  J1939_ID error_status_id(6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU, 0x02 + 0xA0, 0xB0);
   std::vector<uint8_t> data = {0xB0, 0xFF, 0x1F, 0x00, 0x00, 0x00, 0x00, 0x00};
 
   auto frame = createTestFrame(error_status_id.get_can_id(), data);
