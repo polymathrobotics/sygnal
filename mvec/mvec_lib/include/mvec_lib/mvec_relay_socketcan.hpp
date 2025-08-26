@@ -33,18 +33,18 @@ public:
   /// @param relay_id Relay ID (0-11)
   /// @param relay_state Relay state (0=off, 1=on)
   void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
-  
+
   /// @brief Clear all relay commands
   void clear_relay();
 
   /// @brief Query current relay states asynchronously
   /// @return Future that will contain relay query reply
   std::future<MvecRelayQueryReply> get_relay_state();
-  
+
   /// @brief Send relay command and wait for confirmation
   /// @return Future that will contain command reply
   std::future<MvecRelayCommandReply> send_relay_command();
-  
+
   /// @brief Query device population (which relays/fuses are installed)
   /// @return Future that will contain population reply
   std::future<MvecPopulationReply> get_relay_population();
@@ -52,11 +52,11 @@ public:
   /// @brief Get last received fuse status message
   /// @return Optional containing fuse status if valid data available
   const std::optional<MvecFuseStatusMessage> & get_last_fuse_status();
-  
+
   /// @brief Get last received relay status message
   /// @return Optional containing relay status if valid data available
   const std::optional<MvecRelayStatusMessage> & get_last_relay_status();
-  
+
   /// @brief Get last received error status message
   /// @return Optional containing error status if valid data available
   const std::optional<MvecErrorStatusMessage> & get_last_error_status();

@@ -36,8 +36,8 @@ public:
   /// @param fuse_id Fuse ID (0-23)
   /// @return true if fuse is installed
   bool get_fuse_population(uint8_t fuse_id) const;
-  
-  /// @brief Check if specific relay is populated (installed)  
+
+  /// @brief Check if specific relay is populated (installed)
   /// @param relay_id Relay ID (0-11)
   /// @return true if relay is installed
   bool get_relay_population(uint8_t relay_id) const;

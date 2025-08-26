@@ -41,31 +41,31 @@ inline constexpr uint16_t FLASH_MISCOMPARE = 0x1000;
 enum class MvecErrorType : uint16_t
 {
   /// Invalid configuration detected
-  INVALID_CONFIG = MvecErrorBits::INVALID_CONFIG,           
+  INVALID_CONFIG = MvecErrorBits::INVALID_CONFIG,
   /// Grid ID has changed
-  GRID_ID_CHANGED = MvecErrorBits::GRID_ID_CHANGED,         
+  GRID_ID_CHANGED = MvecErrorBits::GRID_ID_CHANGED,
   /// CAN address has changed
-  CAN_ADDRESS_CHANGED = MvecErrorBits::CAN_ADDRESS_CHANGED, 
+  CAN_ADDRESS_CHANGED = MvecErrorBits::CAN_ADDRESS_CHANGED,
   /// CAN receive communication error
-  CAN_RX_COMM_ERROR = MvecErrorBits::CAN_RX_COMM_ERROR,     
+  CAN_RX_COMM_ERROR = MvecErrorBits::CAN_RX_COMM_ERROR,
   /// CAN transmit communication error
-  CAN_TX_COMM_ERROR = MvecErrorBits::CAN_TX_COMM_ERROR,     
+  CAN_TX_COMM_ERROR = MvecErrorBits::CAN_TX_COMM_ERROR,
   /// Unexpected device reset occurred
-  UNEXPECTED_RESET = MvecErrorBits::UNEXPECTED_RESET,       
+  UNEXPECTED_RESET = MvecErrorBits::UNEXPECTED_RESET,
   /// Over voltage condition detected
-  OVER_VOLTAGE = MvecErrorBits::OVER_VOLTAGE,               
+  OVER_VOLTAGE = MvecErrorBits::OVER_VOLTAGE,
   /// SPI communication error
-  SPI_ERROR = MvecErrorBits::SPI_ERROR,                     
+  SPI_ERROR = MvecErrorBits::SPI_ERROR,
   /// Received message too short
-  SHORT_MESSAGE_RECEIVED = MvecErrorBits::SHORT_MESSAGE_RECEIVED, 
+  SHORT_MESSAGE_RECEIVED = MvecErrorBits::SHORT_MESSAGE_RECEIVED,
   /// Invalid flash memory address
-  BAD_FLASH_ADDRESS = MvecErrorBits::BAD_FLASH_ADDRESS,     
+  BAD_FLASH_ADDRESS = MvecErrorBits::BAD_FLASH_ADDRESS,
   /// Invalid message length
-  INVALID_LENGTH = MvecErrorBits::INVALID_LENGTH,           
+  INVALID_LENGTH = MvecErrorBits::INVALID_LENGTH,
   /// Checksum validation failed
-  CHECKSUM_FAILURE = MvecErrorBits::CHECKSUM_FAILURE,       
+  CHECKSUM_FAILURE = MvecErrorBits::CHECKSUM_FAILURE,
   /// Flash memory verification failed
-  FLASH_MISCOMPARE = MvecErrorBits::FLASH_MISCOMPARE        
+  FLASH_MISCOMPARE = MvecErrorBits::FLASH_MISCOMPARE
 };
 
 /// @brief Parser and container for MVEC error status messages

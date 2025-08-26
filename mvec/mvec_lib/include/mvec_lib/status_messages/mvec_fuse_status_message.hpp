@@ -28,10 +28,10 @@ inline constexpr uint8_t BITS_PER_FUSE = 2;
 /// @brief Possible status values for MVEC fuses
 enum class MvecFuseStatus : uint8_t
 {
-  NO_FAULT = 0x0,    ///< Fuse is functioning normally
-  BLOWN = 0x1,       ///< Fuse has blown (overcurrent protection activated)
+  NO_FAULT = 0x0,  ///< Fuse is functioning normally
+  BLOWN = 0x1,  ///< Fuse has blown (overcurrent protection activated)
   NOT_POWERED = 0x2,  ///< Fuse is not receiving power
-  NOT_USED = 0x3      ///< Fuse location is not populated or used
+  NOT_USED = 0x3  ///< Fuse location is not populated or used
 };
 
 /// @brief Parser and container for MVEC fuse status broadcast messages

@@ -28,18 +28,18 @@ inline constexpr uint8_t START_BYTE = 1;
 /// @brief Possible status values for MVEC relays
 enum class MvecRelayStatus : uint8_t
 {
-  OKAY = 0x00,                            ///< Relay is functioning normally
-  COIL_OPEN = 0x01,                       ///< Relay coil circuit is open
-  COIL_SHORTED_OR_DRIVER_FAILED = 0x02,   ///< Relay coil is shorted or driver failed
-  NO_CONTACT_OPEN = 0x03,                 ///< Normally-open contact is stuck open
-  NC_CONTACT_OPEN = 0x04,                 ///< Normally-closed contact is stuck open
-  COIL_NOT_RECEIVING_POWER = 0x05,        ///< Relay coil is not receiving power
-  NO_CONTACT_SHORTED = 0x06,              ///< Normally-open contact is shorted
-  NC_CONTACT_SHORTED = 0x07,              ///< Normally-closed contact is shorted
-  HIGH_SIDE_DRIVER_FAULT = 0x0B,          ///< High-side driver fault detected
-  HIGH_SIDE_OPEN_LOAD = 0x0C,             ///< High-side output has open load
-  HIGH_SIDE_OVER_VOLTAGE = 0x0D,          ///< High-side output over-voltage condition
-  RELAY_LOCATION_NOT_USED = 0x0F          ///< Relay location is not populated or used
+  OKAY = 0x00,  ///< Relay is functioning normally
+  COIL_OPEN = 0x01,  ///< Relay coil circuit is open
+  COIL_SHORTED_OR_DRIVER_FAILED = 0x02,  ///< Relay coil is shorted or driver failed
+  NO_CONTACT_OPEN = 0x03,  ///< Normally-open contact is stuck open
+  NC_CONTACT_OPEN = 0x04,  ///< Normally-closed contact is stuck open
+  COIL_NOT_RECEIVING_POWER = 0x05,  ///< Relay coil is not receiving power
+  NO_CONTACT_SHORTED = 0x06,  ///< Normally-open contact is shorted
+  NC_CONTACT_SHORTED = 0x07,  ///< Normally-closed contact is shorted
+  HIGH_SIDE_DRIVER_FAULT = 0x0B,  ///< High-side driver fault detected
+  HIGH_SIDE_OPEN_LOAD = 0x0C,  ///< High-side output has open load
+  HIGH_SIDE_OVER_VOLTAGE = 0x0D,  ///< High-side output over-voltage condition
+  RELAY_LOCATION_NOT_USED = 0x0F  ///< Relay location is not populated or used
 };
 
 /// @brief Parser and container for MVEC relay status broadcast messages

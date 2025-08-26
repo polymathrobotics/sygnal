@@ -76,13 +76,13 @@ enum class MvecMessageType : int16_t
   /// Error status broadcast message
   ERROR_STATUS,
   /// Relay status broadcast message
-  RELAY_STATUS,            
+  RELAY_STATUS,
   /// Response to relay command
-  RELAY_COMMAND_RESPONSE,  
+  RELAY_COMMAND_RESPONSE,
   /// Response to relay query
-  RELAY_QUERY_RESPONSE,    
+  RELAY_QUERY_RESPONSE,
   /// Response to population query
-  POPULATION_RESPONSE,     
+  POPULATION_RESPONSE,
 };
 
 }  // namespace polymath::sygnal
