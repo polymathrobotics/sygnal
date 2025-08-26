@@ -21,7 +21,6 @@ add_library(
   ${PROJECT_NAME} SHARED
   src/mvec_relay.cpp
   src/mvec_relay_socketcan.cpp
-  src/core/mvec_status_messages.cpp
   src/status_messages/mvec_fuse_status_message.cpp
   src/status_messages/mvec_relay_status_message.cpp
   src/status_messages/mvec_error_status_message.cpp

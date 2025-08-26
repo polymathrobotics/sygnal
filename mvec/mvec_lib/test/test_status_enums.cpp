@@ -6,7 +6,9 @@
 #include <catch2/catch.hpp>
 
 #include "mvec_lib/core/mvec_constants.hpp"
-#include "mvec_lib/core/mvec_status_messages.hpp"
+#include "mvec_lib/status_messages/mvec_error_status_message.hpp"
+#include "mvec_lib/status_messages/mvec_fuse_status_message.hpp"
+#include "mvec_lib/status_messages/mvec_relay_status_message.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 
 static polymath::socketcan::CanFrame createTestFrame(uint32_t can_id, const std::vector<uint8_t> & data)

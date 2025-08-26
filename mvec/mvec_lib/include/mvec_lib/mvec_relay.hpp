@@ -11,10 +11,12 @@
 
 #include "mvec_lib/core/j1939_id.hpp"
 #include "mvec_lib/core/mvec_constants.hpp"
-#include "mvec_lib/core/mvec_status_messages.hpp"
 #include "mvec_lib/responses/mvec_population_reply.hpp"
 #include "mvec_lib/responses/mvec_relay_command_reply.hpp"
 #include "mvec_lib/responses/mvec_relay_query_reply.hpp"
+#include "mvec_lib/status_messages/mvec_error_status_message.hpp"
+#include "mvec_lib/status_messages/mvec_fuse_status_message.hpp"
+#include "mvec_lib/status_messages/mvec_relay_status_message.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
 
