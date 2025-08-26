@@ -40,11 +40,11 @@ public:
   /// @param relay_id Relay ID (0-11)
   /// @param relay_state Relay state (0=off, 1=on)
   void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
-  
+
   /// @brief Set high side output command
   /// @param high_side_output_state High side output state (0=off, 1=on)
   void set_high_side_output_in_command(uint8_t high_side_output_state);
-  
+
   /// @brief Clear all pending relay commands
   void clearRelayCommands();
 
@@ -67,7 +67,7 @@ public:
     return fuse_status_message_;
   }
 
-  /// @brief Get relay status message object  
+  /// @brief Get relay status message object
   /// @return Reference to relay status message (check is_valid() before use)
   const MvecRelayStatusMessage & get_relay_status_message() const
   {
