@@ -33,7 +33,7 @@ include:
 # Build and test mvec_lib ROS2 package
 mvec_lib_build_and_test:
   extends: .ros2_build_and_test
-  needs: [] #No sources needed yet
+  needs: [ros2_sources] #No sources needed yet
   rules:
     - changes: [mvec/mvec_lib/**/*]
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
