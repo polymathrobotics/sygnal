@@ -1,9 +1,0 @@
-# pre-commit initial for all text
-744395365ba9da98b8e5ccca6d5b2a4dba6f4ba7
-# pre-commit hooks for minor file formats
-c5446147b4730a9147194f11ff7c0e42ee1cdfb7
-# clang-format
-68b8c01175e4900134203b0d763b041d08d8232f
-# Ruff
-2dd7c5560587a75ba6c9f5e23db50261144cea15
-# Not putting cpplint here, since it required manual changes and we should blame me for any problems
