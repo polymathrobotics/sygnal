@@ -25,8 +25,8 @@ MvecRelay::MvecRelay()
   relay_command_data_.fill(0xFF);
   query_data_.fill(0xFF);
 
-  relay_command_data_[MvecMessageStructure::MSG_ID_BYTE] = MvecMessageIds::RELAY_COMMAND_WITH_FEEDBACK;
-  relay_command_data_[MvecMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
+  relay_command_data_[MvecRelayCommandMessageStructure::MSG_ID_BYTE] = MvecCommandQueryIds::RELAY_COMMAND_WITH_FEEDBACK;
+  relay_command_data_[MvecRelayCommandMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
 }
 
 void MvecRelay::set_relay_in_command(uint8_t relay_id, uint8_t relay_state)
@@ -41,12 +41,12 @@ void MvecRelay::set_relay_in_command(uint8_t relay_id, uint8_t relay_state)
     return;
   }
 
-  uint8_t start_bit = MvecMessageStructure::RELAY_DATA_START_BIT;
+  uint8_t start_bit = MvecRelayCommandMessageStructure::RELAY_DATA_START_BIT;
   packData<uint8_t>(
     relay_state,
     relay_command_data_,
-    start_bit + relay_id * MvecMessageStructure::BITS_PER_RELAY,
-    MvecMessageStructure::BITS_PER_RELAY);
+    start_bit + relay_id * MvecRelayCommandMessageStructure::BITS_PER_RELAY,
+    MvecRelayCommandMessageStructure::BITS_PER_RELAY);
 }
 
 void MvecRelay::set_high_side_output_in_command(uint8_t high_side_output_state)
@@ -55,9 +55,10 @@ void MvecRelay::set_high_side_output_in_command(uint8_t high_side_output_state)
     return;
   }
 
-  uint8_t start_bit =
-    MvecMessageStructure::RELAY_DATA_START_BIT + MvecHardware::MAX_NUMBER_RELAYS * MvecMessageStructure::BITS_PER_RELAY;
-  packData<uint8_t>(high_side_output_state, relay_command_data_, start_bit, MvecMessageStructure::HIGH_SIDE_BITS);
+  uint8_t start_bit = MvecRelayCommandMessageStructure::RELAY_DATA_START_BIT +
+                      MvecHardware::MAX_NUMBER_RELAYS * MvecRelayCommandMessageStructure::BITS_PER_RELAY;
+  packData<uint8_t>(
+    high_side_output_state, relay_command_data_, start_bit, MvecRelayCommandMessageStructure::HIGH_SIDE_BITS);
 }
 
 void MvecRelay::clearRelayCommands()
@@ -81,8 +82,8 @@ socketcan::CanFrame MvecRelay::getRelayQueryMessage()
 {
   socketcan::CanFrame frame;
 
-  query_data_[MvecMessageStructure::MSG_ID_BYTE] = MvecMessageIds::RELAY_STATE_QUERY;
-  query_data_[MvecMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
+  query_data_[MvecRelayCommandMessageStructure::MSG_ID_BYTE] = MvecCommandQueryIds::RELAY_STATE_QUERY;
+  query_data_[MvecRelayCommandMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
 
   frame.set_can_id(mvec_specific_command_id_.get_can_id());
   frame.set_id_as_extended();
@@ -96,8 +97,8 @@ socketcan::CanFrame MvecRelay::getPopulationQueryMessage()
 {
   socketcan::CanFrame frame;
 
-  query_data_[MvecMessageStructure::MSG_ID_BYTE] = MvecMessageIds::POPULATION_QUERY;
-  query_data_[MvecMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
+  query_data_[MvecRelayCommandMessageStructure::MSG_ID_BYTE] = MvecCommandQueryIds::POPULATION_QUERY;
+  query_data_[MvecRelayCommandMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
 
   frame.set_can_id(mvec_specific_command_id_.get_can_id());
   frame.set_id_as_extended();

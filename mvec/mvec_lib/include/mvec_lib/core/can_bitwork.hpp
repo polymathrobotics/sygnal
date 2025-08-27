@@ -34,6 +34,7 @@ constexpr bool is_signed_integer()
 }
 
 // Fills the buffer that is passed by reference
+/// TODO: (Zeerek) Potential UB due to bit widths not always being consistent
 template <typename T>
 bool packData(
   const T & data,

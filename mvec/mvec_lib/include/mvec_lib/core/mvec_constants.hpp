@@ -43,22 +43,24 @@ inline constexpr uint8_t DEFAULT_SELF_ADDRESS = 0x00;
 inline constexpr uint8_t DEFAULT_GRID_ADDRESS = 0x00;
 };  // namespace MvecProtocol
 
-namespace MvecMessageIds
+/// @brief MSG_IDs for various command and query messages
+namespace MvecCommandQueryIds
 {
 inline constexpr uint8_t RELAY_COMMAND_WITH_FEEDBACK = 0x88;
 inline constexpr uint8_t RELAY_COMMAND_NO_FEEDBACK = 0x80;
 inline constexpr uint8_t RELAY_STATE_QUERY = 0x96;
 inline constexpr uint8_t POPULATION_QUERY = 0x92;
-};  // namespace MvecMessageIds
+};  // namespace MvecCommandQueryIds
 
-namespace MvecMessageStructure
+/// @brief Byte and bit layout for MVEC Command messages
+namespace MvecRelayCommandMessageStructure
 {
 inline constexpr uint8_t MSG_ID_BYTE = 0;
 inline constexpr uint8_t GRID_ID_BYTE = 1;
 inline constexpr uint8_t RELAY_DATA_START_BIT = 16;
 inline constexpr uint8_t BITS_PER_RELAY = 2;
 inline constexpr uint8_t HIGH_SIDE_BITS = 2;
-};  // namespace MvecMessageStructure
+};  // namespace MvecRelayCommandMessageStructure
 
 namespace MvecValueLimits
 {
