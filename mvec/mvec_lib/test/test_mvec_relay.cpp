@@ -50,7 +50,7 @@ TEST_CASE("MvecRelay set relay command with valid inputs", "[mvec_relay]")
   REQUIRE(command_frame.get_id_type() == polymath::socketcan::IdType::EXTENDED);
 
   auto data = command_frame.get_data();
-  REQUIRE(data[0] == polymath::sygnal::MvecMessageIds::RELAY_COMMAND_WITH_FEEDBACK);
+  REQUIRE(data[0] == polymath::sygnal::MvecCommandQueryIds::RELAY_COMMAND_WITH_FEEDBACK);
   REQUIRE(data[1] == 0x00);
 }
 
@@ -61,7 +61,7 @@ TEST_CASE("MvecRelay set relay command with invalid relay id", "[mvec_relay]")
 
   auto command_frame = relay->getRelayCommandMessage();
   auto data = command_frame.get_data();
-  REQUIRE(data[0] == polymath::sygnal::MvecMessageIds::RELAY_COMMAND_WITH_FEEDBACK);
+  REQUIRE(data[0] == polymath::sygnal::MvecCommandQueryIds::RELAY_COMMAND_WITH_FEEDBACK);
 }
 
 TEST_CASE("MvecRelay set relay command with invalid state", "[mvec_relay]")
@@ -71,7 +71,7 @@ TEST_CASE("MvecRelay set relay command with invalid state", "[mvec_relay]")
 
   auto command_frame = relay->getRelayCommandMessage();
   auto data = command_frame.get_data();
-  REQUIRE(data[0] == polymath::sygnal::MvecMessageIds::RELAY_COMMAND_WITH_FEEDBACK);
+  REQUIRE(data[0] == polymath::sygnal::MvecCommandQueryIds::RELAY_COMMAND_WITH_FEEDBACK);
 }
 
 TEST_CASE("MvecRelay set high side output valid", "[mvec_relay]")
@@ -99,7 +99,7 @@ TEST_CASE("MvecRelay get relay query message", "[mvec_relay]")
   REQUIRE(query_frame.get_id_type() == polymath::socketcan::IdType::EXTENDED);
 
   auto data = query_frame.get_data();
-  REQUIRE(data[0] == polymath::sygnal::MvecMessageIds::RELAY_STATE_QUERY);
+  REQUIRE(data[0] == polymath::sygnal::MvecCommandQueryIds::RELAY_STATE_QUERY);
   REQUIRE(data[1] == 0x00);
 }
 

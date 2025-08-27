@@ -16,6 +16,13 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(socketcan_adapter REQUIRED)
 
+# socketcan adapter's improperly configured dependencies
+# TODO (Zeerek): Remove when socketcan adapter's dependency graph is cleaned up
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
+find_package(rclcpp_components REQUIRED)
+find_package(can_msgs REQUIRED)
+
 # Create library
 add_library(
   ${PROJECT_NAME} SHARED
@@ -66,7 +73,13 @@ install(
 
 # Export dependencies
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
-ament_export_dependencies(socketcan_adapter)
+ament_export_dependencies(
+  socketcan_adapter
+  rclcpp
+  rclcpp_lifecycle
+  rclcpp_components
+  can_msgs
+)
 
 # Testing
 if(BUILD_TESTING)

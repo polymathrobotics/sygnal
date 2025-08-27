@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <atomic>
 
 #include <catch2/catch.hpp>
 
@@ -104,9 +105,8 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
   {
     std::cout << "Testing automatic status message updates..." << std::endl;
 
-  std:
-    atomic<bool> running{true};
-    auto fuse_status_future = std::async(std::launch::async[&]() {
+    std::atomic<bool> running{true};
+    auto fuse_status_future = std::async(std::launch::async, [&]() {
       while (running) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         const auto fuse_status = mvec_socketcan->get_last_fuse_status();
@@ -133,7 +133,7 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
       }
     }
 
-    auto relay_status_future = std::async(std::launch::async[&]() {
+    auto relay_status_future = std::async(std::launch::async, [&]() {
       while (running) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         const auto relay_status = mvec_socketcan->get_last_relay_status();
