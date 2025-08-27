@@ -1,7 +1,7 @@
 ---
 
 name: Build and test
-on:  # yamllint disable-line
+"on":
   pull_request:
   push:
     branches:
@@ -27,7 +27,6 @@ jobs:
     env:
       ROS_DISTRO: ${{ matrix.ros }}
       PIP_BREAK_SYSTEM_PACKAGES: 1
-      USE_MCAP_PIP: 1
     steps:
       - uses: actions/checkout@v4
       - uses: ros-tooling/action-ros-ci@v0.4
