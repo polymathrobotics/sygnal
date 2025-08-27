@@ -3,9 +3,9 @@
 <package format="3">
   <name>mvec_lib</name>
   <version>0.1.0</version>
-  <description>Library for Interfacing With MVEC (does not include actual interfaces)</description>
-  <maintainer email="zeerek@polymathrobotics.com">zeerek</maintainer>
-  <license>Proprietary</license>
+  <description>Library and Nodes for Interfacing with an MVEC Relay using CAN</description>
+  <maintainer email="zeerekahmad@hotmail.com">zeerekahmad</maintainer>
+  <license>Apache 2.0</license>
 
   <buildtool_depend>ament_cmake_ros</buildtool_depend>
 
