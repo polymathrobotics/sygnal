@@ -104,15 +104,23 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
   {
     std::cout << "Testing automatic status message updates..." << std::endl;
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+  std:
+    atomic<bool> running{true};
+    auto fuse_status_future = std::async(std::launch::async[&]() {
+      while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        const auto fuse_status = mvec_socketcan->get_last_fuse_status();
+        if (fuse_status.has_value()) {
+          return fuse_status;
+        }
+      }
+    });
+
+    REQUIRE(fuse_status_future.wait_for(std::chrono::seconds(2)) == std::future_status::ready);
+    running = false;
 
     // Check if we received any status messages
-    const auto & fuse_status = mvec_socketcan->get_last_fuse_status();
-    const auto & relay_status = mvec_socketcan->get_last_relay_status();
-    const auto & error_status = mvec_socketcan->get_last_error_status();
-
-    REQUIRE(fuse_status.has_value());
-    REQUIRE(relay_status.has_value());
+    auto fuse_status = fuse_status_future.get();
 
     // Error status returns NO VALUE initially
     std::cout << "Received fuse status message! Valid: " << fuse_status->is_valid() << std::endl;
@@ -125,6 +133,22 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
       }
     }
 
+    auto relay_status_future = std::async(std::launch::async[&]() {
+      while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        const auto relay_status = mvec_socketcan->get_last_relay_status();
+        if (relay_status.has_value()) {
+          return relay_status;
+        }
+      }
+    });
+
+    REQUIRE(relay_status_future.wait_for(std::chrono::seconds(2)) == std::future_status::ready);
+    running = false;
+
+    // Check if we received any status messages
+    auto relay_status = relay_status_future.get();
+
     std::cout << "Received relay status message! Valid: " << relay_status->is_valid() << std::endl;
     if (relay_status->is_valid()) {
       for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS; ++i) {
@@ -134,6 +158,8 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
         }
       }
     }
+
+    const auto & error_status = mvec_socketcan->get_last_error_status();
 
     if (error_status.has_value()) {
       std::cout << "Received error status message! Valid: " << error_status->is_valid() << std::endl;
