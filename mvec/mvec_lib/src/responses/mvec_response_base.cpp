@@ -37,7 +37,7 @@ bool MvecResponseBase::parse(const polymath::socketcan::CanFrame & frame)
   }
 
   // Extract message ID from first byte
-  auto message_id = data[MvecMessageStructure::MSG_ID_BYTE];
+  auto message_id = data[MvecRelayCommandMessageStructure::MSG_ID_BYTE];
 
   // Check if message ID matches what we expect
   if (message_id != expected_message_id_) {
