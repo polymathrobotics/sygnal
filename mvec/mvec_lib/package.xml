@@ -3,7 +3,7 @@
 <package format="3">
   <name>mvec_lib</name>
   <version>0.1.0</version>
-  <description>Library and Nodes for Interfacing with an MVEC Relay using CAN</description>
+  <description>Library for Interfacing with an MVEC Relay using Socketcan Adapter</description>
   <maintainer email="zeerekahmad@hotmail.com">zeerekahmad</maintainer>
   <license>Apache 2.0</license>
 
