@@ -137,7 +137,7 @@ std::future<MvecPopulationReply> MvecRelaySocketcan::get_relay_population()
   return future;
 }
 
-const std::optional<MvecFuseStatusMessage> & MvecRelaySocketcan::get_last_fuse_status()
+const std::optional<MvecFuseStatusMessage> MvecRelaySocketcan::get_last_fuse_status()
 {
   static std::optional<MvecFuseStatusMessage> result;
 
@@ -151,7 +151,7 @@ const std::optional<MvecFuseStatusMessage> & MvecRelaySocketcan::get_last_fuse_s
   return result;
 }
 
-const std::optional<MvecRelayStatusMessage> & MvecRelaySocketcan::get_last_relay_status()
+const std::optional<MvecRelayStatusMessage> MvecRelaySocketcan::get_last_relay_status()
 {
   static std::optional<MvecRelayStatusMessage> result;
 
@@ -165,7 +165,7 @@ const std::optional<MvecRelayStatusMessage> & MvecRelaySocketcan::get_last_relay
   return result;
 }
 
-const std::optional<MvecErrorStatusMessage> & MvecRelaySocketcan::get_last_error_status()
+const std::optional<MvecErrorStatusMessage> MvecRelaySocketcan::get_last_error_status()
 {
   static std::optional<MvecErrorStatusMessage> result;
 

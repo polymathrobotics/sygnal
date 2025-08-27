@@ -51,15 +51,15 @@ public:
 
   /// @brief Get last received fuse status message
   /// @return Optional containing fuse status if valid data available
-  const std::optional<MvecFuseStatusMessage> & get_last_fuse_status();
+  const std::optional<MvecFuseStatusMessage> get_last_fuse_status();
 
   /// @brief Get last received relay status message
   /// @return Optional containing relay status if valid data available
-  const std::optional<MvecRelayStatusMessage> & get_last_relay_status();
+  const std::optional<MvecRelayStatusMessage> get_last_relay_status();
 
   /// @brief Get last received error status message
   /// @return Optional containing error status if valid data available
-  const std::optional<MvecErrorStatusMessage> & get_last_error_status();
+  const std::optional<MvecErrorStatusMessage> get_last_error_status();
 
 private:
   /// @brief SocketCAN adapter for CAN communication
