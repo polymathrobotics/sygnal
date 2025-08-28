@@ -12,6 +12,31 @@ High-level asynchronous interface built on top of MvecRelay using SocketCAN for 
 
 ## Quick Start
 
+### Build The Package
+
+```bash
+colcon build --packages-select mvec_lib
+```
+
+### Test the Package WITH Hardware
+Remove CAN_AVAILABLE=1 to run tests without can
+
+```bash
+CAN_AVAILABLE=1 colcon test --packages-select mvec_lib
+```
+
+And check results!
+
+```bash
+colcon test-result
+```
+
+You can also run ONLY the necessary test
+
+```bash
+cd build/mvec_lib && ./mvec_socketcan_hardware.cpp
+```
+
 ### Basic Setup
 
 ```cpp
@@ -136,22 +161,6 @@ if (fuse_msg.is_valid()) {
 - **Fuses**: Up to 24 monitored fuses (ID 0-23)
 - **High-Side Outputs**: 1 high-side output per device
 - **CAN Bus**: J1939 protocol over standard CAN 2.0B
-
-## Status Types
-
-### Fuse Status
-- `NO_FAULT`: Normal operation
-- `BLOWN`: Overcurrent protection activated
-- `NOT_POWERED`: No power supply detected
-- `NOT_USED`: Fuse position not populated
-
-### Relay Status (not to be confused with on/off State)
-- `OKAY`: Normal operation
-- `COIL_OPEN`: Open coil circuit
-- `COIL_SHORTED_OR_DRIVER_FAILED`: Shorted coil or driver failure
-- `NO_CONTACT_OPEN`/`NC_CONTACT_OPEN`: Contact stuck open
-- `NO_CONTACT_SHORTED`/`NC_CONTACT_SHORTED`: Contact shorted
-- `HIGH_SIDE_DRIVER_FAULT`: High-side driver malfunction
 
 ## Integration Requirements
 
