@@ -1,6 +1,6 @@
 # MVEC Relay Control Library
 
-A comprehensive C++ library for controlling and monitoring MVEC (Multi-Vehicular Electronic Controller) devices over J1939 CAN bus. This library provides both synchronous and asynchronous interfaces for relay control, status monitoring, and device management.
+A comprehensive C++ library for controlling and monitoring MVEC (multiplexed Vehicle Electrical Center) devices over J1939 CAN bus. This library provides both synchronous and asynchronous interfaces for relay control, status monitoring, and device management.
 
 ## Core Components
 
@@ -9,16 +9,6 @@ The foundational class providing J1939 message parsing, relay command generation
 
 ### MvecRelaySocketcan
 High-level asynchronous interface built on top of MvecRelay using SocketCAN for Linux CAN communication. Features thread-safe promise/future patterns for non-blocking operations and automatic response handling.
-
-## Features
-
-- **Relay Control**: Set individual relay states (on/off) and high-side outputs
-- **Status Monitoring**: Real-time monitoring of fuse status, relay diagnostics, and error conditions
-- **Population Queries**: Discover which relays and fuses are physically installed
-- **Asynchronous Operations**: Non-blocking commands using std::future with timeout support
-- **Message Parsing**: Comprehensive J1939 CAN frame parsing and validation
-- **Thread Safety**: Mutex-protected promise queues for concurrent access
-- **Hardware Integration**: Direct SocketCAN adapter integration for CAN bus communication
 
 ## Quick Start
 
@@ -140,7 +130,7 @@ if (fuse_msg.is_valid()) {
 }
 ```
 
-## Hardware Limits
+## Hardware Definitions
 
 - **Relays**: Up to 12 individually controllable relays (ID 0-11)
 - **Fuses**: Up to 24 monitored fuses (ID 0-23)
@@ -155,7 +145,7 @@ if (fuse_msg.is_valid()) {
 - `NOT_POWERED`: No power supply detected
 - `NOT_USED`: Fuse position not populated
 
-### Relay Status
+### Relay Status (not to be confused with on/off State)
 - `OKAY`: Normal operation
 - `COIL_OPEN`: Open coil circuit
 - `COIL_SHORTED_OR_DRIVER_FAILED`: Shorted coil or driver failure
@@ -163,30 +153,7 @@ if (fuse_msg.is_valid()) {
 - `NO_CONTACT_SHORTED`/`NC_CONTACT_SHORTED`: Contact shorted
 - `HIGH_SIDE_DRIVER_FAULT`: High-side driver malfunction
 
-### Error Status
-Comprehensive error reporting including communication errors, voltage conditions, configuration issues, and firmware validation failures.
-
-## Threading and Safety
-
-The MvecRelaySocketcan class is designed for multi-threaded environments:
-- Promise queues are mutex-protected for concurrent access
-- Parse method is thread-safe and can be called from CAN reception callbacks
-- Future-based operations allow non-blocking command execution
-- Optional status getters provide safe access to last received data
-
 ## Integration Requirements
 
 - **SocketCAN Adapter**: Compatible socketcan_adapter library
 - **CAN Hardware**: Linux SocketCAN-compatible CAN interface
-- **Compiler**: C++14 or later with std::future support
-- **Threading**: std::mutex and std::queue support required
-
-## Error Handling
-
-All operations return validation status through:
-- `is_valid()` methods on message objects
-- Future timeout handling for async operations
-- Optional return types for status getters
-- Comprehensive error status reporting through dedicated error messages
-
-This library provides robust, production-ready MVEC device control suitable for industrial automation, automotive applications, and embedded systems requiring reliable relay control over CAN bus networks.
