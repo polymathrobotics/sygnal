@@ -108,6 +108,14 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
       }
 
       std::cout << "High side output: " << relay_query_reply.get_high_side_output_state() << std::endl;
+
+      // Print default relay states (power-on defaults)
+      std::cout << "Default relay states (power-on):" << std::endl;
+      for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS; ++i) {
+        std::cout << "  Relay " << i << " default: " << relay_query_reply.get_relay_default(i) << std::endl;
+      }
+
+      std::cout << "High side output default: " << relay_query_reply.get_high_side_output_default() << std::endl;
     } else {
       std::cout << "Relay state query timed out - no MVEC device responding" << std::endl;
       // For hardware test, we'll mark this as a skip rather than failure
