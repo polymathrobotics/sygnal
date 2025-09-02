@@ -34,9 +34,8 @@ MvecNode::MvecNode(const rclcpp::NodeOptions & options)
 {
   // Declare parameters
   declare_parameter("can_interface", std::string("can0"));
-  declare_parameter("publish_rate", 10.0);  // Hz
+  declare_parameter("publish_rate", 3.0);  // Hz
   declare_parameter("timetout_ms", 500.0);  // ms
-  declare_parameter("state_query_frequency", 2.0);  // Hz
 
   // Declare and parse parameters for dynamic loading
   parsePresetParams();
@@ -57,7 +56,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn MvecNo
   can_interface_ = get_parameter("can_interface").as_string();
   publish_rate_ = get_parameter("publish_rate").as_double();
   auto timeout_ms = get_parameter("timeout_ms").as_int();
-  timeout_ms = std::chrono::milliseconds(timeout_ms);
+  timeout_ms_ = std::chrono::milliseconds(timeout_ms);
 
   RCLCPP_INFO(get_logger(), "Configuring MVEC node with CAN interface: %s", can_interface_.c_str());
 
