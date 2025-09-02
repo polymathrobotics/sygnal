@@ -35,7 +35,7 @@ MvecNode::MvecNode(const rclcpp::NodeOptions & options)
   // Declare parameters
   declare_parameter("can_interface", std::string("can0"));
   declare_parameter("publish_rate", 3.0);  // Hz
-  declare_parameter("timetout_ms", 500);  // ms
+  declare_parameter("timeout_ms", 500);  // ms
 
   // Declare and parse parameters for dynamic loading
   parsePresetParams();
