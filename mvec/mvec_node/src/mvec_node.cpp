@@ -200,42 +200,36 @@ void MvecNode::timerCallback()
 
 std::optional<std::string> MvecNode::set_single_relay(mvec_msgs::msg::Relay relay)
 {
-  try {
-    // Validate relay ID
-    if (relay.relay_id >= polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS) {
-      std::string error_msg = "Invalid relay ID: " + std::to_string(relay.relay_id);
-      RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
-      return error_msg;
-    }
+  // Validate relay ID
+  if (relay.relay_id >= polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS) {
+    std::string error_msg = "Invalid relay ID: " + std::to_string(relay.relay_id);
+    RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+    return error_msg;
+  }
 
-    // Clear relay command before setting new state
-    mvec_socketcan_->clear_relay();
+  // Clear relay command before setting new state
+  mvec_socketcan_->clear_relay();
 
-    // Set the specific relay state
-    mvec_socketcan_->set_relay_in_command(relay.relay_id, relay.state ? 1 : 0);
+  // Set the specific relay state
+  mvec_socketcan_->set_relay_in_command(relay.relay_id, relay.state ? 1 : 0);
 
-    // Send command and wait for response
-    auto future = mvec_socketcan_->send_relay_command();
-    auto status = future.wait_for(timeout_ms_);
+  // Send command and wait for response
+  auto future = mvec_socketcan_->send_relay_command();
+  auto status = future.wait_for(timeout_ms_);
 
-    if (status == std::future_status::ready) {
-      auto command_reply = future.get();
-      if (command_reply.get_success() == 1) {
-        RCLCPP_INFO(get_logger(), "Successfully set relay %d to state %s", relay.relay_id, relay.state ? "ON" : "OFF");
-        return std::nullopt;  // Success
-      } else {
-        std::string error_msg = "MVEC device rejected relay command";
-        RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
-        return error_msg;
-      }
+  if (status == std::future_status::ready) {
+    auto command_reply = future.get();
+    if (command_reply.get_success() == 1) {
+      RCLCPP_INFO(get_logger(), "Successfully set relay %d to state %s", relay.relay_id, relay.state ? "ON" : "OFF");
+      return std::nullopt;  // Success
     } else {
-      std::string error_msg = "Timeout waiting for relay command response";
+      std::string error_msg = "MVEC device rejected relay command";
       RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
       return error_msg;
     }
-  } catch (const std::exception & e) {
-    std::string error_msg = "Exception during relay command: " + std::string(e.what());
-    RCLCPP_ERROR(get_logger(), "%s", error_msg.c_str());
+  } else {
+    std::string error_msg = "Timeout waiting for relay command response";
+    RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
     return error_msg;
   }
 }
