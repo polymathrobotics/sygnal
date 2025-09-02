@@ -15,11 +15,6 @@
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
 
-  <test_depend>ament_cmake_lint_cmake</test_depend>
-  <test_depend>ament_cmake_xmllint</test_depend>
-  <test_depend>ament_cmake_uncrustify</test_depend>
-  <test_depend>ament_cmake_gtest</test_depend>
-
   <export>
     <build_type>ament_cmake</build_type>
   </export>
