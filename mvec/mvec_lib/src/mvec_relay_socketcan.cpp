@@ -122,9 +122,10 @@ std::future<MvecRelayCommandReply> MvecRelaySocketcan::send_relay_command()
   }
 
   // Transmit the command message via socketcan adapter
+  std::cout << "sending frame" << std::endl;
   auto send_result = socketcan_adapter_->send(command_frame);
   if (send_result) {
-    std::cout << send_result.value() << std::endl;
+    std::cout << "error: " << send_result.value() << std::endl;
   }
 
   return future;
