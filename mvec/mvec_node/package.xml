@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>mvec_node</name>
+  <version>0.1.0</version>
+  <description>ROS2 node for MVEC relay control system with diagnostics publishing and relay control service</description>
+  <maintainer email="engineering@polymathrobotics.com">Polymath Robotics Engineering</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>mvec_msgs</depend>
+  <depend>mvec_lib</depend>
+  <depend>socketcan_adapter</depend>
+
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
