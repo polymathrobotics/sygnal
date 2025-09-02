@@ -12,6 +12,7 @@
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>diagnostic_msgs</depend>
+  <depend>magic_enum</depend>
   <depend>mvec_msgs</depend>
   <depend>mvec_lib</depend>
   <depend>socketcan_adapter</depend>

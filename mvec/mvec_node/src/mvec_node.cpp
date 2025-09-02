@@ -475,7 +475,8 @@ void MvecNode::parsePresetParams()
   int preset_index = 0;
   while (true) {
     auto name = declare_parameter<std::string>("preset_" + std::to_string(preset_index) + "_name", "");
-    auto relays = declare_parameter<std::vector<std::string>>("preset_" + std::to_string(preset_index) + "_relays", {});
+    auto relays = declare_parameter<std::vector<std::string>>(
+      "preset_" + std::to_string(preset_index) + "_relays", std::vector<std::string>{});
 
     mvec_msgs::msg::Preset preset;
 
