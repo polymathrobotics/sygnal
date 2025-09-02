@@ -1,0 +1,462 @@
+VERSION ""
+
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: UserApplication MCM
+VAL_TABLE_ Config_ParameterID_Cascade 15 "Position Disable" 33 "Derivative C2" 32 "Derivative C1" 23 "Velocity UMin" 22 "Velocity UMax" 21 "Velocity C2" 20 "Velocity C1" 18 "Velocity Kd" 17 "Velocity Ki" 16 "Velocity Kp" 7 "Position UMin" 6 "Position UMax" 5 "Position C2" 4 "Position C1" 2 "Position Kd" 1 "Position Ki" 0 "Position Kp" ;
+VAL_TABLE_ Config_Value_Override_LinkedAct 2 "Inverse" 1 "Direct" 0 "None" ;
+VAL_TABLE_ Config_Value_ClosedLoop_Endianes 1 "Big" 0 "Little" ;
+VAL_TABLE_ Config_Value_ClosedLoop_Type 3 "Custom Int" 2 "Custom Uint" 1 "Custom Float" 0 "Sygnal" ;
+VAL_TABLE_ Config_Value_VirtIf_Type 255 "None" 3 "Linear Actuator Type 0" 2 "Physical 2" 1 "Physical 1" 0 "Physical 0" ;
+VAL_TABLE_ Config_ParameterID_VirtIf 2 "Report ID" 1 "Command ID" 0 "Type" ;
+VAL_TABLE_ Config_ParameterID_FailOp2 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_TABLE_ Config_ParameterID_FailOp1 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_TABLE_ Config_Value_Override_FilterType 2 "EMA" 1 "LPF 20Hz" 0 "None" ;
+VAL_TABLE_ Config_ParameterID_Report 1 "Rate" 0 "Enable" ;
+VAL_TABLE_ Config_GetSet 1 "Set" 0 "Get" ;
+VAL_TABLE_ Config_ParameterID_SygnalStatic 9 "Manufacturing Second" 8 "Manufacturing Minute" 7 "Manufacturing Hour" 6 "Manufacturing Day" 5 "Manufacturing Month" 4 "Manufacturing Year" 3 "Serial" 2 "Revision" 1 "Part ID" 0 "Product ID" ;
+
+
+BO_ 1025 ConfigGetSetResponse: 8 MCM
+ SG_ Config_Value_Cascade_UINT1 m15 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Cascade_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Cascade m15M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_MCMGlobal_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_LinkedAct m4 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_Endianes m8 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_UINT32 m7 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_Type m6 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_VirtIf_UINT32 m1 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_VirtIf_Type m0 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_VirtIf m14M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp2 m13M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp1 m12M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_MCMGlobal_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_FilterType m2 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_UINT16 m1 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_SignalID m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT32 m1 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT24 m0 : 24|24@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT16 m2 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalStatic m31M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_Type m0 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Relay_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Relay_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_PID_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_NLPID_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Signal_Type m0 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Signal_UINT16 m7 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Signal_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT1 m2 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_UINT16 m4 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_UINT1 m3 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_Type m0 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_UINT16 m3 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_UINT1 m2 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_UINT16 m0 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_MCMGlobal_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalGlobal_UINT7 m0 : 24|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Report m16M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Relay m11M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_NLPID m10M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_PID m9M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Signal m8M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Heartbeat m7M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Control m6M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_ClosedLoop m5M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Override m4M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Fault m2M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_MCMGlobal m1M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalGlobal m0M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_GetSet : 23|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_SectionID M : 8|5@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubsystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+
+BO_ 1024 ConfigGetSetCommand: 8 UserApplication
+ SG_ Config_Value_Cascade_UINT1 m15 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Cascade_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Cascade m15M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_MCMGlobal_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_LinkedAct m4 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_Type m6 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_UINT32 m7 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_End_0000 m8 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_VirtIf_UINT32 m1 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_VirtIf_Type m0 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_VirtIf m14M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp2 m13M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp1 m12M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_MCMGlobal_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_FilterType m2 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_UINT16 m1 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_SignalID m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT32 m1 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT24 m0 : 24|24@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT16 m2 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalStatic m31M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_Type m0 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Relay_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Relay_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_PID_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_NLPID_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Signal_Type m0 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Signal_UINT16 m7 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Signal_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT1 m2 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_UINT16 m4 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_UINT1 m3 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_Type m0 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Control_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_UINT16 m3 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_UINT1 m2 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_ClosedLoop_FLOAT32 m0 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Override_FLOAT32 m1 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_UINT16 m0 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_MCMGlobal_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalGlobal_UINT7 m0 : 24|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Report m16M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Relay m11M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_NLPID m10M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_PID m9M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Signal m8M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Heartbeat m7M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Control m6M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_ClosedLoop m5M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Override m4M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Fault m2M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_MCMGlobal m1M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalGlobal m0M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_GetSet : 23|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_SectionID M : 8|5@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubsystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+
+
+
+BA_DEF_ BO_  "TpJ1939VarDlc" ENUM  "No","Yes";
+BA_DEF_ SG_  "SigType" ENUM  "Default","Range","RangeSigned","ASCII","Discrete","Control","ReferencePGN","DTC","StringDelimiter","StringLength","StringLengthControl","MessageCounter","MessageChecksum";
+BA_DEF_ SG_  "GenSigEVName" STRING ;
+BA_DEF_ SG_  "GenSigILSupport" ENUM  "No","Yes";
+BA_DEF_ SG_  "GenSigSendType" ENUM  "Cyclic","OnWrite","OnWriteWithRepetition","OnChange","OnChangeWithRepetition","IfActive","IfActiveWithRepetition","NoSigSendType";
+BA_DEF_ BO_  "GenMsgFastOnStart" INT 0 100000;
+BA_DEF_ SG_  "GenSigInactiveValue" INT 0 0;
+BA_DEF_ BO_  "GenMsgCycleTimeFast" INT 0 3600000;
+BA_DEF_ BO_  "GenMsgNrOfRepetition" INT 0 1000000;
+BA_DEF_ SG_  "GenSigStartValue" INT 0 2147483647;
+BA_DEF_ BO_  "GenMsgDelayTime" INT 0 1000;
+BA_DEF_ BO_  "GenMsgILSupport" ENUM  "No","Yes";
+BA_DEF_ BO_  "GenMsgStartDelayTime" INT 0 100000;
+BA_DEF_ BU_  "NodeLayerModules" STRING ;
+BA_DEF_ BU_  "ECU" STRING ;
+BA_DEF_ BU_  "NmJ1939SystemInstance" INT 0 15;
+BA_DEF_ BU_  "NmJ1939System" INT 0 127;
+BA_DEF_ BU_  "NmJ1939ManufacturerCode" INT 0 2047;
+BA_DEF_ BU_  "NmJ1939IndustryGroup" INT 0 7;
+BA_DEF_ BU_  "NmJ1939IdentityNumber" INT 0 2097151;
+BA_DEF_ BU_  "NmJ1939FunctionInstance" INT 0 7;
+BA_DEF_ BU_  "NmJ1939Function" INT 0 255;
+BA_DEF_ BU_  "NmJ1939ECUInstance" INT 0 3;
+BA_DEF_ BU_  "NmJ1939AAC" INT 0 1;
+BA_DEF_ BU_  "NmStationAddress" INT 0 255;
+BA_DEF_ BO_  "GenMsgSendType" ENUM  "cyclic","NotUsed","IfActive","NotUsed","NotUsed","NotUsed","NotUsed","NotUsed","noMsgSendType";
+BA_DEF_ BO_  "GenMsgRequestable" INT 0 1;
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 3600000;
+BA_DEF_ SG_  "SPN" INT 0 524287;
+BA_DEF_  "DBName" STRING ;
+BA_DEF_  "BusType" STRING ;
+BA_DEF_  "ProtocolType" STRING ;
+BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
+BA_DEF_ SG_  "SystemSignalLongSymbol" STRING ;
+BA_DEF_DEF_  "TpJ1939VarDlc" "No";
+BA_DEF_DEF_  "SigType" "Default";
+BA_DEF_DEF_  "GenSigEVName" "Env@Nodename_@Signame";
+BA_DEF_DEF_  "GenSigILSupport" "Yes";
+BA_DEF_DEF_  "GenSigSendType" "NoSigSendType";
+BA_DEF_DEF_  "GenMsgFastOnStart" 0;
+BA_DEF_DEF_  "GenSigInactiveValue" 0;
+BA_DEF_DEF_  "GenMsgCycleTimeFast" 0;
+BA_DEF_DEF_  "GenMsgNrOfRepetition" 0;
+BA_DEF_DEF_  "GenSigStartValue" 0;
+BA_DEF_DEF_  "GenMsgDelayTime" 0;
+BA_DEF_DEF_  "GenMsgILSupport" "Yes";
+BA_DEF_DEF_  "GenMsgStartDelayTime" 0;
+BA_DEF_DEF_  "NodeLayerModules" "";
+BA_DEF_DEF_  "ECU" "";
+BA_DEF_DEF_  "NmJ1939SystemInstance" 0;
+BA_DEF_DEF_  "NmJ1939System" 0;
+BA_DEF_DEF_  "NmJ1939ManufacturerCode" 0;
+BA_DEF_DEF_  "NmJ1939IndustryGroup" 0;
+BA_DEF_DEF_  "NmJ1939IdentityNumber" 0;
+BA_DEF_DEF_  "NmJ1939FunctionInstance" 0;
+BA_DEF_DEF_  "NmJ1939Function" 0;
+BA_DEF_DEF_  "NmJ1939ECUInstance" 0;
+BA_DEF_DEF_  "NmJ1939AAC" 0;
+BA_DEF_DEF_  "NmStationAddress" 254;
+BA_DEF_DEF_  "GenMsgSendType" "noMsgSendType";
+BA_DEF_DEF_  "GenMsgRequestable" 1;
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_DEF_DEF_  "SPN" 0;
+BA_DEF_DEF_  "DBName" "";
+BA_DEF_DEF_  "BusType" "CAN";
+BA_DEF_DEF_  "ProtocolType" "J1939";
+BA_DEF_DEF_  "VFrameFormat" "J1939PG";
+BA_DEF_DEF_  "SystemSignalLongSymbol" "";
+BA_ "DBName" "Configuration";
+BA_ "NmStationAddress" BU_ UserApplication 241;
+BA_ "NmStationAddress" BU_ MCM 0;
+BA_ "VFrameFormat" BO_ 1025 0;
+BA_ "VFrameFormat" BO_ 1024 0;
+BA_ "SystemSignalLongSymbol" SG_ 1025 Config_Value_ClosedLoop_Endianes "Config_Value_ClosedLoop_Endianess";
+BA_ "SystemSignalLongSymbol" SG_ 1024 Config_Value_ClosedLoop_End_0000 "Config_Value_ClosedLoop_Endianess";
+VAL_ 1025 Config_ParameterID_Cascade 15 "Position Disable" 33 "Derivative C2" 32 "Derivative C1" 23 "Velocity UMin" 22 "Velocity UMax" 21 "Velocity C2" 20 "Velocity C1" 18 "Velocity Kd" 17 "Velocity Ki" 16 "Velocity Kp" 7 "Position UMin" 6 "Position UMax" 5 "Position C2" 4 "Position C1" 2 "Position Kd" 1 "Position Ki" 0 "Position Kp" ;
+VAL_ 1025 Config_Value_Override_LinkedAct 2 "Inverse" 1 "Direct" 0 "None" ;
+VAL_ 1025 Config_Value_ClosedLoop_Endianes 1 "Big" 0 "Little" ;
+VAL_ 1025 Config_Value_ClosedLoop_Type 3 "Custom Int" 2 "Custom Uint" 1 "Custom Float" 0 "Sygnal" ;
+VAL_ 1025 Config_Value_VirtIf_Type 255 "None" 3 "Linear Actuator Type 0" 2 "Physical 2" 1 "Physical 1" 0 "Physical 0" ;
+VAL_ 1025 Config_ParameterID_VirtIf 2 "Report ID" 1 "Command ID" 0 "Type" ;
+VAL_ 1025 Config_ParameterID_FailOp2 7 "Control Lock" 6 "Control Maximum" 5 "Control Minimum" 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1025 Config_ParameterID_FailOp1 7 "Control Lock" 6 "Control Maximum" 5 "Control Minimum" 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1025 Config_Value_Override_FilterType 2 "EMA" 1 "LPF 20Hz" 0 "None" ;
+VAL_ 1025 Config_ParameterID_SygnalStatic 71 "Lock" 9 "Manufacturing Second" 8 "Manufacturing Minute" 7 "Manufacturing Hour" 6 "Manufacturing Day" 5 "Manufacturing Month" 4 "Manufacturing Year" 3 "Serial" 2 "Revision" 1 "Part ID" 0 "Product ID" ;
+VAL_ 1025 Config_Value_Signal_Type 255 "Virtual" 2 "PWM" 1 "Digital" 0 "Analog" ;
+VAL_ 1025 Config_Value_Control_Type 3 "Cascade" 2 "NLPID" 1 "PID" 0 "Direct" ;
+VAL_ 1025 Config_ParameterID_Report 1 "Rate" ;
+VAL_ 1025 Config_ParameterID_Relay 1 "Relay Threshold" 0 "Relay Enable" ;
+VAL_ 1025 Config_ParameterID_NLPID 15 "NLPID UMin" 14 "NLPID UMax" 13 "NLPID C2" 12 "NLPID C1" 11 "NLPID GammaD" 10 "NLPID GammaI" 9 "NLPID GammaP" 8 "NLPID DeltaD" 7 "NLPID DeltaI" 6 "NLPID DeltaP" 5 "NLPID AlphaD" 4 "NLPID AlphaI" 3 "NLPID AlphaP" 2 "NLPID Kd" 1 "NLPID Ki" 0 "NLPID Kp" ;
+VAL_ 1025 Config_ParameterID_PID 7 "PID UMin" 6 "PID UMax" 5 "PID C2" 4 "PID C1" 3 "PID Kr" 2 "PID Kd" 1 "PID Ki" 0 "PID Kp" ;
+VAL_ 1025 Config_ParameterID_Signal 9 "Signal Period Match Threshold" 8 "Signal Period" 7 "Signal Transition Time" 6 "Signal Match Threshold" 5 "Signal Velocity" 4 "Signal Offset" 3 "Signal Scale" 2 "Signal Maximum" 1 "Signal Minimum" 0 "Signal Type" ;
+VAL_ 1025 Config_ParameterID_Heartbeat 6 "Host Heartbeat Startup Delay" 5 "Host Heartbeat Count Enable" 4 "Host Heartbeat Timeout" 3 "Host Heartbeat CAN ID" 2 "Host Heartbeat Enable" 1 "MCM Heartbeat Rate" ;
+VAL_ 1025 Config_ParameterID_Control 7 "Control Deadzone" 6 "Control Response Enable" 5 "Control Count Enable" 4 "Control Timeout Value" 3 "Control Timeout Enable" 2 "Control Maximum" 1 "Control Minimum" 0 "Control Type" ;
+VAL_ 1025 Config_ParameterID_ClosedLoop 21 "Autohold Max Command" 20 "Autohold Ramp Rate" 19 "Autohold FB Threshold" 18 "Autohold Ref Threshold" 17 "Autohold Enable" 16 "Feedback Ackerman Comp Invert" 15 "Feedback Ackerman Comp Enable" 14 "Feedback Negative Scale" 13 "Feedback Positive Scale" 12 "Feedback Offset" 11 "Feedback Scale" 10 "Feedback Resolution" 9 "Feedback Bit Position" 8 "Feedback Endianess" 7 "Feedback CAN ID" 6 "Feedback Type" 5 "Feedback Response Enable" 4 "Feedback Count Enable" 3 "Feedback Timeout Value" 2 "Feedback Timeout Enable" 1 "Feedback Maximum" 0 "Feedback Minimum" ;
+VAL_ 1025 Config_ParameterID_Override 4 "Linked Actuator" 3 "EMA Alpha" 2 "Filter Type" 1 "Threshold" 0 "Enable" ;
+VAL_ 1025 Config_ParameterID_Fault 3 "Fail Hard Count" 2 "Fail Operational 2 Count" 1 "Fail Operational 1 Count" 0 "Enable" ;
+VAL_ 1025 Config_ParameterID_MCMGlobal 5 "Missing Signal Delay" 4 "Tire Diameter" 3 "Wheel Base" 2 "Track Width" 1 "Seed Rate" 0 "OSCC Enable" ;
+VAL_ 1025 Config_ParameterID_SygnalGlobal 0 "Bus Address" ;
+VAL_ 1025 Config_GetSet 1 "Set" 0 "Get" ;
+VAL_ 1025 Config_SectionID 15 "Cascade" 14 "Virtual Interface" 13 "Fail Op 2" 12 "Fail Op 1" 16 "Report" 31 "SygnalStatic" 11 "Relay" 10 "NLPID" 9 "PID" 8 "Signal" 7 "Heartbeat" 6 "Control" 5 "ClosedLoop" 4 "Override" 3 "Error" 2 "Fault" 1 "MCMGlobal" 0 "SygnalGlobal" ;
+VAL_ 1024 Config_ParameterID_Cascade 15 "Position Disable" 33 "Derivative C2" 32 "Derivative C1" 23 "Velocity UMin" 22 "Velocity UMax" 21 "Velocity C2" 20 "Velocity C1" 18 "Velocity Kd" 17 "Velocity Ki" 16 "Velocity Kp" 7 "Position UMin" 6 "Position UMax" 5 "Position C2" 4 "Position C1" 2 "Position Kd" 1 "Position Ki" 0 "Position Kp" ;
+VAL_ 1024 Config_Value_Override_LinkedAct 2 "Inverse" 1 "Direct" 0 "None" ;
+VAL_ 1024 Config_Value_ClosedLoop_Type 3 "Custom Int" 2 "Custom Uint" 1 "Custom Float" 0 "Sygnal" ;
+VAL_ 1024 Config_Value_ClosedLoop_End_0000 1 "Big" 0 "Little" ;
+VAL_ 1024 Config_Value_VirtIf_Type 255 "None" 3 "Linear Actuator Type 0" 2 "Physical 2" 1 "Physical 1" 0 "Physical 0" ;
+VAL_ 1024 Config_ParameterID_VirtIf 2 "Report ID" 1 "Command ID" 0 "Type" ;
+VAL_ 1024 Config_ParameterID_FailOp2 7 "Control Lock" 6 "Control Maximum" 5 "Control Minimum" 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1024 Config_ParameterID_FailOp1 7 "Control Lock" 6 "Control Maximum" 5 "Control Minimum" 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1024 Config_Value_Override_FilterType 2 "EMA" 1 "LPF 20Hz" 0 "None" ;
+VAL_ 1024 Config_ParameterID_SygnalStatic 71 "Lock" 9 "Manufacturing Second" 8 "Manufacturing Minute" 7 "Manufacturing Hour" 6 "Manufacturing Day" 5 "Manufacturing Month" 4 "Manufacturing Year" 3 "Serial" 2 "Revision" 1 "Part ID" 0 "Product ID" ;
+VAL_ 1024 Config_Value_Signal_Type 255 "Virtual" 2 "PWM" 1 "Digital" 0 "Analog" ;
+VAL_ 1024 Config_Value_Control_Type 3 "Cascade" 2 "NLPID" 1 "PID" 0 "Direct" ;
+VAL_ 1024 Config_ParameterID_Report 1 "Rate" ;
+VAL_ 1024 Config_ParameterID_Relay 1 "Relay Threshold" 0 "Relay Enable" ;
+VAL_ 1024 Config_ParameterID_NLPID 15 "NLPID UMin" 14 "NLPID UMax" 13 "NLPID C2" 12 "NLPID C1" 11 "NLPID GammaD" 10 "NLPID GammaI" 9 "NLPID GammaP" 8 "NLPID DeltaD" 7 "NLPID DeltaI" 6 "NLPID DeltaP" 5 "NLPID AlphaD" 4 "NLPID AlphaI" 3 "NLPID AlphaP" 2 "NLPID Kd" 1 "NLPID Ki" 0 "NLPID Kp" ;
+VAL_ 1024 Config_ParameterID_PID 7 "PID UMin" 6 "PID UMax" 5 "PID C2" 4 "PID C1" 3 "PID Kr" 2 "PID Kd" 1 "PID Ki" 0 "PID Kp" ;
+VAL_ 1024 Config_ParameterID_Signal 9 "Signal Period Match Threshold" 8 "Signal Period" 7 "Signal Transition Time" 6 "Signal Match Threshold" 5 "Signal Velocity" 4 "Signal Offset" 3 "Signal Scale" 2 "Signal Maximum" 1 "Signal Minimum" 0 "Signal Type" ;
+VAL_ 1024 Config_ParameterID_Heartbeat 6 "Host Heartbeat Startup Delay" 5 "Host Heartbeat Count Enable" 4 "Host Heartbeat Timeout" 3 "Host Heartbeat CAN ID" 2 "Host Heartbeat Enable" 1 "MCM Heartbeat Rate" ;
+VAL_ 1024 Config_ParameterID_Control 7 "Control Deadzone" 6 "Control Response Enable" 5 "Control Count Enable" 4 "Control Timeout Value" 3 "Control Timeout Enable" 2 "Control Maximum" 1 "Control Minimum" 0 "Control Type" ;
+VAL_ 1024 Config_ParameterID_ClosedLoop 21 "Autohold Max Command" 20 "Autohold Ramp Rate" 19 "Autohold FB Threshold" 18 "Autohold Ref Threshold" 17 "Autohold Enable" 16 "Feedback Ackerman Comp Invert" 15 "Feedback Ackerman Comp Enable" 14 "Feedback Negative Scale" 13 "Feedback Positive Scale" 12 "Feedback Offset" 11 "Feedback Scale" 10 "Feedback Resolution" 9 "Feedback Bit Position" 8 "Feedback Endianess" 7 "Feedback CAN ID" 6 "Feedback Type" 5 "Feedback Response Enable" 4 "Feedback Count Enable" 3 "Feedback Timeout Value" 2 "Feedback Timeout Enable" 1 "Feedback Maximum" 0 "Feedback Minimum" ;
+VAL_ 1024 Config_ParameterID_Override 4 "Linked Actuator" 3 "EMA Alpha" 2 "Filter Type" 1 "Threshold" 0 "Enable" ;
+VAL_ 1024 Config_ParameterID_Fault 3 "Fail Hard Count" 2 "Fail Operational 2 Count" 1 "Fail Operational 1 Count" 0 "Enable" ;
+VAL_ 1024 Config_ParameterID_MCMGlobal 5 "Missing Signal Delay" 4 "Tire Diameter" 3 "Wheel Base" 2 "Track Width" 1 "Seed Rate" 0 "OSCC Enable" ;
+VAL_ 1024 Config_ParameterID_SygnalGlobal 0 "Bus Address" ;
+VAL_ 1024 Config_GetSet 1 "Set" 0 "Get" ;
+VAL_ 1024 Config_SectionID 15 "Cascade" 14 "Virtual Interface" 13 "Fail Op 2" 12 "Fail Op 1" 16 "Report" 31 "SygnalStatic" 11 "Relay" 10 "NLPID" 9 "PID" 8 "Signal" 7 "Heartbeat" 6 "Control" 5 "ClosedLoop" 4 "Override" 3 "Error" 2 "Fault" 1 "MCMGlobal" 0 "SygnalGlobal" ;
+SIG_VALTYPE_ 1025 Config_Value_Cascade_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_MCMGlobal_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_FailOp2_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_FailOp1_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_Relay_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_PID_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_NLPID_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_Signal_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_Control_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_ClosedLoop_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_Override_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_Cascade_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_MCMGlobal_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_FailOp2_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_FailOp1_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_Relay_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_PID_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_NLPID_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_Signal_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_Control_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_ClosedLoop_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_Override_FLOAT32 : 1;
+
+SG_MUL_VAL_ 1025 Config_Value_Cascade_UINT1 Config_ParameterID_Cascade 15-15;
+SG_MUL_VAL_ 1025 Config_Value_Cascade_FLOAT32 Config_ParameterID_Cascade 0-7, 16-33;
+SG_MUL_VAL_ 1025 Config_ParameterID_Cascade Config_SectionID 15-15;
+SG_MUL_VAL_ 1025 Config_Value_MCMGlobal_FLOAT32 Config_ParameterID_MCMGlobal 2-4;
+SG_MUL_VAL_ 1025 Config_Value_Override_LinkedAct Config_ParameterID_Override 4-4;
+SG_MUL_VAL_ 1025 Config_Value_ClosedLoop_Endianes Config_ParameterID_ClosedLoop 8-8;
+SG_MUL_VAL_ 1025 Config_Value_ClosedLoop_UINT32 Config_ParameterID_ClosedLoop 7-7;
+SG_MUL_VAL_ 1025 Config_Value_ClosedLoop_Type Config_ParameterID_ClosedLoop 6-6;
+SG_MUL_VAL_ 1025 Config_Value_VirtIf_UINT32 Config_ParameterID_VirtIf 1-1, 2-2;
+SG_MUL_VAL_ 1025 Config_Value_VirtIf_Type Config_ParameterID_VirtIf 0-0;
+SG_MUL_VAL_ 1025 Config_ParameterID_VirtIf Config_SectionID 14-14;
+SG_MUL_VAL_ 1025 Config_Value_FailOp2_UINT16 Config_ParameterID_FailOp2 1-1, 4-4;
+SG_MUL_VAL_ 1025 Config_Value_FailOp2_UINT1 Config_ParameterID_FailOp2 0-0, 7-7;
+SG_MUL_VAL_ 1025 Config_Value_FailOp2_FLOAT32 Config_ParameterID_FailOp2 2-3, 5-6;
+SG_MUL_VAL_ 1025 Config_Value_FailOp1_UINT16 Config_ParameterID_FailOp1 1-1, 4-4;
+SG_MUL_VAL_ 1025 Config_Value_FailOp1_UINT1 Config_ParameterID_FailOp1 0-0, 7-7;
+SG_MUL_VAL_ 1025 Config_Value_FailOp1_FLOAT32 Config_ParameterID_FailOp1 2-3, 5-6;
+SG_MUL_VAL_ 1025 Config_ParameterID_FailOp2 Config_SectionID 13-13;
+SG_MUL_VAL_ 1025 Config_ParameterID_FailOp1 Config_SectionID 12-12;
+SG_MUL_VAL_ 1025 Config_Value_MCMGlobal_UINT16 Config_ParameterID_MCMGlobal 1-1, 5-5;
+SG_MUL_VAL_ 1025 Config_Value_Override_FilterType Config_ParameterID_Override 2-2;
+SG_MUL_VAL_ 1025 Config_Value_Report_UINT16 Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1025 Config_Value_Report_SignalID Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1025 Config_Value_SygnalStatic_UINT32 Config_ParameterID_SygnalStatic 1-1, 3-4;
+SG_MUL_VAL_ 1025 Config_Value_SygnalStatic_UINT24 Config_ParameterID_SygnalStatic 0-0;
+SG_MUL_VAL_ 1025 Config_Value_SygnalStatic_UINT16 Config_ParameterID_SygnalStatic 2-2, 5-9, 71-71;
+SG_MUL_VAL_ 1025 Config_ParameterID_SygnalStatic Config_SectionID 31-31;
+SG_MUL_VAL_ 1025 Config_Value_Fault_Type Config_ParameterID_Fault 0-3;
+SG_MUL_VAL_ 1025 Config_Value_Relay_UINT1 Config_ParameterID_Relay 0-0;
+SG_MUL_VAL_ 1025 Config_Value_Relay_FLOAT32 Config_ParameterID_Relay 1-1;
+SG_MUL_VAL_ 1025 Config_Value_PID_FLOAT32 Config_ParameterID_PID 0-7;
+SG_MUL_VAL_ 1025 Config_Value_NLPID_FLOAT32 Config_ParameterID_NLPID 0-15;
+SG_MUL_VAL_ 1025 Config_Value_Signal_Type Config_ParameterID_Signal 0-0;
+SG_MUL_VAL_ 1025 Config_Value_Signal_UINT16 Config_ParameterID_Signal 7-7;
+SG_MUL_VAL_ 1025 Config_Value_Signal_FLOAT32 Config_ParameterID_Signal 1-6, 8-9;
+SG_MUL_VAL_ 1025 Config_Value_Heartbeat_UINT16 Config_ParameterID_Heartbeat 1-1, 3-4, 6-6;
+SG_MUL_VAL_ 1025 Config_Value_Heartbeat_UINT1 Config_ParameterID_Heartbeat 2-2, 5-5;
+SG_MUL_VAL_ 1025 Config_Value_Control_UINT16 Config_ParameterID_Control 4-4;
+SG_MUL_VAL_ 1025 Config_Value_Control_UINT1 Config_ParameterID_Control 3-3, 5-6;
+SG_MUL_VAL_ 1025 Config_Value_Control_Type Config_ParameterID_Control 0-0;
+SG_MUL_VAL_ 1025 Config_Value_Control_FLOAT32 Config_ParameterID_Control 1-2, 7-7;
+SG_MUL_VAL_ 1025 Config_Value_ClosedLoop_UINT16 Config_ParameterID_ClosedLoop 3-3, 9-9, 10-10;
+SG_MUL_VAL_ 1025 Config_Value_ClosedLoop_UINT1 Config_ParameterID_ClosedLoop 2-2, 4-4, 5-5, 15-17;
+SG_MUL_VAL_ 1025 Config_Value_ClosedLoop_FLOAT32 Config_ParameterID_ClosedLoop 0-1, 11-14, 18-21;
+SG_MUL_VAL_ 1025 Config_Value_Override_UINT1 Config_ParameterID_Override 0-0;
+SG_MUL_VAL_ 1025 Config_Value_Override_FLOAT32 Config_ParameterID_Override 1-1, 3-3;
+SG_MUL_VAL_ 1025 Config_Value_Fault_UINT16 Config_ParameterID_Fault 0-4;
+SG_MUL_VAL_ 1025 Config_Value_MCMGlobal_UINT1 Config_ParameterID_MCMGlobal 0-0;
+SG_MUL_VAL_ 1025 Config_Value_SygnalGlobal_UINT7 Config_ParameterID_SygnalGlobal 0-0;
+SG_MUL_VAL_ 1025 Config_ParameterID_Report Config_SectionID 16-16;
+SG_MUL_VAL_ 1025 Config_ParameterID_Relay Config_SectionID 11-11;
+SG_MUL_VAL_ 1025 Config_ParameterID_NLPID Config_SectionID 10-10;
+SG_MUL_VAL_ 1025 Config_ParameterID_PID Config_SectionID 9-9;
+SG_MUL_VAL_ 1025 Config_ParameterID_Signal Config_SectionID 8-8;
+SG_MUL_VAL_ 1025 Config_ParameterID_Heartbeat Config_SectionID 7-7;
+SG_MUL_VAL_ 1025 Config_ParameterID_Control Config_SectionID 6-6;
+SG_MUL_VAL_ 1025 Config_ParameterID_ClosedLoop Config_SectionID 5-5;
+SG_MUL_VAL_ 1025 Config_ParameterID_Override Config_SectionID 4-4;
+SG_MUL_VAL_ 1025 Config_ParameterID_Fault Config_SectionID 2-2;
+SG_MUL_VAL_ 1025 Config_ParameterID_MCMGlobal Config_SectionID 1-1;
+SG_MUL_VAL_ 1025 Config_ParameterID_SygnalGlobal Config_SectionID 0-0;
+SG_MUL_VAL_ 1024 Config_Value_Cascade_UINT1 Config_ParameterID_Cascade 15-15;
+SG_MUL_VAL_ 1024 Config_Value_Cascade_FLOAT32 Config_ParameterID_Cascade 0-7, 16-33;
+SG_MUL_VAL_ 1024 Config_ParameterID_Cascade Config_SectionID 15-15;
+SG_MUL_VAL_ 1024 Config_Value_MCMGlobal_FLOAT32 Config_ParameterID_MCMGlobal 2-4;
+SG_MUL_VAL_ 1024 Config_Value_Override_LinkedAct Config_ParameterID_Override 4-4;
+SG_MUL_VAL_ 1024 Config_Value_ClosedLoop_Type Config_ParameterID_ClosedLoop 6-6;
+SG_MUL_VAL_ 1024 Config_Value_ClosedLoop_UINT32 Config_ParameterID_ClosedLoop 7-7;
+SG_MUL_VAL_ 1024 Config_Value_ClosedLoop_End_0000 Config_ParameterID_ClosedLoop 8-8;
+SG_MUL_VAL_ 1024 Config_Value_VirtIf_UINT32 Config_ParameterID_VirtIf 1-1, 2-2;
+SG_MUL_VAL_ 1024 Config_Value_VirtIf_Type Config_ParameterID_VirtIf 0-0;
+SG_MUL_VAL_ 1024 Config_ParameterID_VirtIf Config_SectionID 14-14;
+SG_MUL_VAL_ 1024 Config_Value_FailOp2_UINT16 Config_ParameterID_FailOp2 1-1, 4-4;
+SG_MUL_VAL_ 1024 Config_Value_FailOp2_UINT1 Config_ParameterID_FailOp2 0-0, 7-7;
+SG_MUL_VAL_ 1024 Config_Value_FailOp2_FLOAT32 Config_ParameterID_FailOp2 2-3, 5-6;
+SG_MUL_VAL_ 1024 Config_Value_FailOp1_UINT1 Config_ParameterID_FailOp1 0-0, 7-7;
+SG_MUL_VAL_ 1024 Config_Value_FailOp1_UINT16 Config_ParameterID_FailOp1 1-1, 4-4;
+SG_MUL_VAL_ 1024 Config_Value_FailOp1_FLOAT32 Config_ParameterID_FailOp1 2-3, 5-6;
+SG_MUL_VAL_ 1024 Config_ParameterID_FailOp2 Config_SectionID 13-13;
+SG_MUL_VAL_ 1024 Config_ParameterID_FailOp1 Config_SectionID 12-12;
+SG_MUL_VAL_ 1024 Config_Value_MCMGlobal_UINT16 Config_ParameterID_MCMGlobal 1-1, 5-5;
+SG_MUL_VAL_ 1024 Config_Value_Override_FilterType Config_ParameterID_Override 2-2;
+SG_MUL_VAL_ 1024 Config_Value_Report_UINT16 Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1024 Config_Value_Report_SignalID Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1024 Config_Value_SygnalStatic_UINT32 Config_ParameterID_SygnalStatic 1-1, 3-4;
+SG_MUL_VAL_ 1024 Config_Value_SygnalStatic_UINT24 Config_ParameterID_SygnalStatic 0-0;
+SG_MUL_VAL_ 1024 Config_Value_SygnalStatic_UINT16 Config_ParameterID_SygnalStatic 2-2, 5-9, 71-71;
+SG_MUL_VAL_ 1024 Config_ParameterID_SygnalStatic Config_SectionID 31-31;
+SG_MUL_VAL_ 1024 Config_Value_Fault_Type Config_ParameterID_Fault 0-3;
+SG_MUL_VAL_ 1024 Config_Value_Relay_UINT1 Config_ParameterID_Relay 0-0;
+SG_MUL_VAL_ 1024 Config_Value_Relay_FLOAT32 Config_ParameterID_Relay 1-1;
+SG_MUL_VAL_ 1024 Config_Value_PID_FLOAT32 Config_ParameterID_PID 0-7;
+SG_MUL_VAL_ 1024 Config_Value_NLPID_FLOAT32 Config_ParameterID_NLPID 0-15;
+SG_MUL_VAL_ 1024 Config_Value_Signal_Type Config_ParameterID_Signal 0-0;
+SG_MUL_VAL_ 1024 Config_Value_Signal_UINT16 Config_ParameterID_Signal 7-7;
+SG_MUL_VAL_ 1024 Config_Value_Signal_FLOAT32 Config_ParameterID_Signal 1-6, 8-9;
+SG_MUL_VAL_ 1024 Config_Value_Heartbeat_UINT16 Config_ParameterID_Heartbeat 1-1, 3-4, 6-6;
+SG_MUL_VAL_ 1024 Config_Value_Heartbeat_UINT1 Config_ParameterID_Heartbeat 2-2, 5-5;
+SG_MUL_VAL_ 1024 Config_Value_Control_UINT16 Config_ParameterID_Control 4-4;
+SG_MUL_VAL_ 1024 Config_Value_Control_UINT1 Config_ParameterID_Control 3-3, 5-6;
+SG_MUL_VAL_ 1024 Config_Value_Control_Type Config_ParameterID_Control 0-0;
+SG_MUL_VAL_ 1024 Config_Value_Control_FLOAT32 Config_ParameterID_Control 1-2, 7-7;
+SG_MUL_VAL_ 1024 Config_Value_ClosedLoop_UINT16 Config_ParameterID_ClosedLoop 3-3, 9-9, 10-10;
+SG_MUL_VAL_ 1024 Config_Value_ClosedLoop_UINT1 Config_ParameterID_ClosedLoop 2-2, 4-4, 5-5, 15-17;
+SG_MUL_VAL_ 1024 Config_Value_ClosedLoop_FLOAT32 Config_ParameterID_ClosedLoop 0-1, 11-14, 18-21;
+SG_MUL_VAL_ 1024 Config_Value_Override_UINT1 Config_ParameterID_Override 0-0;
+SG_MUL_VAL_ 1024 Config_Value_Override_FLOAT32 Config_ParameterID_Override 1-1, 3-3;
+SG_MUL_VAL_ 1024 Config_Value_Fault_UINT16 Config_ParameterID_Fault 0-4;
+SG_MUL_VAL_ 1024 Config_Value_MCMGlobal_UINT1 Config_ParameterID_MCMGlobal 0-0;
+SG_MUL_VAL_ 1024 Config_Value_SygnalGlobal_UINT7 Config_ParameterID_SygnalGlobal 0-0;
+SG_MUL_VAL_ 1024 Config_ParameterID_Report Config_SectionID 16-16;
+SG_MUL_VAL_ 1024 Config_ParameterID_Relay Config_SectionID 11-11;
+SG_MUL_VAL_ 1024 Config_ParameterID_NLPID Config_SectionID 10-10;
+SG_MUL_VAL_ 1024 Config_ParameterID_PID Config_SectionID 9-9;
+SG_MUL_VAL_ 1024 Config_ParameterID_Signal Config_SectionID 8-8;
+SG_MUL_VAL_ 1024 Config_ParameterID_Heartbeat Config_SectionID 7-7;
+SG_MUL_VAL_ 1024 Config_ParameterID_Control Config_SectionID 6-6;
+SG_MUL_VAL_ 1024 Config_ParameterID_ClosedLoop Config_SectionID 5-5;
+SG_MUL_VAL_ 1024 Config_ParameterID_Override Config_SectionID 4-4;
+SG_MUL_VAL_ 1024 Config_ParameterID_Fault Config_SectionID 2-2;
+SG_MUL_VAL_ 1024 Config_ParameterID_MCMGlobal Config_SectionID 1-1;
+SG_MUL_VAL_ 1024 Config_ParameterID_SygnalGlobal Config_SectionID 0-0;
