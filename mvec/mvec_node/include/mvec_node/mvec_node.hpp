@@ -24,6 +24,7 @@
 
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "mvec_lib/mvec_relay_socketcan.hpp"
+#include "mvec_msgs/msg/mvec_feedback.hpp"
 #include "mvec_msgs/msg/preset.hpp"
 #include "mvec_msgs/msg/relay.hpp"
 #include "mvec_msgs/srv/set_multi_relay.hpp"
@@ -101,11 +102,15 @@ private:
   /// @return Diagnostic array message
   diagnostic_msgs::msg::DiagnosticArray createDiagnosticsMessage();
 
+  /// @brief Parse preset parameters from ROS parameters
+  /// Format: preset_N_name and preset_N_relays array with "relay_id:state" strings
+  void parsePresetParams();
+
   // Parameters
   std::string can_interface_;
   double publish_rate_;
 
-  std::chrono::nanoseconds timeout_ns_;
+  std::chrono::milliseconds timeout_ms_;
 
   // SocketCAN and MVEC components
   std::shared_ptr<polymath::socketcan::SocketcanAdapter> socketcan_adapter_;
@@ -119,8 +124,12 @@ private:
 
   // Publishers
   rclcpp_lifecycle::LifecyclePublisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<mvec_msgs::msg::MvecFeedback>::SharedPtr feedback_pub_;
 
   std::vector<mvec_msgs::msg::Preset> presets_;
+
+  // Current relay states storage
+  std::optional<mvec_msgs::msg::MvecFeedback> current_relay_states_;
 };
 
 }  // namespace polymath::mvec

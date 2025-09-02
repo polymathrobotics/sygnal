@@ -23,6 +23,7 @@ find_package(std_msgs REQUIRED)
 set(msg_files
   "msg/Relay.msg"
   "msg/Preset.msg"
+  "msg/MvecFeedback.msg"
 )
 
 set(srv_files
