@@ -1,0 +1,345 @@
+VERSION ""
+
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: UserApplication MCM
+VAL_TABLE_ Config_Value_Message_Period_Type 2 "Oneshot Repeat" 1 "Periodic" 0 "Oneshot" ;
+VAL_TABLE_ Config_Value_Message_Direction 2 "To Sygnal" 1 "To Vehicle" 0 "Disable" ;
+VAL_TABLE_ Config_ParameterID_Message 79 "To Vehicle Output Background 2" 78 "To Vehicle Output Background 1" 77 "To Vehicle Output Offset" 76 "To Vehicle Output Scale" 75 "To Vehicle Output Bit Length" 74 "To Vehicle Output Bit Position" 73 "To Vehicle Output Endianess" 72 "To Vehicle Output Data Type" 71 "To Vehicle Output Message Length" 70 "To Vehicle Output CAN ID" 69 "To Vehicle Repeat Count" 68 "To Vehicle Period" 67 "To Vehicle Period Type" 66 "To Vehicle Bind Next" 65 "To Vehicle Data Value" 64 "To Vehicle Static Message" 51 "To Sygnal Output Background 2" 50 "To Sygnal Output Background 1" 49 "To Sygnal Output Bit Length" 48 "To Sygnal Output Bit Position" 47 "To Sygnal Output Endianess" 46 "To Sygnal Output Message Length" 45 "To Sygnal Output Interface ID" 44 "To Sygnal Output Bus ID" 43 "To Sygnal Output Data Type" 42 "To Sygnal Output CAN ID" 41 "To Sygnal Input Negative Scale" 40 "To Sygnal Input Positive Scale" 39 "To Sygnal Input Offset" 38 "To Sygnal Input Scale" 37 "To Sygnal Input Bit Length" 36 "To Sygnal Input Bit Position" 35 "To Sygnal Input Endianess" 34 "To Sygnal Input Data Type" 33 "To Sygnal Input CAN ID" 32 "To Sygnal Data Passthrough" 0 "Direction" ;
+VAL_TABLE_ Config_ParameterID_CBGlobal 1 "Seed Rate" 0 "Vehicle Baud" ;
+VAL_TABLE_ Config_SectionID 13 "Fail Op 2" 12 "Fail Op 1" 16 "Report" 31 "SygnalStatic" 8 "Message" 7 "Heartbeat" 6 "Control" 3 "Error" 2 "Fault" 1 "CBGlobal" 0 "SygnalGlobal" ;
+VAL_TABLE_ Config_Value_Message_Endianess 1 "Big" 0 "Little" ;
+VAL_TABLE_ Config_Value_Message_Type 3 "Custom Int" 2 "Custom Uint" 1 "Custom Float" 0 "Sygnal" ;
+VAL_TABLE_ Config_ParameterID_FailOp2 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_TABLE_ Config_ParameterID_FailOp1 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_TABLE_ Config_ParameterID_Report 1 "Rate" 0 "Enable" ;
+VAL_TABLE_ Config_GetSet 1 "Set" 0 "Get" ;
+VAL_TABLE_ Config_ParameterID_SygnalStatic 9 "Manufacturing Second" 8 "Manufacturing Minute" 7 "Manufacturing Hour" 6 "Manufacturing Day" 5 "Manufacturing Month" 4 "Manufacturing Year" 3 "Serial" 2 "Revision" 1 "Part ID" 0 "Product ID" ;
+
+
+BO_ 3221225472 VECTOR__INDEPENDENT_SIG_MSG: 0 Vector__XXX
+ SG_ Config_Value_CBGlobal_UINT1 : 0|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_CBGlobal_UINT1 : 0|1@1+ (1,0) [0|0] "" Vector__XXX
+
+BO_ 1027 ConfigGetSetInterfaceExtResponse: 8 Vector__XXX
+ SG_ Config_GetSet : 23|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_InterfaceExt_UINT32 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubsystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+
+BO_ 1026 ConfigGetSetInterfaceExt: 8 Vector__XXX
+ SG_ Config_GetSet : 23|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_InterfaceExt_UINT32 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubsystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
+
+BO_ 1025 ConfigGetSetResponse: 8 MCM
+ SG_ Config_Value_CBGlobal_UINT32 m0 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Period_Type m67 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_UINT32 m33 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_UINT16 m36 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_UINT1 m32 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Type m34 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_FLOAT32 m38 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Endianess m35 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Direction m0 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_CBGlobal_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp2 m13M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp1 m12M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_CBGlobal_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_UINT16 m1 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_SignalID m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT32 m1 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT24 m0 : 24|24@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT16 m2 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalStatic m31M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_Type m0 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT1 m2 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_UINT16 m0 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalGlobal_UINT7 m0 : 24|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Report m16M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Message m8M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Heartbeat m7M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Fault m2M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_CBGlobal m1M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalGlobal m0M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_GetSet : 23|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_SectionID M : 8|5@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubsystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+
+BO_ 1024 ConfigGetSetCommand: 8 UserApplication
+ SG_ Config_Value_CBGlobal_UINT32 m0 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Period_Type m67 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Direction m0 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_CBGlobal_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Type m34 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_UINT32 m33 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_Endianess m35 : 24|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp2_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT1 m0 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_FailOp1_FLOAT32 m2 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp2 m13M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_FailOp1 m12M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_CBGlobal_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_UINT16 m1 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Report_SignalID m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT32 m1 : 24|32@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT24 m0 : 24|24@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalStatic_UINT16 m2 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalStatic m31M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_Type m0 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT16 m1 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Heartbeat_UINT1 m2 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_UINT16 m36 : 24|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_UINT1 m32 : 24|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Message_FLOAT32 m38 : 24|32@1- (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_Fault_UINT16 m0 : 40|16@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_Value_SygnalGlobal_UINT7 m0 : 24|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Report m16M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Message m8M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Heartbeat m7M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_Fault m2M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_CBGlobal m1M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_ParameterID_SygnalGlobal m0M : 16|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_GetSet : 23|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ Config_SectionID M : 8|5@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubsystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+
+
+
+CM_ BO_ 3221225472 "This is a message for not used signals, created by Vector CANdb++ DBC OLE DB Provider.";
+BA_DEF_ BO_  "TpJ1939VarDlc" ENUM  "No","Yes";
+BA_DEF_ SG_  "SigType" ENUM  "Default","Range","RangeSigned","ASCII","Discrete","Control","ReferencePGN","DTC","StringDelimiter","StringLength","StringLengthControl","MessageCounter","MessageChecksum";
+BA_DEF_ SG_  "GenSigEVName" STRING ;
+BA_DEF_ SG_  "GenSigILSupport" ENUM  "No","Yes";
+BA_DEF_ SG_  "GenSigSendType" ENUM  "Cyclic","OnWrite","OnWriteWithRepetition","OnChange","OnChangeWithRepetition","IfActive","IfActiveWithRepetition","NoSigSendType";
+BA_DEF_ BO_  "GenMsgFastOnStart" INT 0 100000;
+BA_DEF_ SG_  "GenSigInactiveValue" INT 0 0;
+BA_DEF_ BO_  "GenMsgCycleTimeFast" INT 0 3600000;
+BA_DEF_ BO_  "GenMsgNrOfRepetition" INT 0 1000000;
+BA_DEF_ SG_  "GenSigStartValue" INT 0 2147483647;
+BA_DEF_ BO_  "GenMsgDelayTime" INT 0 1000;
+BA_DEF_ BO_  "GenMsgILSupport" ENUM  "No","Yes";
+BA_DEF_ BO_  "GenMsgStartDelayTime" INT 0 100000;
+BA_DEF_ BU_  "NodeLayerModules" STRING ;
+BA_DEF_ BU_  "ECU" STRING ;
+BA_DEF_ BU_  "NmJ1939SystemInstance" INT 0 15;
+BA_DEF_ BU_  "NmJ1939System" INT 0 127;
+BA_DEF_ BU_  "NmJ1939ManufacturerCode" INT 0 2047;
+BA_DEF_ BU_  "NmJ1939IndustryGroup" INT 0 7;
+BA_DEF_ BU_  "NmJ1939IdentityNumber" INT 0 2097151;
+BA_DEF_ BU_  "NmJ1939FunctionInstance" INT 0 7;
+BA_DEF_ BU_  "NmJ1939Function" INT 0 255;
+BA_DEF_ BU_  "NmJ1939ECUInstance" INT 0 3;
+BA_DEF_ BU_  "NmJ1939AAC" INT 0 1;
+BA_DEF_ BU_  "NmStationAddress" INT 0 255;
+BA_DEF_ BO_  "GenMsgSendType" ENUM  "cyclic","NotUsed","IfActive","NotUsed","NotUsed","NotUsed","NotUsed","NotUsed","noMsgSendType";
+BA_DEF_ BO_  "GenMsgRequestable" INT 0 1;
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 3600000;
+BA_DEF_ SG_  "SPN" INT 0 524287;
+BA_DEF_  "DBName" STRING ;
+BA_DEF_  "BusType" STRING ;
+BA_DEF_  "ProtocolType" STRING ;
+BA_DEF_ BO_  "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG";
+BA_DEF_DEF_  "TpJ1939VarDlc" "No";
+BA_DEF_DEF_  "SigType" "Default";
+BA_DEF_DEF_  "GenSigEVName" "Env@Nodename_@Signame";
+BA_DEF_DEF_  "GenSigILSupport" "Yes";
+BA_DEF_DEF_  "GenSigSendType" "NoSigSendType";
+BA_DEF_DEF_  "GenMsgFastOnStart" 0;
+BA_DEF_DEF_  "GenSigInactiveValue" 0;
+BA_DEF_DEF_  "GenMsgCycleTimeFast" 0;
+BA_DEF_DEF_  "GenMsgNrOfRepetition" 0;
+BA_DEF_DEF_  "GenSigStartValue" 0;
+BA_DEF_DEF_  "GenMsgDelayTime" 0;
+BA_DEF_DEF_  "GenMsgILSupport" "Yes";
+BA_DEF_DEF_  "GenMsgStartDelayTime" 0;
+BA_DEF_DEF_  "NodeLayerModules" "";
+BA_DEF_DEF_  "ECU" "";
+BA_DEF_DEF_  "NmJ1939SystemInstance" 0;
+BA_DEF_DEF_  "NmJ1939System" 0;
+BA_DEF_DEF_  "NmJ1939ManufacturerCode" 0;
+BA_DEF_DEF_  "NmJ1939IndustryGroup" 0;
+BA_DEF_DEF_  "NmJ1939IdentityNumber" 0;
+BA_DEF_DEF_  "NmJ1939FunctionInstance" 0;
+BA_DEF_DEF_  "NmJ1939Function" 0;
+BA_DEF_DEF_  "NmJ1939ECUInstance" 0;
+BA_DEF_DEF_  "NmJ1939AAC" 0;
+BA_DEF_DEF_  "NmStationAddress" 254;
+BA_DEF_DEF_  "GenMsgSendType" "noMsgSendType";
+BA_DEF_DEF_  "GenMsgRequestable" 1;
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_DEF_DEF_  "SPN" 0;
+BA_DEF_DEF_  "DBName" "";
+BA_DEF_DEF_  "BusType" "CAN";
+BA_DEF_DEF_  "ProtocolType" "J1939";
+BA_DEF_DEF_  "VFrameFormat" "J1939PG";
+BA_ "DBName" "Configuration";
+BA_ "NmStationAddress" BU_ UserApplication 241;
+BA_ "NmStationAddress" BU_ MCM 0;
+BA_ "VFrameFormat" BO_ 1027 0;
+BA_ "VFrameFormat" BO_ 1026 0;
+BA_ "VFrameFormat" BO_ 1025 0;
+BA_ "VFrameFormat" BO_ 1024 0;
+VAL_ 1027 Config_GetSet 1 "Set" 0 "Get" ;
+VAL_ 1026 Config_GetSet 1 "Set" 0 "Get" ;
+VAL_ 1025 Config_Value_Message_Period_Type 2 "Oneshot Repeat" 1 "Periodic" 0 "Oneshot" ;
+VAL_ 1025 Config_Value_Message_Type 3 "Custom Int" 2 "Custom Uint" 1 "Custom Float" 0 "Sygnal" ;
+VAL_ 1025 Config_Value_Message_Endianess 1 "Big" 0 "Little" ;
+VAL_ 1025 Config_Value_Message_Direction 2 "To Sygnal" 1 "To Vehicle" 0 "Disable" ;
+VAL_ 1025 Config_ParameterID_FailOp2 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1025 Config_ParameterID_FailOp1 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1025 Config_ParameterID_SygnalStatic 71 "Lock" 9 "Manufacturing Second" 8 "Manufacturing Minute" 7 "Manufacturing Hour" 6 "Manufacturing Day" 5 "Manufacturing Month" 4 "Manufacturing Year" 3 "Serial" 2 "Revision" 1 "Part ID" 0 "Product ID" ;
+VAL_ 1025 Config_ParameterID_Report 1 "Rate" ;
+VAL_ 1025 Config_ParameterID_Message 79 "To Vehicle Output Background 2" 78 "To Vehicle Output Background 1" 77 "To Vehicle Output Offset" 76 "To Vehicle Output Scale" 75 "To Vehicle Output Bit Length" 74 "To Vehicle Output Bit Position" 73 "To Vehicle Output Endianess" 72 "To Vehicle Output Data Type" 71 "To Vehicle Output Message Length" 70 "To Vehicle Output CAN ID" 69 "To Vehicle Repeat Count" 68 "To Vehicle Period" 67 "To Vehicle Period Type" 66 "To Vehicle Bind Next" 65 "To Vehicle Data Value" 64 "To Vehicle Static Message" 51 "To Sygnal Output Background 2" 50 "To Sygnal Output Background 1" 49 "To Sygnal Output Bit Length" 48 "To Sygnal Output Bit Position" 47 "To Sygnal Output Endianess" 46 "To Sygnal Output Message Length" 45 "To Sygnal Output Interface ID" 44 "To Sygnal Output Bus ID" 43 "To Sygnal Output Data Type" 42 "To Sygnal Output CAN ID" 41 "To Sygnal Input Negative Scale" 40 "To Sygnal Input Positive Scale" 39 "To Sygnal Input Offset" 38 "To Sygnal Input Scale" 37 "To Sygnal Input Bit Length" 36 "To Sygnal Input Bit Position" 35 "To Sygnal Input Endianess" 34 "To Sygnal Input Data Type" 33 "To Sygnal Input CAN ID" 32 "To Sygnal Data Passthrough" 0 "Direction" ;
+VAL_ 1025 Config_ParameterID_Heartbeat 6 "Host Heartbeat Startup Delay" 5 "Host Heartbeat Count Enable" 4 "Host Heartbeat Timeout" 3 "Host Heartbeat CAN ID" 2 "Host Heartbeat Enable" 1 "MCM Heartbeat Rate" ;
+VAL_ 1025 Config_ParameterID_Fault 3 "Fail Hard Count" 2 "Fail Operational 2 Count" 1 "Fail Operational 1 Count" 0 "Enable" ;
+VAL_ 1025 Config_ParameterID_CBGlobal 1 "Seed Rate" 0 "Vehicle Baud" ;
+VAL_ 1025 Config_ParameterID_SygnalGlobal 0 "Bus Address" ;
+VAL_ 1025 Config_GetSet 1 "Set" 0 "Get" ;
+VAL_ 1025 Config_SectionID 13 "Fail Op 2" 12 "Fail Op 1" 16 "Report" 31 "SygnalStatic" 8 "Message" 7 "Heartbeat" 6 "Control" 3 "Error" 2 "Fault" 1 "CBGlobal" 0 "SygnalGlobal" ;
+VAL_ 1024 Config_Value_Message_Period_Type 2 "Oneshot Repeat" 1 "Periodic" 0 "Oneshot" ;
+VAL_ 1024 Config_Value_Message_Direction 2 "To Sygnal" 1 "To Vehicle" 0 "Disable" ;
+VAL_ 1024 Config_Value_Message_Type 3 "Custom Int" 2 "Custom Uint" 1 "Custom Float" 0 "Sygnal" ;
+VAL_ 1024 Config_Value_Message_Endianess 1 "Big" 0 "Little" ;
+VAL_ 1024 Config_ParameterID_FailOp2 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1024 Config_ParameterID_FailOp1 4 "Ramp Time" 3 "End Setpoint" 2 "Start Setpoint" 1 "Delay" 0 "Enable" ;
+VAL_ 1024 Config_ParameterID_SygnalStatic 71 "Lock" 9 "Manufacturing Second" 8 "Manufacturing Minute" 7 "Manufacturing Hour" 6 "Manufacturing Day" 5 "Manufacturing Month" 4 "Manufacturing Year" 3 "Serial" 2 "Revision" 1 "Part ID" 0 "Product ID" ;
+VAL_ 1024 Config_ParameterID_Report 1 "Rate" ;
+VAL_ 1024 Config_ParameterID_Message 79 "To Vehicle Output Background 2" 78 "To Vehicle Output Background 1" 77 "To Vehicle Output Offset" 76 "To Vehicle Output Scale" 75 "To Vehicle Output Bit Length" 74 "To Vehicle Output Bit Position" 73 "To Vehicle Output Endianess" 72 "To Vehicle Output Data Type" 71 "To Vehicle Output Message Length" 70 "To Vehicle Output CAN ID" 69 "To Vehicle Repeat Count" 68 "To Vehicle Period" 67 "To Vehicle Period Type" 66 "To Vehicle Bind Next" 65 "To Vehicle Data Value" 64 "To Vehicle Static Message" 51 "To Sygnal Output Background 2" 50 "To Sygnal Output Background 1" 49 "To Sygnal Output Bit Length" 48 "To Sygnal Output Bit Position" 47 "To Sygnal Output Endianess" 46 "To Sygnal Output Message Length" 45 "To Sygnal Output Interface ID" 44 "To Sygnal Output Bus ID" 43 "To Sygnal Output Data Type" 42 "To Sygnal Output CAN ID" 41 "To Sygnal Input Negative Scale" 40 "To Sygnal Input Positive Scale" 39 "To Sygnal Input Offset" 38 "To Sygnal Input Scale" 37 "To Sygnal Input Bit Length" 36 "To Sygnal Input Bit Position" 35 "To Sygnal Input Endianess" 34 "To Sygnal Input Data Type" 33 "To Sygnal Input CAN ID" 32 "To Sygnal Data Passthrough" 0 "Direction" ;
+VAL_ 1024 Config_ParameterID_Heartbeat 6 "Host Heartbeat Startup Delay" 5 "Host Heartbeat Count Enable" 4 "Host Heartbeat Timeout" 3 "Host Heartbeat CAN ID" 2 "Host Heartbeat Enable" 1 "MCM Heartbeat Rate" ;
+VAL_ 1024 Config_ParameterID_Fault 3 "Fail Hard Count" 2 "Fail Operational 2 Count" 1 "Fail Operational 1 Count" 0 "Enable" ;
+VAL_ 1024 Config_ParameterID_CBGlobal 1 "Seed Rate" 0 "Vehicle Baud" ;
+VAL_ 1024 Config_ParameterID_SygnalGlobal 0 "Bus Address" ;
+VAL_ 1024 Config_GetSet 1 "Set" 0 "Get" ;
+VAL_ 1024 Config_SectionID 13 "Fail Op 2" 12 "Fail Op 1" 16 "Report" 31 "SygnalStatic" 8 "Message" 7 "Heartbeat" 6 "Control" 3 "Error" 2 "Fault" 1 "CBGlobal" 0 "SygnalGlobal" ;
+SIG_VALTYPE_ 1025 Config_Value_Message_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_CBGlobal_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_FailOp2_FLOAT32 : 1;
+SIG_VALTYPE_ 1025 Config_Value_FailOp1_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_CBGlobal_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_FailOp2_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_FailOp1_FLOAT32 : 1;
+SIG_VALTYPE_ 1024 Config_Value_Message_FLOAT32 : 1;
+
+SG_MUL_VAL_ 1025 Config_Value_CBGlobal_UINT32 Config_ParameterID_CBGlobal 0-0;
+SG_MUL_VAL_ 1025 Config_Value_Message_Period_Type Config_ParameterID_Message 67-67;
+SG_MUL_VAL_ 1025 Config_Value_Message_UINT32 Config_ParameterID_Message 33-33, 42-42, 50-51, 70-70, 78-79;
+SG_MUL_VAL_ 1025 Config_Value_Message_UINT16 Config_ParameterID_Message 36-37, 44-46, 48-49, 68-69, 71-71, 74-75;
+SG_MUL_VAL_ 1025 Config_Value_Message_UINT1 Config_ParameterID_Message 32-32, 64-64, 66-66;
+SG_MUL_VAL_ 1025 Config_Value_Message_Type Config_ParameterID_Message 34-34, 43-43, 72-72;
+SG_MUL_VAL_ 1025 Config_Value_Message_FLOAT32 Config_ParameterID_Message 38-41, 65-65, 76-77;
+SG_MUL_VAL_ 1025 Config_Value_Message_Endianess Config_ParameterID_Message 35-35, 47-47, 73-73;
+SG_MUL_VAL_ 1025 Config_Value_Message_Direction Config_ParameterID_Message 0-0;
+SG_MUL_VAL_ 1025 Config_Value_CBGlobal_FLOAT32 Config_ParameterID_CBGlobal 2-4;
+SG_MUL_VAL_ 1025 Config_Value_FailOp2_UINT16 Config_ParameterID_FailOp2 1-1, 4-4;
+SG_MUL_VAL_ 1025 Config_Value_FailOp2_UINT1 Config_ParameterID_FailOp2 0-0;
+SG_MUL_VAL_ 1025 Config_Value_FailOp2_FLOAT32 Config_ParameterID_FailOp2 2-3;
+SG_MUL_VAL_ 1025 Config_Value_FailOp1_UINT16 Config_ParameterID_FailOp1 1-1, 4-4;
+SG_MUL_VAL_ 1025 Config_Value_FailOp1_UINT1 Config_ParameterID_FailOp1 0-0;
+SG_MUL_VAL_ 1025 Config_Value_FailOp1_FLOAT32 Config_ParameterID_FailOp1 2-3;
+SG_MUL_VAL_ 1025 Config_ParameterID_FailOp2 Config_SectionID 13-13;
+SG_MUL_VAL_ 1025 Config_ParameterID_FailOp1 Config_SectionID 12-12;
+SG_MUL_VAL_ 1025 Config_Value_CBGlobal_UINT16 Config_ParameterID_CBGlobal 1-1;
+SG_MUL_VAL_ 1025 Config_Value_Report_UINT16 Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1025 Config_Value_Report_SignalID Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1025 Config_Value_SygnalStatic_UINT32 Config_ParameterID_SygnalStatic 1-1, 3-4;
+SG_MUL_VAL_ 1025 Config_Value_SygnalStatic_UINT24 Config_ParameterID_SygnalStatic 0-0;
+SG_MUL_VAL_ 1025 Config_Value_SygnalStatic_UINT16 Config_ParameterID_SygnalStatic 2-2, 5-9, 71-71;
+SG_MUL_VAL_ 1025 Config_ParameterID_SygnalStatic Config_SectionID 31-31;
+SG_MUL_VAL_ 1025 Config_Value_Fault_Type Config_ParameterID_Fault 0-3;
+SG_MUL_VAL_ 1025 Config_Value_Heartbeat_UINT16 Config_ParameterID_Heartbeat 1-1, 3-4, 6-6;
+SG_MUL_VAL_ 1025 Config_Value_Heartbeat_UINT1 Config_ParameterID_Heartbeat 2-2, 5-5;
+SG_MUL_VAL_ 1025 Config_Value_Fault_UINT16 Config_ParameterID_Fault 0-4;
+SG_MUL_VAL_ 1025 Config_Value_SygnalGlobal_UINT7 Config_ParameterID_SygnalGlobal 0-0;
+SG_MUL_VAL_ 1025 Config_ParameterID_Report Config_SectionID 16-16;
+SG_MUL_VAL_ 1025 Config_ParameterID_Message Config_SectionID 8-8;
+SG_MUL_VAL_ 1025 Config_ParameterID_Heartbeat Config_SectionID 7-7;
+SG_MUL_VAL_ 1025 Config_ParameterID_Fault Config_SectionID 2-2;
+SG_MUL_VAL_ 1025 Config_ParameterID_CBGlobal Config_SectionID 1-1;
+SG_MUL_VAL_ 1025 Config_ParameterID_SygnalGlobal Config_SectionID 0-0;
+SG_MUL_VAL_ 1024 Config_Value_CBGlobal_UINT32 Config_ParameterID_CBGlobal 0-0;
+SG_MUL_VAL_ 1024 Config_Value_Message_Period_Type Config_ParameterID_Message 67-67;
+SG_MUL_VAL_ 1024 Config_Value_Message_Direction Config_ParameterID_Message 0-0;
+SG_MUL_VAL_ 1024 Config_Value_CBGlobal_FLOAT32 Config_ParameterID_CBGlobal 2-4;
+SG_MUL_VAL_ 1024 Config_Value_Message_Type Config_ParameterID_Message 34-34, 43-43, 72-72;
+SG_MUL_VAL_ 1024 Config_Value_Message_UINT32 Config_ParameterID_Message 33-33, 42-42, 50-51, 70-70, 78-79;
+SG_MUL_VAL_ 1024 Config_Value_Message_Endianess Config_ParameterID_Message 35-35, 47-47, 73-73;
+SG_MUL_VAL_ 1024 Config_Value_FailOp2_UINT16 Config_ParameterID_FailOp2 1-1, 4-4;
+SG_MUL_VAL_ 1024 Config_Value_FailOp2_UINT1 Config_ParameterID_FailOp2 0-0;
+SG_MUL_VAL_ 1024 Config_Value_FailOp2_FLOAT32 Config_ParameterID_FailOp2 2-3;
+SG_MUL_VAL_ 1024 Config_Value_FailOp1_UINT1 Config_ParameterID_FailOp1 0-0;
+SG_MUL_VAL_ 1024 Config_Value_FailOp1_UINT16 Config_ParameterID_FailOp1 1-1, 4-4;
+SG_MUL_VAL_ 1024 Config_Value_FailOp1_FLOAT32 Config_ParameterID_FailOp1 2-3;
+SG_MUL_VAL_ 1024 Config_ParameterID_FailOp2 Config_SectionID 13-13;
+SG_MUL_VAL_ 1024 Config_ParameterID_FailOp1 Config_SectionID 12-12;
+SG_MUL_VAL_ 1024 Config_Value_CBGlobal_UINT16 Config_ParameterID_CBGlobal 1-1;
+SG_MUL_VAL_ 1024 Config_Value_Report_UINT16 Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1024 Config_Value_Report_SignalID Config_ParameterID_Report 1-1;
+SG_MUL_VAL_ 1024 Config_Value_SygnalStatic_UINT32 Config_ParameterID_SygnalStatic 1-1, 3-4;
+SG_MUL_VAL_ 1024 Config_Value_SygnalStatic_UINT24 Config_ParameterID_SygnalStatic 0-0;
+SG_MUL_VAL_ 1024 Config_Value_SygnalStatic_UINT16 Config_ParameterID_SygnalStatic 2-2, 5-9, 71-71;
+SG_MUL_VAL_ 1024 Config_ParameterID_SygnalStatic Config_SectionID 31-31;
+SG_MUL_VAL_ 1024 Config_Value_Fault_Type Config_ParameterID_Fault 0-3;
+SG_MUL_VAL_ 1024 Config_Value_Heartbeat_UINT16 Config_ParameterID_Heartbeat 1-1, 3-4, 6-6;
+SG_MUL_VAL_ 1024 Config_Value_Heartbeat_UINT1 Config_ParameterID_Heartbeat 2-2, 5-5;
+SG_MUL_VAL_ 1024 Config_Value_Message_UINT16 Config_ParameterID_Message 36-37, 44-46, 48-49, 68-69, 71-71, 74-75;
+SG_MUL_VAL_ 1024 Config_Value_Message_UINT1 Config_ParameterID_Message 32-32, 64-64, 66-66;
+SG_MUL_VAL_ 1024 Config_Value_Message_FLOAT32 Config_ParameterID_Message 38-41, 65-65, 76-77;
+SG_MUL_VAL_ 1024 Config_Value_Fault_UINT16 Config_ParameterID_Fault 0-4;
+SG_MUL_VAL_ 1024 Config_Value_SygnalGlobal_UINT7 Config_ParameterID_SygnalGlobal 0-0;
+SG_MUL_VAL_ 1024 Config_ParameterID_Report Config_SectionID 16-16;
+SG_MUL_VAL_ 1024 Config_ParameterID_Message Config_SectionID 8-8;
+SG_MUL_VAL_ 1024 Config_ParameterID_Heartbeat Config_SectionID 7-7;
+SG_MUL_VAL_ 1024 Config_ParameterID_Fault Config_SectionID 2-2;
+SG_MUL_VAL_ 1024 Config_ParameterID_CBGlobal Config_SectionID 1-1;
+SG_MUL_VAL_ 1024 Config_ParameterID_SygnalGlobal Config_SectionID 0-0;
