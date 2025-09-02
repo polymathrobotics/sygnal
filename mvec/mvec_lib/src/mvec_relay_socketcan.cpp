@@ -14,6 +14,7 @@
 
 #include "mvec_lib/mvec_relay_socketcan.hpp"
 
+#include <iostream>
 #include <mutex>
 #include <utility>
 
@@ -121,7 +122,10 @@ std::future<MvecRelayCommandReply> MvecRelaySocketcan::send_relay_command()
   }
 
   // Transmit the command message via socketcan adapter
-  socketcan_adapter_->send(command_frame);
+  auto send_result = socketcan_adapter_->send(command_frame);
+  if (send_result) {
+    std::cout << send_result.value() << std::endl;
+  }
 
   return future;
 }
