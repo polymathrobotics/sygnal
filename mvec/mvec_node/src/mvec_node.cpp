@@ -14,10 +14,13 @@
 
 #include "mvec_node/mvec_node.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <magic_enum.hpp>
 
@@ -32,6 +35,8 @@ MvecNode::MvecNode(const rclcpp::NodeOptions & options)
   // Declare parameters
   declare_parameter("can_interface", std::string("can0"));
   declare_parameter("publish_rate", 10.0);  // Hz
+  declare_parameter("timeout_ms", 5000.0);  // ms
+  declare_parameter("state_query_frequency", 2.0);  // Hz
 }
 
 MvecNode::~MvecNode()
@@ -48,6 +53,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn MvecNo
   // Get parameters
   can_interface_ = get_parameter("can_interface").as_string();
   publish_rate_ = get_parameter("publish_rate").as_double();
+  double timeout_ms = get_parameter("timeout_ms").as_double();
+  timeout_ns_ = std::chrono::nanoseconds(static_cast<int64_t>(timeout_ms * 1000000));
 
   RCLCPP_INFO(get_logger(), "Configuring MVEC node with CAN interface: %s", can_interface_.c_str());
 
@@ -76,15 +83,23 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn MvecNo
     // Create publishers
     diagnostics_pub_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", rclcpp::QoS(10));
 
-    // Create service
-    set_relay_service_ = create_service<mvec_msgs::srv::SetRelayState>(
-      "~/set_relay_state",
-      std::bind(&MvecNode::set_relay_state_callback, this, std::placeholders::_1, std::placeholders::_2));
+    // Create services
+    set_single_relay_service_ = create_service<mvec_msgs::srv::SetSingleRelay>(
+      "~/set_single_relay",
+      std::bind(&MvecNode::setSingleRelayCallback, this, std::placeholders::_1, std::placeholders::_2));
+
+    set_multi_relay_service_ = create_service<mvec_msgs::srv::SetMultiRelay>(
+      "~/set_multi_relay",
+      std::bind(&MvecNode::setMultiRelayCallback, this, std::placeholders::_1, std::placeholders::_2));
+
+    trigger_preset_service_ = create_service<mvec_msgs::srv::TriggerPreset>(
+      "~/trigger_preset",
+      std::bind(&MvecNode::triggerPresetCallback, this, std::placeholders::_1, std::placeholders::_2));
 
     // Create timer for publishing
     auto period = std::chrono::duration<double>(1.0 / publish_rate_);
     timer_ = create_wall_timer(
-      std::chrono::duration_cast<std::chrono::milliseconds>(period), std::bind(&MvecNode::timer_callback, this));
+      std::chrono::duration_cast<std::chrono::milliseconds>(period), std::bind(&MvecNode::timerCallback, this));
 
     RCLCPP_INFO(get_logger(), "MVEC node configured successfully");
     return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
@@ -119,7 +134,9 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn MvecNo
 {
   // Clean up resources
   timer_.reset();
-  set_relay_service_.reset();
+  set_single_relay_service_.reset();
+  set_multi_relay_service_.reset();
+  trigger_preset_service_.reset();
   diagnostics_pub_.reset();
 
   if (socketcan_adapter_) {
@@ -133,70 +150,170 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn MvecNo
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
 
-void MvecNode::timer_callback()
+void MvecNode::timerCallback()
 {
   // Publish diagnostics array
-  auto diagnostics_msg = create_diagnostics_message();
+  auto diagnostics_msg = createDiagnosticsMessage();
   diagnostics_pub_->publish(diagnostics_msg);
 }
 
-void MvecNode::set_relay_state_callback(
-  const std::shared_ptr<mvec_msgs::srv::SetRelayState::Request> request,
-  std::shared_ptr<mvec_msgs::srv::SetRelayState::Response> response)
+std::optional<std::string> MvecNode::set_single_relay(mvec_msgs::msg::Relay relay)
 {
-  RCLCPP_INFO(get_logger(), "Setting relay %d to state %d", request->relay_id, request->relay_state);
-
   try {
     // Validate relay ID
-    if (request->relay_id >= polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS) {
-      response->success = false;
-      response->message = "Invalid relay ID: " + std::to_string(request->relay_id);
-      RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
-      return;
-    }
-
-    // Validate relay state
-    if (request->relay_state > 1) {
-      response->success = false;
-      response->message = "Invalid relay state: " + std::to_string(request->relay_state);
-      RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
-      return;
+    if (relay.relay_id >= polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS) {
+      std::string error_msg = "Invalid relay ID: " + std::to_string(relay.relay_id);
+      RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+      return error_msg;
     }
 
     // Clear relay command before setting new state
     mvec_socketcan_->clear_relay();
 
     // Set the specific relay state
-    mvec_socketcan_->set_relay_in_command(request->relay_id, request->relay_state);
+    mvec_socketcan_->set_relay_in_command(relay.relay_id, relay.state ? 1 : 0);
 
     // Send command and wait for response
     auto future = mvec_socketcan_->send_relay_command();
-    auto status = future.wait_for(std::chrono::seconds(5));
+    auto status = future.wait_for(timeout_ns_);
 
     if (status == std::future_status::ready) {
       auto command_reply = future.get();
       if (command_reply.get_success() == 1) {
-        response->success = true;
-        response->message = "Relay command successful";
-        RCLCPP_INFO(get_logger(), "Successfully set relay %d to state %d", request->relay_id, request->relay_state);
+        RCLCPP_INFO(get_logger(), "Successfully set relay %d to state %s", relay.relay_id, relay.state ? "ON" : "OFF");
+        return std::nullopt;  // Success
       } else {
-        response->success = false;
-        response->message = "MVEC device rejected relay command";
-        RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+        std::string error_msg = "MVEC device rejected relay command";
+        RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+        return error_msg;
       }
     } else {
-      response->success = false;
-      response->message = "Timeout waiting for relay command response";
-      RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+      std::string error_msg = "Timeout waiting for relay command response";
+      RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+      return error_msg;
     }
   } catch (const std::exception & e) {
-    response->success = false;
-    response->message = "Exception during relay command: " + std::string(e.what());
-    RCLCPP_ERROR(get_logger(), "%s", response->message.c_str());
+    std::string error_msg = "Exception during relay command: " + std::string(e.what());
+    RCLCPP_ERROR(get_logger(), "%s", error_msg.c_str());
+    return error_msg;
   }
 }
 
-diagnostic_msgs::msg::DiagnosticArray MvecNode::create_diagnostics_message()
+std::optional<std::string> MvecNode::set_multi_relay(const std::vector<mvec_msgs::msg::Relay> & relays)
+{
+  try {
+    // Validate all relay IDs first
+    for (const auto & relay : relays) {
+      if (relay.relay_id >= polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS) {
+        std::string error_msg = "Invalid relay ID: " + std::to_string(relay.relay_id);
+        RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+        return error_msg;
+      }
+    }
+
+    // Clear relay command before setting new states
+    mvec_socketcan_->clear_relay();
+
+    // Set all relay states
+    for (const auto & relay : relays) {
+      mvec_socketcan_->set_relay_in_command(relay.relay_id, relay.state ? 1 : 0);
+      RCLCPP_DEBUG(get_logger(), "Set relay %d to %s", relay.relay_id, relay.state ? "ON" : "OFF");
+    }
+
+    // Send command and wait for response
+    auto future = mvec_socketcan_->send_relay_command();
+    auto status = future.wait_for(timeout_ns_);
+
+    if (status == std::future_status::ready) {
+      auto command_reply = future.get();
+      if (command_reply.get_success() == 1) {
+        RCLCPP_INFO(get_logger(), "Successfully set %zu relays", relays.size());
+        return std::nullopt;  // Success
+      } else {
+        std::string error_msg = "MVEC device rejected multi-relay command";
+        RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+        return error_msg;
+      }
+    } else {
+      std::string error_msg = "Timeout waiting for multi-relay command response";
+      RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+      return error_msg;
+    }
+  } catch (const std::exception & e) {
+    std::string error_msg = "Exception during multi-relay command: " + std::string(e.what());
+    RCLCPP_ERROR(get_logger(), "%s", error_msg.c_str());
+    return error_msg;
+  }
+}
+
+void MvecNode::setSingleRelayCallback(
+  const std::shared_ptr<mvec_msgs::srv::SetSingleRelay::Request> request,
+  std::shared_ptr<mvec_msgs::srv::SetSingleRelay::Response> response)
+{
+  RCLCPP_INFO(
+    get_logger(), "Setting single relay %d to state %s", request->relay.relay_id, request->relay.state ? "ON" : "OFF");
+
+  auto result = set_single_relay(request->relay);
+  if (result.has_value()) {
+    // Error occurred
+    response->success = false;
+    response->message = result.value();
+  } else {
+    // Success
+    response->success = true;
+    response->message = "Single relay command successful";
+  }
+}
+
+void MvecNode::setMultiRelayCallback(
+  const std::shared_ptr<mvec_msgs::srv::SetMultiRelay::Request> request,
+  std::shared_ptr<mvec_msgs::srv::SetMultiRelay::Response> response)
+{
+  RCLCPP_INFO(get_logger(), "Setting %zu relays", request->relays.size());
+
+  auto result = set_multi_relay(request->relays);
+  if (result.has_value()) {
+    // Error occurred
+    response->success = false;
+    response->message = result.value();
+  } else {
+    // Success
+    response->success = true;
+    response->message = "Multi-relay command successful";
+  }
+}
+
+void MvecNode::triggerPresetCallback(
+  const std::shared_ptr<mvec_msgs::srv::TriggerPreset::Request> request,
+  std::shared_ptr<mvec_msgs::srv::TriggerPreset::Response> response)
+{
+  RCLCPP_INFO(get_logger(), "Triggering preset: %s", request->name.c_str());
+
+  // Find the preset by name
+  auto it = std::find_if(presets_.begin(), presets_.end(), [&request](const mvec_msgs::msg::Preset & preset) {
+    return preset.name == request->name;
+  });
+
+  if (it == presets_.end()) {
+    response->success = false;
+    response->message = "Preset not found: " + request->name;
+    RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+    return;
+  }
+
+  auto result = set_multi_relay(it->relays);
+  if (result.has_value()) {
+    // Error occurred
+    response->success = false;
+    response->message = "Failed to trigger preset '" + request->name + "': " + result.value();
+  } else {
+    // Success
+    response->success = true;
+    response->message = "Preset '" + request->name + "' triggered successfully";
+  }
+}
+
+diagnostic_msgs::msg::DiagnosticArray MvecNode::createDiagnosticsMessage()
 {
   diagnostic_msgs::msg::DiagnosticArray array_msg;
 

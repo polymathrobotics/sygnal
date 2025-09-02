@@ -1,15 +1,12 @@
-# Service to set a specific relay state
+# Service to trigger a named preset
 # Request
 
-# Relay ID (0-11)
-uint8 relay_id
-
-# Relay state (0=off, 1=on)
-uint8 relay_state
+# Name of the preset to trigger
+string name
 
 ---
-# Response
 
+# Response
 # Success flag - true if relay command was acknowledged by MVEC device
 bool success
 

@@ -15,18 +15,20 @@
 #ifndef MVEC_NODE__MVEC_NODE_HPP_
 #define MVEC_NODE__MVEC_NODE_HPP_
 
+#include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "mvec_lib/mvec_relay_socketcan.hpp"
-#include "mvec_msgs/msg/error_status.hpp"
-#include "mvec_msgs/msg/fuse_status.hpp"
-#include "mvec_msgs/msg/population_status.hpp"
-#include "mvec_msgs/msg/relay_query.hpp"
-#include "mvec_msgs/msg/relay_status.hpp"
-#include "mvec_msgs/srv/set_relay_state.hpp"
+#include "mvec_msgs/msg/preset.hpp"
+#include "mvec_msgs/msg/relay.hpp"
+#include "mvec_msgs/srv/set_multi_relay.hpp"
+#include "mvec_msgs/srv/set_single_relay.hpp"
+#include "mvec_msgs/srv/trigger_preset.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
@@ -62,22 +64,48 @@ protected:
 
 private:
   /// @brief Timer callback to publish diagnostics and status messages
-  void timer_callback();
+  void timerCallback();
 
-  /// @brief Service callback to set relay state
-  /// @param request Service request containing relay ID and state
+  /// @brief Service callback to set single relay
+  /// @param request Service request containing relay
   /// @param response Service response with success flag
-  void set_relay_state_callback(
-    const std::shared_ptr<mvec_msgs::srv::SetRelayState::Request> request,
-    std::shared_ptr<mvec_msgs::srv::SetRelayState::Response> response);
+  void setSingleRelayCallback(
+    const std::shared_ptr<mvec_msgs::srv::SetSingleRelay::Request> request,
+    std::shared_ptr<mvec_msgs::srv::SetSingleRelay::Response> response);
+
+  /// @brief Service callback to set multiple relays
+  /// @param request Service request containing relay array
+  /// @param response Service response with success flag
+  void setMultiRelayCallback(
+    const std::shared_ptr<mvec_msgs::srv::SetMultiRelay::Request> request,
+    std::shared_ptr<mvec_msgs::srv::SetMultiRelay::Response> response);
+
+  /// @brief Service callback to trigger preset
+  /// @param request Service request containing preset name
+  /// @param response Service response with success flag
+  void triggerPresetCallback(
+    const std::shared_ptr<mvec_msgs::srv::TriggerPreset::Request> request,
+    std::shared_ptr<mvec_msgs::srv::TriggerPreset::Response> response);
+
+  /// @brief Set a single relay, send it and wait for TIMEOUT amount of time
+  /// @param relay
+  /// @return error message if failed, nullopt if successful
+  std::optional<std::string> set_single_relay(mvec_msgs::msg::Relay relay);
+
+  /// @brief Set multiple relays via a vector, send it and wait for a TIMEOUT amount of time
+  /// @param relays
+  /// @return error message if failed, nullopt if successful
+  std::optional<std::string> set_multi_relay(const std::vector<mvec_msgs::msg::Relay> & relays);
 
   /// @brief Create diagnostics array from MVEC status
   /// @return Diagnostic array message
-  diagnostic_msgs::msg::DiagnosticArray create_diagnostics_message();
+  diagnostic_msgs::msg::DiagnosticArray createDiagnosticsMessage();
 
   // Parameters
   std::string can_interface_;
   double publish_rate_;
+
+  std::chrono::nanoseconds timeout_ns_;
 
   // SocketCAN and MVEC components
   std::shared_ptr<polymath::socketcan::SocketcanAdapter> socketcan_adapter_;
@@ -85,10 +113,14 @@ private:
 
   // ROS2 components
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::Service<mvec_msgs::srv::SetRelayState>::SharedPtr set_relay_service_;
+  rclcpp::Service<mvec_msgs::srv::SetSingleRelay>::SharedPtr set_single_relay_service_;
+  rclcpp::Service<mvec_msgs::srv::SetMultiRelay>::SharedPtr set_multi_relay_service_;
+  rclcpp::Service<mvec_msgs::srv::TriggerPreset>::SharedPtr trigger_preset_service_;
 
   // Publishers
   rclcpp_lifecycle::LifecyclePublisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
+
+  std::vector<mvec_msgs::msg::Preset> presets_;
 };
 
 }  // namespace polymath::mvec

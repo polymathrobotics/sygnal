@@ -1,0 +1,14 @@
+# Service to set a specific relay state
+# Request
+
+# Relay ID (0-11)
+Relay relay
+
+---
+# Response
+
+# Success flag - true if relay command was acknowledged by MVEC device
+bool success
+
+# Optional message describing result or error
+string message

@@ -21,15 +21,14 @@ find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 
 set(msg_files
-  "msg/RelayStatus.msg"
-  "msg/RelayQuery.msg"
-  "msg/FuseStatus.msg"
-  "msg/ErrorStatus.msg"
-  "msg/PopulationStatus.msg"
+  "msg/Relay.msg"
+  "msg/Preset.msg"
 )
 
 set(srv_files
-  "srv/SetRelayState.srv"
+  "srv/SetSingleRelay.srv"
+  "srv/SetMultiRelay.srv"
+  "srv/TriggerPreset.srv"
 )
 
 set(msg_dependencies
