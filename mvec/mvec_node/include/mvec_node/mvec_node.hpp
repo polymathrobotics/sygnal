@@ -31,6 +31,7 @@
 #include "mvec_msgs/srv/set_single_relay.hpp"
 #include "mvec_msgs/srv/trigger_preset.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_components/register_node_macro.hpp"
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
 
@@ -135,5 +136,7 @@ private:
 };
 
 }  // namespace polymath::mvec
+
+RCLCPP_COMPONENTS_REGISTER_NODE(polymath::mvec::MvecNode)
 
 #endif  // MVEC_NODE__MVEC_NODE_HPP_

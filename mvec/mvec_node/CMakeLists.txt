@@ -30,6 +30,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(diagnostic_msgs REQUIRED)
 find_package(magic_enum REQUIRED)
 find_package(mvec_msgs REQUIRED)
@@ -49,6 +50,7 @@ target_compile_definitions(mvec_node PRIVATE "MVEC_NODE_BUILDING_LIBRARY")
 target_link_libraries(mvec_node PUBLIC
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
+  rclcpp_components::component
   ${diagnostic_msgs_TARGETS}
   magic_enum::magic_enum
   ${mvec_msgs_TARGETS}
@@ -56,16 +58,18 @@ target_link_libraries(mvec_node PUBLIC
   socketcan_adapter::socketcan_adapter
 )
 
-# Executable
-add_executable(mvec_bridge src/main.cpp)
-target_include_directories(mvec_bridge PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
-)
-target_link_libraries(mvec_bridge PUBLIC mvec_node)
+# Register component
+rclcpp_components_register_nodes(mvec_node "polymath::mvec::MvecNode")
+set(node_plugins "${node_plugins}polymath::mvec::MvecNode;$<TARGET_FILE:mvec_node>\n")
+
+# Generate composable node executable
+rclcpp_components_register_node(mvec_node
+  PLUGIN "polymath::mvec::MvecNode"
+  EXECUTABLE mvec_bridge)
 
 # Installs
 install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 install(TARGETS mvec_node
   EXPORT ${PROJECT_NAME}_TARGETS
@@ -81,5 +85,5 @@ install(EXPORT ${PROJECT_NAME}_TARGETS
 
 # Export
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
-ament_export_dependencies(rclcpp rclcpp_lifecycle diagnostic_msgs magic_enum mvec_msgs mvec_lib socketcan_adapter)
+ament_export_dependencies(rclcpp rclcpp_lifecycle rclcpp_components diagnostic_msgs magic_enum mvec_msgs mvec_lib socketcan_adapter)
 ament_package()

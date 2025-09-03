@@ -14,7 +14,7 @@
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import LifecycleNode
 from launch_ros.events.lifecycle import ChangeState
 from launch_ros.event_handlers import OnStateTransition
@@ -23,10 +23,22 @@ from launch.event_handlers import OnProcessStart
 from launch.events import matches_action
 from launch.conditions import IfCondition
 from lifecycle_msgs.msg import Transition
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
+    # Default config file path using find-pkg-share
+    default_config_file = PathJoinSubstitution(
+        [FindPackageShare("mvec_node"), "config", "relay_presets.yaml"]
+    )
+
     # Define launch arguments
+    config_file_arg = DeclareLaunchArgument(
+        "config_file",
+        default_value=default_config_file,
+        description="Path to the MVEC configuration file with relay presets",
+    )
+
     can_interface_arg = DeclareLaunchArgument(
         "can_interface",
         default_value="can0",
@@ -35,8 +47,14 @@ def generate_launch_description():
 
     publish_rate_arg = DeclareLaunchArgument(
         "publish_rate",
-        default_value="10.0",
+        default_value="3.0",
         description="Rate in Hz to publish MVEC status and diagnostics",
+    )
+
+    timeout_ms_arg = DeclareLaunchArgument(
+        "timeout_ms",
+        default_value="500",
+        description="Timeout in milliseconds for MVEC communication",
     )
 
     auto_configure_arg = DeclareLaunchArgument(
@@ -58,10 +76,12 @@ def generate_launch_description():
         name="mvec_bridge",
         namespace="",
         parameters=[
+            LaunchConfiguration("config_file"),
             {
                 "can_interface": LaunchConfiguration("can_interface"),
                 "publish_rate": LaunchConfiguration("publish_rate"),
-            }
+                "timeout_ms": LaunchConfiguration("timeout_ms"),
+            },
         ],
         output="screen",
     )
@@ -102,8 +122,10 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            config_file_arg,
             can_interface_arg,
             publish_rate_arg,
+            timeout_ms_arg,
             auto_configure_arg,
             auto_activate_arg,
             mvec_bridge_node,
