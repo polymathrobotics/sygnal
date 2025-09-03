@@ -75,8 +75,6 @@ MvecMessageType MvecRelaySocketcan::parse(const socketcan::CanFrame & frame)
 void MvecRelaySocketcan::set_relay_in_command(uint8_t relay_id, uint8_t relay_state)
 {
   /// TODO: (zeerek) Where do we check against the population table? When do we initially query the population table?
-  std::cout << "setting relay_id: " << static_cast<int>(relay_id) << "to value: " << static_cast<int>(relay_state)
-            << std::endl;
   relay_impl_.set_relay_in_command(relay_id, relay_state);
 }
 
@@ -124,12 +122,7 @@ std::future<MvecRelayCommandReply> MvecRelaySocketcan::send_relay_command()
   }
 
   // Transmit the command message via socketcan adapter
-  std::cout << "sending frame with id: " << std::hex << command_frame.get_id() << "with data: " << std::hex
-            << static_cast<int>(command_frame.get_data()[0]) << std::endl;
-  auto send_result = socketcan_adapter_->send(command_frame);
-  if (send_result) {
-    std::cout << "error: " << send_result.value() << std::endl;
-  }
+  socketcan_adapter_->send(command_frame);
 
   return future;
 }
