@@ -128,16 +128,17 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
     std::cout << "Testing automatic status message updates..." << std::endl;
 
     std::atomic<bool> running{true};
-    auto fuse_status_future = std::async(std::launch::async, [&]() {
-      while (running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        const auto fuse_status = mvec_socketcan->get_last_fuse_status();
-        if (fuse_status.has_value()) {
-          return fuse_status;
+    auto fuse_status_future =
+      std::async(std::launch::async, [&]() -> std::optional<polymath::sygnal::MvecFuseStatusMessage> {
+        while (running) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          const auto fuse_status = mvec_socketcan->get_last_fuse_status();
+          if (fuse_status.has_value()) {
+            return fuse_status;
+          }
         }
-      }
-      return std::nullopt;
-    });
+        return std::nullopt;
+      });
 
     REQUIRE(fuse_status_future.wait_for(std::chrono::seconds(2)) == std::future_status::ready);
     running = false;
@@ -157,16 +158,17 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
     }
 
     running = true;
-    auto relay_status_future = std::async(std::launch::async, [&]() {
-      while (running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        const auto relay_status = mvec_socketcan->get_last_relay_status();
-        if (relay_status.has_value()) {
-          return relay_status;
+    auto relay_status_future =
+      std::async(std::launch::async, [&]() -> std::optional<polymath::sygnal::MvecRelayStatusMessage> {
+        while (running) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
+          const auto relay_status = mvec_socketcan->get_last_relay_status();
+          if (relay_status.has_value()) {
+            return relay_status;
+          }
         }
-      }
-      return std::nullopt;
-    });
+        return std::nullopt;
+      });
 
     REQUIRE(relay_status_future.wait_for(std::chrono::seconds(2)) == std::future_status::ready);
     running = false;
