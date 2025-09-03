@@ -1,0 +1,12 @@
+mvec_node:
+  ros__parameters:
+    preset_0_name: "enable"
+    preset_0_relays:
+      - 0:1 # relay_id:relay_state
+      - 4:0
+      - 2:1
+    preset_1_name: "start"
+    preset_1_relays:
+      - 10:0 # relay_id:relay_state
+      - 8:1
+      - 1:0

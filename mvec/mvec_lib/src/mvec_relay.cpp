@@ -33,11 +33,8 @@ MvecRelay::MvecRelay()
 , relay_query_reply_(mvec_source_address_, self_address_)
 , population_reply_(mvec_source_address_, self_address_)
 {
-  relay_command_data_.fill(0xFF);
+  clearRelayCommands();
   query_data_.fill(0xFF);
-
-  relay_command_data_[MvecRelayCommandMessageStructure::MSG_ID_BYTE] = MvecCommandQueryIds::RELAY_COMMAND_WITH_FEEDBACK;
-  relay_command_data_[MvecRelayCommandMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
 }
 
 void MvecRelay::set_relay_in_command(uint8_t relay_id, uint8_t relay_state)
@@ -75,6 +72,8 @@ void MvecRelay::set_high_side_output_in_command(uint8_t high_side_output_state)
 void MvecRelay::clearRelayCommands()
 {
   relay_command_data_.fill(0xFF);
+  relay_command_data_[MvecRelayCommandMessageStructure::MSG_ID_BYTE] = MvecCommandQueryIds::RELAY_COMMAND_WITH_FEEDBACK;
+  relay_command_data_[MvecRelayCommandMessageStructure::GRID_ID_BYTE] = MvecProtocol::DEFAULT_GRID_ADDRESS;
 }
 
 socketcan::CanFrame MvecRelay::getRelayCommandMessage()

@@ -1,0 +1,14 @@
+# Service to trigger a named preset
+# Request
+
+# Name of the preset to trigger
+string name
+
+---
+
+# Response
+# Success flag - true if relay command was acknowledged by MVEC device
+bool success
+
+# Optional message describing result or error
+string message

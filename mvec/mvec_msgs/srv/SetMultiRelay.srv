@@ -1,0 +1,14 @@
+# Service to set multiple relay states
+# Request
+
+# Array of relays to set
+Relay[] relays
+
+---
+# Response
+
+# Success flag - true if relay command was acknowledged by MVEC device
+bool success
+
+# Optional message describing result or error
+string message
