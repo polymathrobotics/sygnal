@@ -20,6 +20,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <magic_enum.hpp>
@@ -172,11 +173,15 @@ void MvecNode::timerCallback()
       feedback_msg.high_side_output_state = relay_query_reply.get_high_side_output_state();
 
       // Populate relay states
+      std::vector<mvec_msgs::msg::Relay> defaults;
       for (int i = 0; i < polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS; ++i) {
         mvec_msgs::msg::Relay relay;
         relay.relay_id = static_cast<uint8_t>(i);
         relay.state = relay_query_reply.get_relay_state(i);
         feedback_msg.relay_states.push_back(relay);
+
+        relay.state = relay_query_reply.get_relay_default(i);
+        defaults.push_back(relay);
       }
 
       current_relay_states_ = feedback_msg;
@@ -196,6 +201,26 @@ void MvecNode::timerCallback()
   if (current_relay_states_.has_value()) {
     feedback_pub_->publish(current_relay_states_.value());
   }
+}
+
+void MvecNode::addDefaultPresetIfNotPresent(const std::vector<mvec_msgs::msg::Relay> & default_relays)
+{
+  // Find the preset by name
+  auto it = std::find_if(presets_.begin(), presets_.end(), [](const mvec_msgs::msg::Preset & preset) {
+    return preset.name == std::string("DEFAULTS");
+  });
+
+  if (it != presets_.end()) {
+    RCLCPP_DEBUG(get_logger(), "Ignoring new defaults, already defined");
+    return;
+  }
+
+  mvec_msgs::msg::Preset default_preset;
+  default_preset.name = "DEFAULT";
+  default_preset.relays = default_relays;
+
+  // move so no copy
+  presets_.push_back(std::move(default_preset));
 }
 
 std::optional<std::string> MvecNode::set_single_relay(mvec_msgs::msg::Relay relay)

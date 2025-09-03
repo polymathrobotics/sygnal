@@ -88,6 +88,8 @@ private:
     const std::shared_ptr<mvec_msgs::srv::TriggerPreset::Request> request,
     std::shared_ptr<mvec_msgs::srv::TriggerPreset::Response> response);
 
+  void addDefaultPresetIfNotPresent(const std::vector<mvec_msgs::msg::Relay> & default_relays);
+
   /// @brief Set a single relay, send it and wait for TIMEOUT amount of time
   /// @param relay
   /// @return error message if failed, nullopt if successful
