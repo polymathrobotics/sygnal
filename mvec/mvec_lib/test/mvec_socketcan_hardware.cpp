@@ -136,6 +136,7 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
           return fuse_status;
         }
       }
+      return std::nullopt;
     });
 
     REQUIRE(fuse_status_future.wait_for(std::chrono::seconds(2)) == std::future_status::ready);
@@ -164,6 +165,7 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
           return relay_status;
         }
       }
+      return std::nullopt;
     });
 
     REQUIRE(relay_status_future.wait_for(std::chrono::seconds(2)) == std::future_status::ready);
