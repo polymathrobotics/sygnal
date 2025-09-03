@@ -37,6 +37,15 @@ find_package(mvec_msgs REQUIRED)
 find_package(mvec_lib REQUIRED)
 find_package(socketcan_adapter REQUIRED)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  message(STATUS "Enabling AddressSanitizer (ASAN) for Debug build")
+  set(ASAN_FLAGS "-fsanitize=address -fno-omit-frame-pointer")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_FLAGS}")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ASAN_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ASAN_FLAGS}")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_FLAGS}")
+endif()
+
 # Primary library
 add_library(mvec_node SHARED
   src/mvec_node.cpp
@@ -58,10 +67,6 @@ target_link_libraries(mvec_node PUBLIC
   socketcan_adapter::socketcan_adapter
 )
 
-# Register component
-rclcpp_components_register_nodes(mvec_node "polymath::mvec::MvecNode")
-set(node_plugins "${node_plugins}polymath::mvec::MvecNode;$<TARGET_FILE:mvec_node>\n")
-
 # Generate composable node executable
 rclcpp_components_register_node(mvec_node
   PLUGIN "polymath::mvec::MvecNode"
@@ -71,12 +76,14 @@ rclcpp_components_register_node(mvec_node
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
+
 install(TARGETS mvec_node
   EXPORT ${PROJECT_NAME}_TARGETS
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
 install(TARGETS mvec_bridge DESTINATION lib/${PROJECT_NAME})
 install(EXPORT ${PROJECT_NAME}_TARGETS
   NAMESPACE ${PROJECT_NAME}::
@@ -85,5 +92,4 @@ install(EXPORT ${PROJECT_NAME}_TARGETS
 
 # Export
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
-ament_export_dependencies(rclcpp rclcpp_lifecycle rclcpp_components diagnostic_msgs magic_enum mvec_msgs mvec_lib socketcan_adapter)
 ament_package()
