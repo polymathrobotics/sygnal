@@ -159,6 +159,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn MvecNo
 
 void MvecNode::timerCallback()
 {
+  /// TODO:(zeerekahmad) If we haven't received status updates and/or are timing out on relay states, set diagnostics to failing
   // Query relay states asynchronously
   auto relay_state_future = mvec_socketcan_->get_relay_state();
   auto status = relay_state_future.wait_for(std::chrono::milliseconds(100));
@@ -225,6 +226,7 @@ void MvecNode::addDefaultPresetIfNotPresent(const std::vector<mvec_msgs::msg::Re
 
 std::optional<std::string> MvecNode::set_single_relay(mvec_msgs::msg::Relay relay)
 {
+  /// TODO:(zeerekahmad): Reject unpopulated relay?
   // Validate relay ID
   if (relay.relay_id >= polymath::sygnal::MvecHardware::MAX_NUMBER_RELAYS) {
     std::string error_msg = "Invalid relay ID: " + std::to_string(relay.relay_id);
