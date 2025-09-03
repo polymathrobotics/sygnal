@@ -183,7 +183,7 @@ void MvecNode::timerCallback()
         relay.state = relay_query_reply.get_relay_default(i);
         defaults.push_back(relay);
       }
-
+      addDefaultPresetIfNotPresent(defaults);
       current_relay_states_ = feedback_msg;
       RCLCPP_DEBUG(get_logger(), "Updated relay states from hardware");
     } else {
