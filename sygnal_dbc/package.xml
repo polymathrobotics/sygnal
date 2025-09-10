@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>sygnal_dbc</name>
-  <version>0.1.0</version>
+  <version>0.0.0</version>
   <description>DBC database package for Sygnal. Installs DBC files and exposes SYGNAL_DBC_DIR for consumers.</description>
-
-  <maintainer email="maintainer@example.com">Sygnal Maintainer</maintainer>
-  <license>Proprietary</license>
+  <maintainer email="engineering@polymathrobotics.com">Polymath Engineering</maintainer>
+  <license>Apache-2.0</license>
+  <author email="zeerekahmad@hotmail.com">Zeerek Ahmad</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>python3-cantools-pip</buildtool_depend>
@@ -14,4 +14,3 @@
     <build_type>ament_cmake</build_type>
   </export>
 </package>
-

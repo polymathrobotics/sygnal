@@ -16,12 +16,14 @@ Prereqs:
 - Python 3 with cantools: `python3 -m pip install cantools`
 
 Build only this package:
+
 ```
 colcon build --packages-select sygnal_dbc
 ```
 
 ## Using in C++ (ament_cmake)
 In your package CMakeLists.txt:
+
 ```
 find_package(ament_cmake REQUIRED)
 find_package(sygnal_dbc REQUIRED)
@@ -33,6 +35,7 @@ target_link_libraries(my_node sygnal_dbc)
 ```
 
 Include headers (lowercase file basenames, folder layout mirrors `database/`):
+
 ```
 #include <sygnal_dbc/cb/configuration.h>
 #include <sygnal_dbc/mcm/heartbeat.h>
@@ -43,6 +46,7 @@ The exact header names come from each DBC file name, lowercased.
 ## Accessing raw DBCs
 After `find_package(sygnal_dbc)`, the CMake variable `SYGNAL_DBC_DIR` is set to
 `<install-prefix>/share/sygnal_dbc/database`. Use it to locate raw `.dbc` files:
+
 ```
 # Example: install a copy of a specific dbc next to your target
 install(FILES "${SYGNAL_DBC_DIR}/cb/Configuration.dbc" DESTINATION share/${PROJECT_NAME}/dbc)
