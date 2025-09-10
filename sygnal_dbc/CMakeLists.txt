@@ -89,14 +89,12 @@ install(
 
 # Export a config extras so consumers get SYGNAL_DBC_DIR
 set(_extras_file "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}-extras.cmake")
+set(_extras_args)
 if(EXISTS ${_extras_file})
-  ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-  ament_export_include_directories("include")
-  ament_export_libraries(${PROJECT_NAME})
-  ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
-else()
-  ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-  ament_export_include_directories("include")
-  ament_export_libraries(${PROJECT_NAME})
-  ament_package()
+  set(_extras_args CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 endif()
+
+# Export only modern CMake targets; include dirs and libs are already
+# encoded on the exported target usage requirements above.
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_package(${_extras_args})
