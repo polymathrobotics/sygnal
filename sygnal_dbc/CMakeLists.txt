@@ -1,0 +1,90 @@
+cmake_minimum_required(VERSION 3.5)
+
+project(sygnal_dbc VERSION 0.1.0 LANGUAGES C)
+
+find_package(ament_cmake REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+include(GNUInstallDirs)
+
+# Install the DBC database directory
+install(
+  DIRECTORY database/
+  DESTINATION share/${PROJECT_NAME}/database
+)
+
+# ----------------------------------------------------------------------------
+# Generate C sources/headers from all .dbc files under database/
+# ----------------------------------------------------------------------------
+file(GLOB_RECURSE DBC_FILES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/database/*.dbc")
+
+set(GENERATED_C_SOURCES)
+set(GENERATED_HEADERS)
+
+foreach(DBC_FILE IN LISTS DBC_FILES)
+  # Compute path pieces to mirror the database/ layout under build dir
+  file(RELATIVE_PATH REL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/database" "${DBC_FILE}")
+  get_filename_component(REL_DIR "${REL_PATH}" DIRECTORY)
+  get_filename_component(DBC_BASENAME_WE "${DBC_FILE}" NAME_WE)
+
+  # cantools generates lowercase file basenames; mirror that here
+  string(TOLOWER "${DBC_BASENAME_WE}" MOD_NAME)
+
+  set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/${REL_DIR}")
+  set(OUT_C   "${OUT_DIR}/${MOD_NAME}.c")
+  set(OUT_H   "${OUT_DIR}/${MOD_NAME}.h")
+
+  add_custom_command(
+    OUTPUT ${OUT_C} ${OUT_H}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${OUT_DIR}
+    COMMAND ${Python3_EXECUTABLE} -m cantools generate_c_source ${DBC_FILE} -o ${OUT_DIR} --database-name ${MOD_NAME}
+    DEPENDS ${DBC_FILE}
+    COMMENT "Generating C source from DBC '${REL_PATH}' with cantools"
+    VERBATIM
+  )
+
+  list(APPEND GENERATED_C_SOURCES ${OUT_C})
+  list(APPEND GENERATED_HEADERS   ${OUT_H})
+endforeach()
+
+add_library(${PROJECT_NAME} STATIC ${GENERATED_C_SOURCES})
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+)
+
+# Ensure generation runs as part of normal build (sources already bind it)
+add_custom_target(generate_can_sources ALL
+  DEPENDS ${GENERATED_C_SOURCES} ${GENERATED_HEADERS})
+
+# Install generated headers so dependents can include them
+install(
+  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/
+  DESTINATION include/${PROJECT_NAME}
+  FILES_MATCHING PATTERN "*.h"
+)
+
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+# Export a config extras so consumers get SYGNAL_DBC_DIR
+set(_extras_file "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}-extras.cmake")
+if(EXISTS ${_extras_file})
+  ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+  ament_export_include_directories("include/${PROJECT_NAME}")
+  ament_export_libraries(${PROJECT_NAME})
+  ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
+else()
+  ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+  ament_export_include_directories("include/${PROJECT_NAME}")
+  ament_export_libraries(${PROJECT_NAME})
+  ament_package()
+endif()
+
+message(STATUS "Configured ${PROJECT_NAME} ament package; run colcon build --packages-select ${PROJECT_NAME}")
