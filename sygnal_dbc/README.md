@@ -1,13 +1,13 @@
 # sygnal_dbc
 
-Provides Sygnal DBC files and a generated C library produced by cantools. The
-package installs the raw DBC database and, at build time, generates `.c/.h`
-files for each `.dbc` and exposes them via a static library for consumers.
+Provides Sygnal DBC files and a C library produced by cantools. The package
+installs the raw DBC database and, at build time, generates `.c/.h` files for
+each `.dbc` and exposes them via a static library for consumers.
 
 ## Contents
 - Installed DBCs: `share/sygnal_dbc/database/...`
-- Generated headers: `include/sygnal_dbc/generated/<subdir>/<name>.h`
-- Library: `sygnal_dbc_generated`
+- Installed headers: `include/sygnal_dbc/<subdir>/<name>.h`
+- Library: `sygnal_dbc`
 - CMake var: `SYGNAL_DBC_DIR` → points to installed `database` directory
 
 ## Build
@@ -53,7 +53,7 @@ install(FILES "${SYGNAL_DBC_DIR}/cb/Configuration.dbc" DESTINATION share/${PROJE
 ```
 
 ## Notes
-- The generator mirrors the folder structure under `database/` into
-  `generated/` so includes stay organized (`cb/`, `io/`, `mcm/`, `vehicles/`).
+- The installed headers mirror the folder structure under `database/`
+  (`cb/`, `io/`, `mcm/`, `vehicles/`).
 - If you add or rename `.dbc` files, just rebuild; sources regenerate
   automatically.
