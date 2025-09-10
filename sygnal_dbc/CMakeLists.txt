@@ -25,9 +25,8 @@ install(
   DESTINATION share/${PROJECT_NAME}/database
 )
 
-# ----------------------------------------------------------------------------
+
 # Generate C sources/headers from all .dbc files under database/
-# ----------------------------------------------------------------------------
 file(GLOB_RECURSE DBC_FILES CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/database/*.dbc")
 
@@ -99,5 +98,3 @@ else()
   ament_export_libraries(${PROJECT_NAME})
   ament_package()
 endif()
-
-message(STATUS "Configured ${PROJECT_NAME} ament package; run colcon build --packages-select ${PROJECT_NAME}")
