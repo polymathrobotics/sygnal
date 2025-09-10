@@ -42,7 +42,9 @@ foreach(DBC_FILE IN LISTS DBC_FILES)
   # cantools generates lowercase file basenames; mirror that here
   string(TOLOWER "${DBC_BASENAME_WE}" MOD_NAME)
 
-  set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/${REL_DIR}")
+  # Generate directly into the build include tree so dependents
+  # can include headers during the same colcon invocation.
+  set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}/${REL_DIR}")
   set(OUT_C   "${OUT_DIR}/${MOD_NAME}.c")
   set(OUT_H   "${OUT_DIR}/${MOD_NAME}.h")
 
@@ -62,8 +64,8 @@ endforeach()
 add_library(${PROJECT_NAME} STATIC ${GENERATED_C_SOURCES})
 target_include_directories(${PROJECT_NAME}
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated>
-    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
 # Ensure generation runs as part of normal build (sources already bind it)
@@ -72,7 +74,7 @@ add_custom_target(generate_can_sources ALL
 
 # Install generated headers so dependents can include them
 install(
-  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/
+  DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}/
   DESTINATION include/${PROJECT_NAME}
   FILES_MATCHING PATTERN "*.h"
 )
@@ -89,12 +91,12 @@ install(
 set(_extras_file "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}-extras.cmake")
 if(EXISTS ${_extras_file})
   ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-  ament_export_include_directories("include/${PROJECT_NAME}")
+  ament_export_include_directories("include")
   ament_export_libraries(${PROJECT_NAME})
   ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 else()
   ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-  ament_export_include_directories("include/${PROJECT_NAME}")
+  ament_export_include_directories("include")
   ament_export_libraries(${PROJECT_NAME})
   ament_package()
 endif()
