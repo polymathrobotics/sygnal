@@ -10,4 +10,3 @@ mvec_node:
       - 10:0 # relay_id:relay_state
       - 8:1
       - 1:0
-

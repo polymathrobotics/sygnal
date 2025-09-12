@@ -558,4 +558,3 @@ void MvecNode::parsePresetParams()
 }
 
 }  // namespace polymath::mvec
-

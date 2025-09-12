@@ -34,4 +34,3 @@ mvec_node:
     preset_0_name: "enable"
     preset_0_relays: ["0:1", "2:1", "4:0"]
 ```
-

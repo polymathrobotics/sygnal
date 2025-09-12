@@ -133,4 +133,3 @@ def generate_launch_description():
             mvec_activate_event_handler,
         ]
     )
-

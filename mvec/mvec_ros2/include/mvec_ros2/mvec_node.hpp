@@ -140,4 +140,3 @@ private:
 RCLCPP_COMPONENTS_REGISTER_NODE(polymath::mvec::MvecNode)
 
 #endif  // MVEC_NODE__MVEC_NODE_HPP_
-
