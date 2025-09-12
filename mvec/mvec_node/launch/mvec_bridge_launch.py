@@ -72,8 +72,8 @@ def generate_launch_description():
     # Create the MVEC bridge node
     mvec_bridge_node = LifecycleNode(
         package="mvec_node",
-        executable="mvec_bridge",
-        name="mvec_bridge",
+        executable="mvec_node",
+        name="mvec_node",
         namespace="",
         parameters=[
             LaunchConfiguration("config_file"),

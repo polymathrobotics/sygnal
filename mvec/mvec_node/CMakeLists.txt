@@ -70,7 +70,7 @@ target_link_libraries(mvec_node PUBLIC
 # Generate composable node executable
 rclcpp_components_register_node(mvec_node
   PLUGIN "polymath::mvec::MvecNode"
-  EXECUTABLE mvec_bridge)
+  EXECUTABLE mvec_node)
 
 # Installs
 install(DIRECTORY include/ DESTINATION include)
@@ -84,7 +84,7 @@ install(TARGETS mvec_node
   RUNTIME DESTINATION bin
 )
 
-install(TARGETS mvec_bridge DESTINATION lib/${PROJECT_NAME})
+install(TARGETS mvec_node DESTINATION lib/${PROJECT_NAME})
 install(EXPORT ${PROJECT_NAME}_TARGETS
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION share/${PROJECT_NAME}/cmake
