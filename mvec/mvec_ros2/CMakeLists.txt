@@ -66,7 +66,7 @@ target_link_libraries(mvec_ros2 PUBLIC
   socketcan_adapter::socketcan_adapter
 )
 
-# Generate composable node executable (renamed from mvec_bridge to mvec_node)
+# Generate composable node executable
 rclcpp_components_register_node(mvec_ros2
   PLUGIN "polymath::mvec::MvecNode"
   EXECUTABLE mvec_node)
