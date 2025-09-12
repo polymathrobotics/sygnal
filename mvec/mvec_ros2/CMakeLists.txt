@@ -45,7 +45,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_FLAGS}")
 endif()
 
-# Primary component library (renamed to avoid conflict with executable)
 add_library(mvec_ros2 SHARED
   src/mvec_node.cpp
 )
@@ -66,7 +65,6 @@ target_link_libraries(mvec_ros2 PUBLIC
   socketcan_adapter::socketcan_adapter
 )
 
-# Generate composable node executable
 rclcpp_components_register_node(mvec_ros2
   PLUGIN "polymath::mvec::MvecNode"
   EXECUTABLE mvec_node)
@@ -89,6 +87,5 @@ install(EXPORT ${PROJECT_NAME}_TARGETS
   DESTINATION share/${PROJECT_NAME}/cmake
 )
 
-# Export
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_package()
