@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mvec_node/mvec_node.hpp"
+#include "mvec_ros2/mvec_node.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -331,11 +331,11 @@ void MvecNode::setMultiRelayCallback(
   const std::shared_ptr<mvec_msgs::srv::SetMultiRelay::Request> request,
   std::shared_ptr<mvec_msgs::srv::SetMultiRelay::Response> response)
 {
-  RCLCPP_INFO(get_logger(), "Setting %zu relays", request->relays.size());
+  RCLCPP_INFO(get_logger(), "Setting multiple relays (%zu)", request->relays.size());
 
   auto result = set_multi_relay(request->relays);
   if (result.has_value()) {
-    // Error occurred
+    // Error
     response->success = false;
     response->message = result.value();
   } else {
@@ -349,27 +349,24 @@ void MvecNode::triggerPresetCallback(
   const std::shared_ptr<mvec_msgs::srv::TriggerPreset::Request> request,
   std::shared_ptr<mvec_msgs::srv::TriggerPreset::Response> response)
 {
-  RCLCPP_INFO(get_logger(), "Triggering preset: %s", request->name.c_str());
+  RCLCPP_INFO(get_logger(), "Triggering preset '%s'", request->name.c_str());
 
   // Find the preset by name
-  auto it = std::find_if(presets_.begin(), presets_.end(), [&request](const mvec_msgs::msg::Preset & preset) {
+  auto it = std::find_if(presets_.begin(), presets_.end(), [&](const mvec_msgs::msg::Preset & preset) {
     return preset.name == request->name;
   });
 
   if (it == presets_.end()) {
     response->success = false;
-    response->message = "Preset not found: " + request->name;
-    RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+    response->message = "Preset not found: '" + request->name + "'";
     return;
   }
 
   auto result = set_multi_relay(it->relays);
   if (result.has_value()) {
-    // Error occurred
     response->success = false;
-    response->message = "Failed to trigger preset '" + request->name + "': " + result.value();
+    response->message = result.value();
   } else {
-    // Success
     response->success = true;
     response->message = "Preset '" + request->name + "' triggered successfully";
   }
@@ -561,3 +558,4 @@ void MvecNode::parsePresetParams()
 }
 
 }  // namespace polymath::mvec
+

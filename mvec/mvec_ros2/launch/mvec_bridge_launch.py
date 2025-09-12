@@ -29,7 +29,7 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     # Default config file path using find-pkg-share
     default_config_file = PathJoinSubstitution(
-        [FindPackageShare("mvec_node"), "config", "relay_presets.yaml"]
+        [FindPackageShare("mvec_ros2"), "config", "relay_presets.yaml"]
     )
 
     # Define launch arguments
@@ -69,11 +69,11 @@ def generate_launch_description():
         description="Automatically activate the lifecycle node after configuration",
     )
 
-    # Create the MVEC bridge node
-    mvec_bridge_node = LifecycleNode(
-        package="mvec_node",
-        executable="mvec_bridge",
-        name="mvec_bridge",
+    # Create the MVEC node (executable renamed from mvec_bridge to mvec_node)
+    mvec_node = LifecycleNode(
+        package="mvec_ros2",
+        executable="mvec_node",
+        name="mvec_node",
         namespace="",
         parameters=[
             LaunchConfiguration("config_file"),
@@ -87,13 +87,13 @@ def generate_launch_description():
     )
 
     # Event handler to automatically configure the node
-    mvec_bridge_configure_event_handler = RegisterEventHandler(
+    mvec_configure_event_handler = RegisterEventHandler(
         event_handler=OnProcessStart(
-            target_action=mvec_bridge_node,
+            target_action=mvec_node,
             on_start=[
                 EmitEvent(
                     event=ChangeState(
-                        lifecycle_node_matcher=matches_action(mvec_bridge_node),
+                        lifecycle_node_matcher=matches_action(mvec_node),
                         transition_id=Transition.TRANSITION_CONFIGURE,
                     ),
                 ),
@@ -103,15 +103,15 @@ def generate_launch_description():
     )
 
     # Event handler to automatically activate the node after configuration
-    mvec_bridge_activate_event_handler = RegisterEventHandler(
+    mvec_activate_event_handler = RegisterEventHandler(
         event_handler=OnStateTransition(
-            target_lifecycle_node=mvec_bridge_node,
+            target_lifecycle_node=mvec_node,
             start_state="configuring",
             goal_state="inactive",
             entities=[
                 EmitEvent(
                     event=ChangeState(
-                        lifecycle_node_matcher=matches_action(mvec_bridge_node),
+                        lifecycle_node_matcher=matches_action(mvec_node),
                         transition_id=Transition.TRANSITION_ACTIVATE,
                     ),
                 ),
@@ -128,8 +128,9 @@ def generate_launch_description():
             timeout_ms_arg,
             auto_configure_arg,
             auto_activate_arg,
-            mvec_bridge_node,
-            mvec_bridge_configure_event_handler,
-            mvec_bridge_activate_event_handler,
+            mvec_node,
+            mvec_configure_event_handler,
+            mvec_activate_event_handler,
         ]
     )
+
