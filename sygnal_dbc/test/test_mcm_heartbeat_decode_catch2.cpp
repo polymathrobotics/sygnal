@@ -30,7 +30,7 @@ extern "C"
 
 TEST_CASE("MCM Heartbeat unpack from frame 0x170")
 {
-  const uint8_t payload[8] = {0x03, 0x00, 0x01, 0x00, 0x00, 0xCE, 0x10, 0x2D};
+  const uint8_t payload[8] = {0x03, 0x00, 0x00, 0x00, 0x00, 0xCE, 0x10, 0x2D};
 
   struct heartbeat_heartbeat_t msg;
 
@@ -44,7 +44,7 @@ TEST_CASE("MCM Heartbeat unpack from frame 0x170")
 
   REQUIRE(msg.system_state == 0);
   REQUIRE(msg.overall_interface_state == 0);
-  REQUIRE(msg.interface0_state == 1);
+  REQUIRE(msg.interface0_state == 0);
   REQUIRE(msg.interface1_state == 0);
   REQUIRE(msg.interface2_state == 0);
   REQUIRE(msg.interface3_state == 0);

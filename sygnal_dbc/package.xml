@@ -11,6 +11,7 @@
   <buildtool_depend>python3-cantools-pip</buildtool_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_cmake_catch2</test_depend>
   <test_depend>ament_index_python</test_depend>
   <test_depend>catch2</test_depend>
 

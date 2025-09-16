@@ -92,6 +92,7 @@ ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
+  find_package(ament_cmake_catch2 REQUIRED)
   include(CheckIncludeFileCXX)
 
   ament_add_pytest_test(test_mcm_heartbeat_decode
@@ -103,8 +104,18 @@ if(BUILD_TESTING)
   check_include_file_cxx("catch2/catch_all.hpp" HAS_CATCH2_V3)
   check_include_file_cxx("catch2/catch.hpp" HAS_CATCH2_V2)
 
-  add_executable(mcm_heartbeat_catch2 test/test_mcm_heartbeat_decode_catch2.cpp)
-  target_link_libraries(mcm_heartbeat_catch2 PRIVATE ${PROJECT_NAME})
-  ament_add_test(mcm_heartbeat_catch2 COMMAND mcm_heartbeat_catch2)
+  if(HAS_CATCH2_V3 OR HAS_CATCH2_V2)
+    add_executable(mcm_heartbeat_catch2 test/test_mcm_heartbeat_decode_catch2.cpp)
+    # Compile only the generated MCM Heartbeat C source into the test to avoid
+    # symbol collisions with other heartbeat modules in the static library.
+    target_sources(mcm_heartbeat_catch2 PRIVATE
+      ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}/mcm/heartbeat.c)
+    target_include_directories(mcm_heartbeat_catch2 PRIVATE
+      ${CMAKE_CURRENT_BINARY_DIR}/include)
+    # Register with Catch2 wrapper to generate JUnit results
+    ament_add_catch2_test(mcm_heartbeat_catch2)
+  else()
+    message(STATUS "Catch2 not found; skipping C++ Catch2 test build.")
+  endif()
 
 endif()
