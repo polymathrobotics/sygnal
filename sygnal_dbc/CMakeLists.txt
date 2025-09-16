@@ -13,7 +13,7 @@
 # limitations under the License.
 cmake_minimum_required(VERSION 3.5)
 
-project(sygnal_dbc VERSION 0.0.0 LANGUAGES C CXX)
+project(sygnal_dbc VERSION 0.1.0 LANGUAGES C CXX)
 
 find_package(ament_cmake REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -87,13 +87,10 @@ install(
   RUNTIME DESTINATION bin
 )
 
-# Export only modern CMake targets; include dirs and libs are already
-# encoded on the exported target usage requirements above.
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 
 if(BUILD_TESTING)
-  # Python-based test to validate decoding using a raw installed DBC
   find_package(ament_cmake_pytest REQUIRED)
   include(CheckIncludeFileCXX)
 
@@ -105,12 +102,9 @@ if(BUILD_TESTING)
   # Detect Catch2 headers (v3 or v2). If present, build and register C++ test.
   check_include_file_cxx("catch2/catch_all.hpp" HAS_CATCH2_V3)
   check_include_file_cxx("catch2/catch.hpp" HAS_CATCH2_V2)
-  if(HAS_CATCH2_V3 OR HAS_CATCH2_V2)
-    add_executable(mcm_heartbeat_catch2 test/test_mcm_heartbeat_decode_catch2.cpp)
-    target_link_libraries(mcm_heartbeat_catch2 PRIVATE ${PROJECT_NAME})
-    # Register with ament so `colcon test` will run it
-    ament_add_test(mcm_heartbeat_catch2 COMMAND mcm_heartbeat_catch2)
-  else()
-    message(STATUS "Catch2 not found; skipping C++ Catch2 test build.")
-  endif()
+
+  add_executable(mcm_heartbeat_catch2 test/test_mcm_heartbeat_decode_catch2.cpp)
+  target_link_libraries(mcm_heartbeat_catch2 PRIVATE ${PROJECT_NAME})
+  ament_add_test(mcm_heartbeat_catch2 COMMAND mcm_heartbeat_catch2)
+
 endif()
