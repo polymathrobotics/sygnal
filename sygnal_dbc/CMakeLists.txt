@@ -42,16 +42,20 @@ foreach(DBC_FILE IN LISTS DBC_FILES)
   # cantools generates lowercase file basenames; mirror that here
   string(TOLOWER "${DBC_BASENAME_WE}" MOD_NAME)
 
+  set(DB_ID "${REL_DIR}/${MOD_NAME}")
+  string(REGEX REPLACE "[^A-Za-z0-9_]" "_" DB_NAME "${DB_ID}")
+  string(TOLOWER "${DB_NAME}" DB_NAME)
+
   # Generate directly into the build include tree so dependents
   # can include headers during the same colcon invocation.
   set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}/${REL_DIR}")
-  set(OUT_C   "${OUT_DIR}/${MOD_NAME}.c")
-  set(OUT_H   "${OUT_DIR}/${MOD_NAME}.h")
+  set(OUT_C   "${OUT_DIR}/${DB_NAME}.c")
+  set(OUT_H   "${OUT_DIR}/${DB_NAME}.h")
 
   add_custom_command(
     OUTPUT ${OUT_C} ${OUT_H}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OUT_DIR}
-    COMMAND ${Python3_EXECUTABLE} -m cantools generate_c_source ${DBC_FILE} -o ${OUT_DIR} --database-name ${MOD_NAME}
+    COMMAND ${Python3_EXECUTABLE} -m cantools generate_c_source ${DBC_FILE} -o ${OUT_DIR} --database-name ${DB_NAME}
     DEPENDS ${DBC_FILE}
     COMMENT "Generating C source from DBC '${REL_PATH}' with cantools"
     VERBATIM
@@ -92,30 +96,16 @@ ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
-  find_package(ament_cmake_catch2 REQUIRED)
-  include(CheckIncludeFileCXX)
+  find_package(Catch2 REQUIRED)
+  include(Catch)
 
-  ament_add_pytest_test(test_mcm_heartbeat_decode
-    test/test_mcm_heartbeat_decode.py
+  ament_add_pytest_test(test_mcm_heartbeat_python
+    test/test_mcm_heartbeat.py
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
-  # Detect Catch2 headers (v3 or v2). If present, build and register C++ test.
-  check_include_file_cxx("catch2/catch_all.hpp" HAS_CATCH2_V3)
-  check_include_file_cxx("catch2/catch.hpp" HAS_CATCH2_V2)
-
-  if(HAS_CATCH2_V3 OR HAS_CATCH2_V2)
-    add_executable(mcm_heartbeat_catch2 test/test_mcm_heartbeat_decode_catch2.cpp)
-    # Compile only the generated MCM Heartbeat C source into the test to avoid
-    # symbol collisions with other heartbeat modules in the static library.
-    target_sources(mcm_heartbeat_catch2 PRIVATE
-      ${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}/mcm/heartbeat.c)
-    target_include_directories(mcm_heartbeat_catch2 PRIVATE
-      ${CMAKE_CURRENT_BINARY_DIR}/include)
-    # Register with Catch2 wrapper to generate JUnit results
-    ament_add_catch2_test(mcm_heartbeat_catch2)
-  else()
-    message(STATUS "Catch2 not found; skipping C++ Catch2 test build.")
-  endif()
+  add_executable(test_mcm_heartbeat_cpp test/test_mcm_heartbeat.cpp)
+  target_link_libraries(test_mcm_heartbeat_cpp PRIVATE Catch2::Catch2WithMain ${PROJECT_NAME})
+  catch_discover_tests(test_mcm_heartbeat_cpp)
 
 endif()

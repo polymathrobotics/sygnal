@@ -13,7 +13,6 @@
 // limitations under the License.
 
 // Define a Catch2 main to avoid linking any extra library
-#define CATCH_CONFIG_MAIN
 
 #if __has_include(<catch2/catch_all.hpp>)
   #include <catch2/catch_all.hpp>
@@ -25,17 +24,17 @@
 
 extern "C"
 {
-#include <sygnal_dbc/mcm/heartbeat.h>
+#include "sygnal_dbc/mcm/mcm_heartbeat.h"
 }
 
 TEST_CASE("MCM Heartbeat unpack from frame 0x170")
 {
   const uint8_t payload[8] = {0x03, 0x00, 0x00, 0x00, 0x00, 0xCE, 0x10, 0x2D};
 
-  struct heartbeat_heartbeat_t msg;
+  struct mcm_heartbeat_heartbeat_t msg;
 
   // The cantools-generated API typically uses _unpack for raw bytes -> struct.
-  const int ret = heartbeat_heartbeat_unpack(&msg, payload, sizeof(payload));
+  const int ret = mcm_heartbeat_heartbeat_unpack(&msg, payload, sizeof(payload));
   REQUIRE(ret >= 0);
 
   // Basic field checks from the DBC and Python test
