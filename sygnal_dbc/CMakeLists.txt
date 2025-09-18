@@ -13,7 +13,7 @@
 # limitations under the License.
 cmake_minimum_required(VERSION 3.5)
 
-project(sygnal_dbc VERSION 0.1.0 LANGUAGES C)
+project(sygnal_dbc VERSION 0.1.0 LANGUAGES C CXX)
 
 find_package(ament_cmake REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -42,16 +42,20 @@ foreach(DBC_FILE IN LISTS DBC_FILES)
   # cantools generates lowercase file basenames; mirror that here
   string(TOLOWER "${DBC_BASENAME_WE}" MOD_NAME)
 
+  set(DB_ID "${REL_DIR}/${MOD_NAME}")
+  string(REGEX REPLACE "[^A-Za-z0-9_]" "_" DB_NAME "${DB_ID}")
+  string(TOLOWER "${DB_NAME}" DB_NAME)
+
   # Generate directly into the build include tree so dependents
   # can include headers during the same colcon invocation.
-  set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}/${REL_DIR}")
-  set(OUT_C   "${OUT_DIR}/${MOD_NAME}.c")
-  set(OUT_H   "${OUT_DIR}/${MOD_NAME}.h")
+  set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}")
+  set(OUT_C   "${OUT_DIR}/${DB_NAME}.c")
+  set(OUT_H   "${OUT_DIR}/${DB_NAME}.h")
 
   add_custom_command(
     OUTPUT ${OUT_C} ${OUT_H}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${OUT_DIR}
-    COMMAND ${Python3_EXECUTABLE} -m cantools generate_c_source ${DBC_FILE} -o ${OUT_DIR} --database-name ${MOD_NAME}
+    COMMAND ${Python3_EXECUTABLE} -m cantools generate_c_source ${DBC_FILE} -o ${OUT_DIR} --database-name ${DB_NAME}
     DEPENDS ${DBC_FILE}
     COMMENT "Generating C source from DBC '${REL_PATH}' with cantools"
     VERBATIM
@@ -87,7 +91,21 @@ install(
   RUNTIME DESTINATION bin
 )
 
-# Export only modern CMake targets; include dirs and libs are already
-# encoded on the exported target usage requirements above.
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  find_package(Catch2 REQUIRED)
+  include(Catch)
+
+  ament_add_pytest_test(test_mcm_heartbeat_python
+    test/test_mcm_heartbeat.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
+  add_executable(test_mcm_heartbeat_cpp test/test_mcm_heartbeat.cpp)
+  target_link_libraries(test_mcm_heartbeat_cpp PRIVATE Catch2::Catch2WithMain ${PROJECT_NAME})
+  catch_discover_tests(test_mcm_heartbeat_cpp)
+
+endif()

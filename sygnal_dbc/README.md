@@ -6,7 +6,10 @@ each `.dbc` and exposes them via a static library for consumers.
 
 ## Contents
 - Installed DBCs: `share/sygnal_dbc/database/...`
-- Installed headers: `include/sygnal_dbc/<subdir>/<name>.h`
+- Installed headers: `include/sygnal_dbc/<subdir>_<name>.h`
+  - Example:
+    - DBC Location `share/sygnal_dbc/database/mcm/Heartbeat.dbc`
+    - Header Location `include/sygnal_dbc/mcm_heartbeat.h`
 - Library: `sygnal_dbc`
 - CMake var: `SYGNAL_DBC_DIR` → points to installed `database` directory
 
@@ -53,7 +56,7 @@ install(FILES "${SYGNAL_DBC_DIR}/cb/Configuration.dbc" DESTINATION share/${PROJE
 ```
 
 ## Notes
-- The installed headers mirror the folder structure under `database/`
-  (`cb/`, `io/`, `mcm/`, `vehicles/`).
+- The installed headers incorporate the folder structure but to prevent conflicts add prefixes `database_`
+  (`cb_`, `io_`, `mcm_`, `vehicles_`).
 - If you add or rename `.dbc` files, just rebuild; sources regenerate
   automatically.
