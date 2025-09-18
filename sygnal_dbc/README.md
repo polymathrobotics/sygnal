@@ -9,7 +9,7 @@ each `.dbc` and exposes them via a static library for consumers.
 - Installed headers: `include/sygnal_dbc/<subdir>_<name>.h`
   - Example:
     - DBC Location `share/sygnal_dbc/database/mcm/Heartbeat.dbc`
-    - Header Location `include/sygnal_dbc/mcm_Heartbeat.dbc`
+    - Header Location `include/sygnal_dbc/mcm_heartbeat.h`
 - Library: `sygnal_dbc`
 - CMake var: `SYGNAL_DBC_DIR` → points to installed `database` directory
 
