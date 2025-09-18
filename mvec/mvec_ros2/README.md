@@ -1,4 +1,4 @@
-# MVEC Node
+# MVEC ROS 2
 
 ROS2 composable lifecycle node for MVEC relay control system.
 
@@ -7,7 +7,7 @@ ROS2 composable lifecycle node for MVEC relay control system.
 ### Launch
 
 ```bash
-ros2 launch mvec_node mvec_bridge_launch.py
+ros2 launch mvec_ros2 mvec_bridge_launch.py
 ```
 
 ### Parameters

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mvec_node/mvec_node.hpp"
+#include "mvec_ros2/mvec_node.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -335,7 +335,7 @@ void MvecNode::setMultiRelayCallback(
 
   auto result = set_multi_relay(request->relays);
   if (result.has_value()) {
-    // Error occurred
+    // Error
     response->success = false;
     response->message = result.value();
   } else {
@@ -365,11 +365,9 @@ void MvecNode::triggerPresetCallback(
 
   auto result = set_multi_relay(it->relays);
   if (result.has_value()) {
-    // Error occurred
     response->success = false;
     response->message = "Failed to trigger preset '" + request->name + "': " + result.value();
   } else {
-    // Success
     response->success = true;
     response->message = "Preset '" + request->name + "' triggered successfully";
   }
