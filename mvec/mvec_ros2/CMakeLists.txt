@@ -25,16 +25,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_link_options(-Wl,-no-undefined)
 endif()
 
-# Dependencies
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
-find_package(rclcpp_components REQUIRED)
-find_package(diagnostic_msgs REQUIRED)
-find_package(magic_enum REQUIRED)
-find_package(mvec_msgs REQUIRED)
-find_package(mvec_lib REQUIRED)
-find_package(socketcan_adapter REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   message(STATUS "Enabling AddressSanitizer (ASAN) for Debug build")
@@ -45,16 +37,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_FLAGS}")
 endif()
 
-add_library(mvec_ros2 SHARED
+add_library(${PROJECT_NAME} SHARED
   src/mvec_node.cpp
 )
-target_include_directories(mvec_ros2 PUBLIC
+target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-target_compile_definitions(mvec_ros2 PRIVATE "MVEC_NODE_BUILDING_LIBRARY")
+target_compile_definitions(${PROJECT_NAME} PRIVATE "MVEC_NODE_BUILDING_LIBRARY")
 
-target_link_libraries(mvec_ros2 PUBLIC
+target_link_libraries(${PROJECT_NAME} PUBLIC
   rclcpp::rclcpp
   rclcpp_lifecycle::rclcpp_lifecycle
   rclcpp_components::component
@@ -65,23 +57,22 @@ target_link_libraries(mvec_ros2 PUBLIC
   socketcan_adapter::socketcan_adapter
 )
 
-rclcpp_components_register_node(mvec_ros2
+rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN "polymath::mvec::MvecNode"
-  EXECUTABLE mvec_node)
+  EXECUTABLE ${PROJECT_NAME}_node)
 
 # Installs
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config/ DESTINATION share/${PROJECT_NAME}/config)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
-install(TARGETS mvec_ros2
+install(TARGETS ${PROJECT_NAME}
   EXPORT ${PROJECT_NAME}_TARGETS
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
 
-install(TARGETS mvec_node DESTINATION lib/${PROJECT_NAME})
 install(EXPORT ${PROJECT_NAME}_TARGETS
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION share/${PROJECT_NAME}/cmake

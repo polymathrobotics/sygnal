@@ -72,8 +72,8 @@ def generate_launch_description():
     # Create the MVEC node (executable renamed from mvec_bridge to mvec_node)
     mvec_node = LifecycleNode(
         package="mvec_ros2",
-        executable="mvec_node",
-        name="mvec_node",
+        executable="mvec_ros2_node",
+        name="mvec_ros2_node",
         namespace="",
         parameters=[
             LaunchConfiguration("config_file"),

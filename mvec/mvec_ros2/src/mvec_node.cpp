@@ -366,7 +366,6 @@ void MvecNode::triggerPresetCallback(
   auto result = set_multi_relay(it->relays);
   if (result.has_value()) {
     response->success = false;
-    response->message = result.value();
     response->message = "Failed to trigger preset '" + request->name + "': " + result.value();
   } else {
     response->success = true;
