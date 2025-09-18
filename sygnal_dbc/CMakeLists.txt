@@ -48,7 +48,7 @@ foreach(DBC_FILE IN LISTS DBC_FILES)
 
   # Generate directly into the build include tree so dependents
   # can include headers during the same colcon invocation.
-  set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}/${REL_DIR}")
+  set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/${PROJECT_NAME}")
   set(OUT_C   "${OUT_DIR}/${DB_NAME}.c")
   set(OUT_H   "${OUT_DIR}/${DB_NAME}.h")
 

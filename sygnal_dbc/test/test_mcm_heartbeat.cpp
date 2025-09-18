@@ -24,7 +24,7 @@
 
 extern "C"
 {
-#include "sygnal_dbc/mcm/mcm_heartbeat.h"
+#include "sygnal_dbc/mcm_heartbeat.h"
 }
 
 TEST_CASE("MCM Heartbeat unpack from frame 0x170")
