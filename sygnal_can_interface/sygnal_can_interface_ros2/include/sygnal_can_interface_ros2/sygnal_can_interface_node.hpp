@@ -107,10 +107,12 @@ private:
 
   // Publishers
   rclcpp_lifecycle::LifecyclePublisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
-  rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr mcm_heartbeat_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr mcm0_heartbeat_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr mcm1_heartbeat_pub_;
 
   // Current MCM state storage
-  std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_mcm_state_;
+  std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_mcm0_state_;
+  std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_mcm1_state_;
 };
 
 }  // namespace polymath::sygnal

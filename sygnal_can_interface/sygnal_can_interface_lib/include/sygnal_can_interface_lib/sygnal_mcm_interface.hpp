@@ -61,7 +61,7 @@ inline std::string sygnalSystemStateToString(SygnalSystemState state)
 class SygnalMcmInterface
 {
 public:
-  SygnalMcmInterface();
+  explicit SygnalMcmInterface(uint8_t subsystem_id);
   ~SygnalMcmInterface() = default;
 
   std::array<SygnalSystemState, 5> get_interface_states() const
@@ -69,21 +69,16 @@ public:
     return sygnal_interface_states_;
   }
 
-  SygnalSystemState get_sygnal_mcm0_state() const
+  SygnalSystemState get_mcm_state() const
   {
-    return sygnal_mcm_0_state_;
-  }
-
-  SygnalSystemState get_sygnal_mcm1_state() const
-  {
-    return sygnal_mcm_1_state_;
+    return sygnal_mcm_state_;
   }
 
   bool parseMcmHeartbeatFrame(const socketcan::CanFrame & frame);
 
 private:
-  SygnalSystemState sygnal_mcm_0_state_;
-  SygnalSystemState sygnal_mcm_1_state_;
+  uint8_t subsystem_id_;
+  SygnalSystemState sygnal_mcm_state_;
   std::array<SygnalSystemState, 5> sygnal_interface_states_;
 };
 

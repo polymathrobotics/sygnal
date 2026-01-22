@@ -49,8 +49,11 @@ public:
   /// @param frame CAN frame to parse
   void parse(const socketcan::CanFrame & frame);
 
-  /// @brief Get interface states array
-  std::array<SygnalSystemState, 5> get_interface_states() const;
+  /// @brief Get interface states array from MCM 0
+  std::array<SygnalSystemState, 5> get_interface_states_0() const;
+
+  /// @brief Get interface states array from MCM 1
+  std::array<SygnalSystemState, 5> get_interface_states_1() const;
 
   /// @brief Get MCM 0 system state
   SygnalSystemState get_sygnal_mcm0_state() const;
@@ -94,7 +97,8 @@ public:
 
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  SygnalMcmInterface mcm_interface_;
+  SygnalMcmInterface mcm_interface_0_;
+  SygnalMcmInterface mcm_interface_1_;
   SygnalControlInterface control_interface_;
 
   // Promise queues for each response type

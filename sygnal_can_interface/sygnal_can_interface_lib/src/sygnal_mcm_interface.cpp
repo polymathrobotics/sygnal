@@ -20,9 +20,9 @@
 namespace polymath::sygnal
 {
 
-SygnalMcmInterface::SygnalMcmInterface()
-: sygnal_mcm_0_state_(SygnalSystemState::FAIL_HARD)
-, sygnal_mcm_1_state_(SygnalSystemState::FAIL_HARD)
+SygnalMcmInterface::SygnalMcmInterface(uint8_t subsystem_id)
+: subsystem_id_(subsystem_id)
+, sygnal_mcm_state_(SygnalSystemState::FAIL_HARD)
 {
   sygnal_interface_states_.fill(SygnalSystemState::FAIL_HARD);
 }
@@ -48,12 +48,13 @@ bool SygnalMcmInterface::parseMcmHeartbeatFrame(const socketcan::CanFrame & fram
     return false;
   }
 
-  // Set the sygnal states based on subsystem_id
-  if (unpacked_heartbeat_t.subsystem_id == 0) {
-    sygnal_mcm_0_state_ = SygnalSystemState(unpacked_heartbeat_t.system_state);
-  } else if (unpacked_heartbeat_t.subsystem_id == 1) {
-    sygnal_mcm_1_state_ = SygnalSystemState(unpacked_heartbeat_t.system_state);
+  // Only parse if this frame is for our subsystem
+  if (unpacked_heartbeat_t.subsystem_id != subsystem_id_) {
+    return false;
   }
+
+  // Set the MCM state
+  sygnal_mcm_state_ = SygnalSystemState(unpacked_heartbeat_t.system_state);
 
   // Get interface states
   sygnal_interface_states_[0] = SygnalSystemState(unpacked_heartbeat_t.interface0_state);

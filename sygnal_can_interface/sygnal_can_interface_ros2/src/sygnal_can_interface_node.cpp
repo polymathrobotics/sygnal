@@ -82,7 +82,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
 
     // Create publishers
     diagnostics_pub_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", rclcpp::QoS(10));
-    mcm_heartbeat_pub_ = create_publisher<sygnal_can_msgs::msg::McmHeartbeat>("~/mcm_heartbeat", rclcpp::QoS(10));
+    mcm0_heartbeat_pub_ = create_publisher<sygnal_can_msgs::msg::McmHeartbeat>("~/mcm0_heartbeat", rclcpp::QoS(10));
+    mcm1_heartbeat_pub_ = create_publisher<sygnal_can_msgs::msg::McmHeartbeat>("~/mcm1_heartbeat", rclcpp::QoS(10));
 
     // Create services
     set_control_state_service_ = create_service<sygnal_can_msgs::srv::SetControlState>(
@@ -117,7 +118,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
 {
   // Activate publishers
   diagnostics_pub_->on_activate();
-  mcm_heartbeat_pub_->on_activate();
+  mcm0_heartbeat_pub_->on_activate();
+  mcm1_heartbeat_pub_->on_activate();
 
   RCLCPP_INFO(get_logger(), "Sygnal CAN Interface node activated");
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
@@ -128,7 +130,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
 {
   // Deactivate publishers
   diagnostics_pub_->on_deactivate();
-  mcm_heartbeat_pub_->on_deactivate();
+  mcm0_heartbeat_pub_->on_deactivate();
+  mcm1_heartbeat_pub_->on_deactivate();
 
   RCLCPP_INFO(get_logger(), "Sygnal CAN Interface node deactivated");
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
@@ -143,7 +146,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
   send_control_command_service_.reset();
   send_relay_command_service_.reset();
   diagnostics_pub_.reset();
-  mcm_heartbeat_pub_.reset();
+  mcm0_heartbeat_pub_.reset();
+  mcm1_heartbeat_pub_.reset();
 
   if (socketcan_adapter_) {
     socketcan_adapter_->joinReceptionThread();
@@ -162,29 +166,44 @@ void SygnalCanInterfaceNode::timerCallback()
   // Get MCM states from sygnal_interface_
   auto mcm0_state = sygnal_interface_->get_sygnal_mcm0_state();
   auto mcm1_state = sygnal_interface_->get_sygnal_mcm1_state();
-  auto interface_states = sygnal_interface_->get_interface_states();
+  auto interface_states_0 = sygnal_interface_->get_interface_states_0();
+  auto interface_states_1 = sygnal_interface_->get_interface_states_1();
 
-  // Create and populate MCM heartbeat message
-  sygnal_can_msgs::msg::McmHeartbeat heartbeat_msg;
-  heartbeat_msg.header.stamp = now();
-  heartbeat_msg.mcm0_state = static_cast<uint8_t>(mcm0_state);
-  heartbeat_msg.mcm1_state = static_cast<uint8_t>(mcm1_state);
+  // Create and populate MCM 0 heartbeat message
+  sygnal_can_msgs::msg::McmHeartbeat mcm0_msg;
+  mcm0_msg.header.stamp = now();
+  mcm0_msg.state = static_cast<uint8_t>(mcm0_state);
 
-  // Convert interface states array to vector
-  heartbeat_msg.interface_states.clear();
-  for (const auto & state : interface_states) {
-    heartbeat_msg.interface_states.push_back(static_cast<uint8_t>(state));
+  // Convert interface states array to vector for MCM 0
+  mcm0_msg.interface_states.clear();
+  for (const auto & state : interface_states_0) {
+    mcm0_msg.interface_states.push_back(static_cast<uint8_t>(state));
   }
 
-  // Store current state and publish
-  current_mcm_state_ = heartbeat_msg;
-  mcm_heartbeat_pub_->publish(heartbeat_msg);
+  // Store current state and publish MCM 0
+  current_mcm0_state_ = mcm0_msg;
+  mcm0_heartbeat_pub_->publish(mcm0_msg);
+
+  // Create and populate MCM 1 heartbeat message
+  sygnal_can_msgs::msg::McmHeartbeat mcm1_msg;
+  mcm1_msg.header.stamp = now();
+  mcm1_msg.state = static_cast<uint8_t>(mcm1_state);
+
+  // Convert interface states array to vector for MCM 1
+  mcm1_msg.interface_states.clear();
+  for (const auto & state : interface_states_1) {
+    mcm1_msg.interface_states.push_back(static_cast<uint8_t>(state));
+  }
+
+  // Store current state and publish MCM 1
+  current_mcm1_state_ = mcm1_msg;
+  mcm1_heartbeat_pub_->publish(mcm1_msg);
 
   // Create and publish diagnostics
   auto diagnostics = createDiagnosticsMessage();
   diagnostics_pub_->publish(diagnostics);
 
-  RCLCPP_DEBUG(get_logger(), "Published MCM heartbeat and diagnostics");
+  RCLCPP_DEBUG(get_logger(), "Published MCM 0 and MCM 1 heartbeats and diagnostics");
 }
 
 void SygnalCanInterfaceNode::setControlStateCallback(
@@ -353,7 +372,8 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
   // Get current MCM states
   auto mcm0_state = sygnal_interface_->get_sygnal_mcm0_state();
   auto mcm1_state = sygnal_interface_->get_sygnal_mcm1_state();
-  auto interface_states = sygnal_interface_->get_interface_states();
+  auto interface_states_0 = sygnal_interface_->get_interface_states_0();
+  auto interface_states_1 = sygnal_interface_->get_interface_states_1();
 
   // Create MCM 0 diagnostics
   {
@@ -364,16 +384,15 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
     // Determine diagnostic level based on state
     if (mcm0_state == SygnalSystemState::MCM_CONTROL || mcm0_state == SygnalSystemState::HUMAN_CONTROL) {
       mcm0_diag.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-      mcm0_diag.message = "MCM0 operating normally: " + sygnalSystemStateToString(mcm0_state);
     } else if (
       mcm0_state == SygnalSystemState::FAIL_OPERATIONAL_1 || mcm0_state == SygnalSystemState::FAIL_OPERATIONAL_2)
     {
       mcm0_diag.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-      mcm0_diag.message = "MCM0 in degraded mode: " + sygnalSystemStateToString(mcm0_state);
     } else {
       mcm0_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-      mcm0_diag.message = "MCM0 fault: " + sygnalSystemStateToString(mcm0_state);
     }
+
+    mcm0_diag.message = "MCM0 state: " + sygnalSystemStateToString(mcm0_state);
 
     diagnostic_msgs::msg::KeyValue kv;
     kv.key = "state";
@@ -392,16 +411,15 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
     // Determine diagnostic level based on state
     if (mcm1_state == SygnalSystemState::MCM_CONTROL || mcm1_state == SygnalSystemState::HUMAN_CONTROL) {
       mcm1_diag.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-      mcm1_diag.message = "MCM1 operating normally: " + sygnalSystemStateToString(mcm1_state);
     } else if (
       mcm1_state == SygnalSystemState::FAIL_OPERATIONAL_1 || mcm1_state == SygnalSystemState::FAIL_OPERATIONAL_2)
     {
       mcm1_diag.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-      mcm1_diag.message = "MCM1 in degraded mode: " + sygnalSystemStateToString(mcm1_state);
     } else {
       mcm1_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-      mcm1_diag.message = "MCM1 fault: " + sygnalSystemStateToString(mcm1_state);
     }
+
+    mcm1_diag.message = "MCM1 state: " + sygnalSystemStateToString(mcm1_state);
 
     diagnostic_msgs::msg::KeyValue kv;
     kv.key = "state";
@@ -411,32 +429,54 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
     array_msg.status.push_back(mcm1_diag);
   }
 
-  // Create diagnostics for each interface (0-4)
-  for (size_t i = 0; i < interface_states.size(); ++i) {
+  // Create diagnostics for each interface (0-4) from both MCM subsystems
+  for (size_t i = 0; i < interface_states_0.size(); ++i) {
+    auto state_0 = interface_states_0[i];
+    auto state_1 = interface_states_1[i];
+
+    // Create diagnostic for this interface
     diagnostic_msgs::msg::DiagnosticStatus interface_diag;
     interface_diag.name = "sygnal_interface_" + std::to_string(i);
     interface_diag.hardware_id = "sygnal_can_interface";
 
-    auto state = interface_states[i];
-
-    // Determine diagnostic level based on state
-    if (state == SygnalSystemState::MCM_CONTROL || state == SygnalSystemState::HUMAN_CONTROL) {
-      interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-      interface_diag.message =
-        "Interface " + std::to_string(i) + " operating normally: " + sygnalSystemStateToString(state);
-    } else if (state == SygnalSystemState::FAIL_OPERATIONAL_1 || state == SygnalSystemState::FAIL_OPERATIONAL_2) {
-      interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-      interface_diag.message =
-        "Interface " + std::to_string(i) + " in degraded mode: " + sygnalSystemStateToString(state);
-    } else {
-      interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-      interface_diag.message = "Interface " + std::to_string(i) + " fault: " + sygnalSystemStateToString(state);
+    // Determine worst-case diagnostic level from both MCMs
+    auto worst_state = state_0;
+    if (static_cast<uint8_t>(state_1) > static_cast<uint8_t>(state_0)) {
+      worst_state = state_1;
     }
 
-    diagnostic_msgs::msg::KeyValue kv;
-    kv.key = "state";
-    kv.value = sygnalSystemStateToString(state);
-    interface_diag.values.push_back(kv);
+    if (worst_state == SygnalSystemState::MCM_CONTROL || worst_state == SygnalSystemState::HUMAN_CONTROL) {
+      interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+    } else if (
+      worst_state == SygnalSystemState::FAIL_OPERATIONAL_1 || worst_state == SygnalSystemState::FAIL_OPERATIONAL_2)
+    {
+      interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+    } else {
+      interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
+    }
+
+    // Build message showing states from both MCMs
+    interface_diag.message = "Interface " + std::to_string(i) + " - MCM0: " + sygnalSystemStateToString(state_0) +
+                             ", MCM1: " + sygnalSystemStateToString(state_1);
+
+    // Add state values from both MCMs
+    diagnostic_msgs::msg::KeyValue kv_mcm0;
+    kv_mcm0.key = "mcm0_state";
+    kv_mcm0.value = sygnalSystemStateToString(state_0);
+    interface_diag.values.push_back(kv_mcm0);
+
+    diagnostic_msgs::msg::KeyValue kv_mcm1;
+    kv_mcm1.key = "mcm1_state";
+    kv_mcm1.value = sygnalSystemStateToString(state_1);
+    interface_diag.values.push_back(kv_mcm1);
+
+    // Flag if states differ
+    if (state_0 != state_1) {
+      diagnostic_msgs::msg::KeyValue kv_mismatch;
+      kv_mismatch.key = "state_mismatch";
+      kv_mismatch.value = "true";
+      interface_diag.values.push_back(kv_mismatch);
+    }
 
     array_msg.status.push_back(interface_diag);
   }

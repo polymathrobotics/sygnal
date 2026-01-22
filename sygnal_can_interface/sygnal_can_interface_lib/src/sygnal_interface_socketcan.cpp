@@ -23,14 +23,16 @@ namespace polymath::sygnal
 
 SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter)
 : socketcan_adapter_(std::move(socketcan_adapter))
-, mcm_interface_()
+, mcm_interface_0_(0)
+, mcm_interface_1_(1)
 , control_interface_()
 {}
 
 void SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
 {
-  // Try parsing as MCM heartbeat
-  mcm_interface_.parseMcmHeartbeatFrame(frame);
+  // Try parsing as MCM heartbeat (both interfaces will check subsystem_id)
+  mcm_interface_0_.parseMcmHeartbeatFrame(frame);
+  mcm_interface_1_.parseMcmHeartbeatFrame(frame);
 
   // Try parsing as command response
   auto response = control_interface_.parseCommandResponseFrame(frame);
@@ -69,19 +71,24 @@ void SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
   }
 }
 
-std::array<SygnalSystemState, 5> SygnalInterfaceSocketcan::get_interface_states() const
+std::array<SygnalSystemState, 5> SygnalInterfaceSocketcan::get_interface_states_0() const
 {
-  return mcm_interface_.get_interface_states();
+  return mcm_interface_0_.get_interface_states();
+}
+
+std::array<SygnalSystemState, 5> SygnalInterfaceSocketcan::get_interface_states_1() const
+{
+  return mcm_interface_1_.get_interface_states();
 }
 
 SygnalSystemState SygnalInterfaceSocketcan::get_sygnal_mcm0_state() const
 {
-  return mcm_interface_.get_sygnal_mcm0_state();
+  return mcm_interface_0_.get_mcm_state();
 }
 
 SygnalSystemState SygnalInterfaceSocketcan::get_sygnal_mcm1_state() const
 {
-  return mcm_interface_.get_sygnal_mcm1_state();
+  return mcm_interface_1_.get_mcm_state();
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
