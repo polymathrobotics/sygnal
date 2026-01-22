@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Copyright (c) 2025-present Polymath Robotics, Inc. All rights reserved
-// Proprietary. Any unauthorized copying, distribution, or modification of this software is strictly prohibited.
-
 #ifndef SYGNAL_CAN_INTERFACE_LIB__SYGNAL_MCM_INTERFACE_HPP_
 #define SYGNAL_CAN_INTERFACE_LIB__SYGNAL_MCM_INTERFACE_HPP_
 

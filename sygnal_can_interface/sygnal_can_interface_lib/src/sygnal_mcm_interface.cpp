@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Copyright (c) 2025-present Polymath Robotics, Inc. All rights reserved
-// Proprietary. Any unauthorized copying, distribution, or modification of this software is strictly prohibited.
-
 #include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
 
 #include "sygnal_dbc/mcm_heartbeat.h"
