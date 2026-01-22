@@ -28,16 +28,21 @@ SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(std::shared_ptr<socketcan::So
 , control_interface_()
 {}
 
-void SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
+bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
 {
   // Try parsing as MCM heartbeat (both interfaces will check subsystem_id)
-  mcm_interface_0_.parseMcmHeartbeatFrame(frame);
-  mcm_interface_1_.parseMcmHeartbeatFrame(frame);
+  if (mcm_interface_0_.parseMcmHeartbeatFrame(frame)) {
+    return true;
+  };
+
+  if (mcm_interface_1_.parseMcmHeartbeatFrame(frame)) {
+    return true;
+  };
 
   // Try parsing as command response
   auto response = control_interface_.parseCommandResponseFrame(frame);
   if (!response.has_value()) {
-    return;
+    return false;
   }
 
   // Fulfill the appropriate promise based on response type
@@ -69,6 +74,8 @@ void SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
       break;
     }
   }
+
+  return true;
 }
 
 std::array<SygnalSystemState, 5> SygnalInterfaceSocketcan::get_interface_states_0() const
