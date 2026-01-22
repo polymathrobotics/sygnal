@@ -121,6 +121,11 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
   mcm0_heartbeat_pub_->on_activate();
   mcm1_heartbeat_pub_->on_activate();
 
+  create_subscription<sygnal_can_msgs::msg::ControlCommand>(
+    "~/control_command",
+    rclcpp::QoS(10),
+    std::bind(&SygnalCanInterfaceNode::controlCommandCallback, this, std::placeholders::_1));
+
   RCLCPP_INFO(get_logger(), "Sygnal CAN Interface node activated");
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
 }
@@ -266,14 +271,18 @@ void SygnalCanInterfaceNode::sendControlCommandCallback(
   RCLCPP_INFO(
     get_logger(),
     "Send control command service called - bus_id: %d, interface_id: %d, value: %f",
-    request->bus_id,
-    request->interface_id,
-    request->value);
+    request->command.bus_id,
+    request->command.interface_id,
+    request->command.value);
 
   // Send control command
   std::string error_message;
   auto result = sygnal_interface_->sendControlCommand(
-    request->bus_id, request->interface_id, request->value, request->expect_reply, error_message);
+    request->command.bus_id,
+    request->command.interface_id,
+    request->command.value,
+    request->expect_reply,
+    error_message);
 
   if (!result.success) {
     response->success = false;
@@ -306,6 +315,32 @@ void SygnalCanInterfaceNode::sendControlCommandCallback(
     // Fire-and-forget, command sent successfully
     response->success = true;
     response->message = "Control command sent (no reply expected)";
+  }
+}
+
+void SygnalCanInterfaceNode::controlCommandCallback(const sygnal_can_msgs::msg::ControlCommand::UniquePtr msg)
+{
+  RCLCPP_INFO_THROTTLE(
+    get_logger(),
+    *get_clock(),
+    500,
+    "Received control command - bus_id: %d, interface_id: %d, value: %f",
+    msg->bus_id,
+    msg->interface_id,
+    msg->value);
+
+  // Send control command without expecting a reply
+  std::string error_message;
+  auto result = sygnal_interface_->sendControlCommand(msg->bus_id, msg->interface_id, msg->value, false, error_message);
+
+  if (!result.success) {
+    RCLCPP_WARN(get_logger(), "Failed to send control command from subscription: %s", error_message.c_str());
+  } else {
+    RCLCPP_DEBUG(
+      get_logger(),
+      "Control command sent successfully from subscription - bus_id: %d, interface_id: %d",
+      msg->bus_id,
+      msg->interface_id);
   }
 }
 

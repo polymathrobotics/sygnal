@@ -22,6 +22,7 @@ find_package(std_msgs REQUIRED)
 
 set(msg_files
   "msg/McmHeartbeat.msg"
+  "msg/ControlCommand.msg"
 )
 
 set(srv_files

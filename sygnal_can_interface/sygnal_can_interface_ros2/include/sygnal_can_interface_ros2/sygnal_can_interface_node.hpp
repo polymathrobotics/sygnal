@@ -86,6 +86,10 @@ private:
     const std::shared_ptr<sygnal_can_msgs::srv::SendRelayCommand::Request> request,
     std::shared_ptr<sygnal_can_msgs::srv::SendRelayCommand::Response> response);
 
+  /// @brief Subscription callback to handle incoming control commands
+  /// @param msg Incoming control command message
+  void controlCommandCallback(const sygnal_can_msgs::msg::ControlCommand::UniquePtr msg);
+
   /// @brief Create diagnostics array from Sygnal status
   /// @return Diagnostic array message
   diagnostic_msgs::msg::DiagnosticArray createDiagnosticsMessage();
@@ -109,6 +113,8 @@ private:
   rclcpp_lifecycle::LifecyclePublisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
   rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr mcm0_heartbeat_pub_;
   rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr mcm1_heartbeat_pub_;
+
+  rclcpp::Subscription<sygnal_can_msgs::msg::ControlCommand>::SharedPtr control_command_sub_;
 
   // Current MCM state storage
   std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_mcm0_state_;

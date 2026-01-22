@@ -1,14 +1,7 @@
 # Service to send a control command with a value
 # Request
 
-# Bus ID (0-127)
-uint8 bus_id
-
-# Interface ID (0-4)
-uint8 interface_id
-
-# Control value (interpretation depends on interface)
-float64 value
+sygnal_can_msgs/ControlCommand command
 
 # Whether to expect a reply
 bool expect_reply
