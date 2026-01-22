@@ -1,2 +1,3 @@
+# Sygnal Can Interface Lib
 
-TO BE FILLED OUT
+C++ Libarary for interfacing with Sygnal's CAN Interfaces. Currently only supports MCM command and feedback.
