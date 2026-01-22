@@ -217,9 +217,10 @@ void SygnalCanInterfaceNode::setControlStateCallback(
 {
   RCLCPP_INFO(
     get_logger(),
-    "Set control state service called - bus_id: %d, interface_id: %d, state: %d",
+    "Set control state service called - bus_id: %d, interface_id: %d, subsystem_id: %d, state: %d",
     request->bus_id,
     request->interface_id,
+    request->subsystem_id,
     request->control_state);
 
   // Convert uint8 to SygnalControlState enum
@@ -229,7 +230,7 @@ void SygnalCanInterfaceNode::setControlStateCallback(
   // Send control state command
   std::string error_message;
   auto result = sygnal_interface_->sendControlStateCommand(
-    request->bus_id, request->interface_id, control_state, request->expect_reply, error_message);
+    request->bus_id, request->interface_id, request->subsystem_id, control_state, request->expect_reply, error_message);
 
   if (!result.success) {
     response->success = false;
@@ -270,9 +271,10 @@ void SygnalCanInterfaceNode::sendControlCommandCallback(
 {
   RCLCPP_INFO(
     get_logger(),
-    "Send control command service called - bus_id: %d, interface_id: %d, value: %f",
+    "Send control command service called - bus_id: %d, interface_id: %d, subsystem_id: %d, value: %f",
     request->command.bus_id,
     request->command.interface_id,
+    request->command.subsystem_id,
     request->command.value);
 
   // Send control command
@@ -280,6 +282,7 @@ void SygnalCanInterfaceNode::sendControlCommandCallback(
   auto result = sygnal_interface_->sendControlCommand(
     request->command.bus_id,
     request->command.interface_id,
+    request->command.subsystem_id,
     request->command.value,
     request->expect_reply,
     error_message);
@@ -324,14 +327,16 @@ void SygnalCanInterfaceNode::controlCommandCallback(const sygnal_can_msgs::msg::
     get_logger(),
     *get_clock(),
     500,
-    "Received control command - bus_id: %d, interface_id: %d, value: %f",
+    "Received control command - bus_id: %d, interface_id: %d, subsystem_id: %d, value: %f",
     msg->bus_id,
     msg->interface_id,
+    msg->subsystem_id,
     msg->value);
 
   // Send control command without expecting a reply
   std::string error_message;
-  auto result = sygnal_interface_->sendControlCommand(msg->bus_id, msg->interface_id, msg->value, false, error_message);
+  auto result = sygnal_interface_->sendControlCommand(
+    msg->bus_id, msg->interface_id, msg->subsystem_id, msg->value, false, error_message);
 
   if (!result.success) {
     RCLCPP_WARN(get_logger(), "Failed to send control command from subscription: %s", error_message.c_str());

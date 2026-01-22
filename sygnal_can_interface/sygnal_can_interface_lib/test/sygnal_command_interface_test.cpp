@@ -49,7 +49,7 @@ TEST_CASE("SygnalControlInterface creates ControlEnable frame", "[sygnal_command
   std::string error_message;
 
   auto frame_opt =
-    interface.createControlStateCommandFrame(1, 3, polymath::sygnal::SygnalControlState::MCM_CONTROL, error_message);
+    interface.createControlStateCommandFrame(1, 3, 0, polymath::sygnal::SygnalControlState::MCM_CONTROL, error_message);
 
   REQUIRE(frame_opt.has_value());
   REQUIRE(error_message.empty());
@@ -69,7 +69,7 @@ TEST_CASE("SygnalControlInterface creates ControlCommand frame", "[sygnal_comman
   polymath::sygnal::SygnalControlInterface interface;
   std::string error_message;
 
-  auto frame_opt = interface.createControlCommandFrame(1, 0, 0.5, error_message);
+  auto frame_opt = interface.createControlCommandFrame(1, 0, 0, 0.5, error_message);
 
   REQUIRE(frame_opt.has_value());
   REQUIRE(error_message.empty());

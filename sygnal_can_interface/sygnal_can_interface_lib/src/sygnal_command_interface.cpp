@@ -27,7 +27,11 @@ SygnalControlInterface::SygnalControlInterface()
 {}
 
 std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createControlStateCommandFrame(
-  const uint8_t bus_id, const uint8_t interface_id, const SygnalControlState control_state, std::string & error_message)
+  const uint8_t bus_id,
+  const uint8_t interface_id,
+  const uint8_t subsystem_id,
+  const SygnalControlState control_state,
+  std::string & error_message)
 {
   polymath::socketcan::CanFrame frame;
   uint8_t control_enable_buffer[CAN_MAX_DLC];
@@ -72,7 +76,11 @@ std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createContr
 }
 
 std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createControlCommandFrame(
-  const uint8_t bus_id, const uint8_t interface_id, const double value, std::string & error_message)
+  const uint8_t bus_id,
+  const uint8_t interface_id,
+  const uint8_t subsystem_id,
+  const double value,
+  std::string & error_message)
 {
   polymath::socketcan::CanFrame frame;
   uint8_t control_command_buffer[CAN_MAX_DLC];

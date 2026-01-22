@@ -50,6 +50,7 @@ struct SygnalControlCommandResponse
   SygnalControlCommandResponseType response_type;
   uint8_t interface_id;
   uint8_t bus_id;
+  uint8_t subsystem_id;
   // Value can represent different things based on response type
   double value;
 };
@@ -68,6 +69,7 @@ public:
   std::optional<polymath::socketcan::CanFrame> createControlStateCommandFrame(
     const uint8_t bus_id,
     const uint8_t interface_id,
+    const uint8_t subsystem_id,
     const SygnalControlState control_state,
     std::string & error_message);
 
@@ -77,7 +79,11 @@ public:
   /// @param error_message Error in case of failure
   /// @return can frame if succesful
   std::optional<polymath::socketcan::CanFrame> createControlCommandFrame(
-    const uint8_t bus_id, const uint8_t interface_id, const double value, std::string & error_message);
+    const uint8_t bus_id,
+    const uint8_t interface_id,
+    const uint8_t subsystem_id,
+    const double value,
+    std::string & error_message);
 
   /// @brief Set the relay state for engine control or gears
   /// @param subsystem_id Sygnal Subsystem Relay to enable/disable

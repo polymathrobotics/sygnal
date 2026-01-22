@@ -71,6 +71,7 @@ public:
   SendCommandResult sendControlStateCommand(
     uint8_t bus_id,
     uint8_t interface_id,
+    uint8_t subsystem_id,
     SygnalControlState control_state,
     bool expect_reply,
     std::string & error_message);
@@ -83,7 +84,12 @@ public:
   /// @param error_message Populated on failure
   /// @return Result with success flag and optional response future
   SendCommandResult sendControlCommand(
-    uint8_t bus_id, uint8_t interface_id, double value, bool expect_reply, std::string & error_message);
+    uint8_t bus_id,
+    uint8_t interface_id,
+    uint8_t subsystem_id,
+    double value,
+    bool expect_reply,
+    std::string & error_message);
 
   /// @brief Send relay command
   /// @param bus_id Bus address

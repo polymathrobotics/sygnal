@@ -94,12 +94,13 @@ SygnalSystemState SygnalInterfaceSocketcan::get_sygnal_mcm1_state() const
 SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
   uint8_t bus_id,
   uint8_t interface_id,
+  uint8_t subsystem_id,
   SygnalControlState control_state,
   bool expect_reply,
   std::string & error_message)
 {
   auto frame_opt =
-    control_interface_.createControlStateCommandFrame(bus_id, interface_id, control_state, error_message);
+    control_interface_.createControlStateCommandFrame(bus_id, interface_id, subsystem_id, control_state, error_message);
 
   if (!frame_opt.has_value()) {
     return {false, std::nullopt};
@@ -123,9 +124,15 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
-  uint8_t bus_id, uint8_t interface_id, double value, bool expect_reply, std::string & error_message)
+  uint8_t bus_id,
+  uint8_t interface_id,
+  uint8_t subsystem_id,
+  double value,
+  bool expect_reply,
+  std::string & error_message)
 {
-  auto frame_opt = control_interface_.createControlCommandFrame(bus_id, interface_id, value, error_message);
+  auto frame_opt =
+    control_interface_.createControlCommandFrame(bus_id, interface_id, subsystem_id, value, error_message);
 
   if (!frame_opt.has_value()) {
     return {false, std::nullopt};
