@@ -30,8 +30,10 @@ find_package(sygnal_dbc REQUIRED)
 
 add_library(
   ${PROJECT_NAME} SHARED
+  src/crc8.cpp
   src/sygnal_mcm_interface.cpp
   src/sygnal_command_interface.cpp
+  src/sygnal_interface_socketcan.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -70,5 +72,26 @@ ament_export_dependencies(
   socketcan_adapter
   sygnal_dbc
 )
+
+if(BUILD_TESTING)
+  find_package(Catch2 2 REQUIRED)
+  include(Catch)
+
+  add_executable(sygnal_mcm_interface_tests
+    test/sygnal_mcm_interface_test.cpp
+  )
+  target_link_libraries(sygnal_mcm_interface_tests
+    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
+  )
+  catch_discover_tests(sygnal_mcm_interface_tests)
+
+  add_executable(sygnal_command_interface_tests
+    test/sygnal_command_interface_test.cpp
+  )
+  target_link_libraries(sygnal_command_interface_tests
+    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
+  )
+  catch_discover_tests(sygnal_command_interface_tests)
+endif()
 
 ament_package()

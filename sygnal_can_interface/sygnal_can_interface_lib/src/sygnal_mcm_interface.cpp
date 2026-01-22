@@ -14,44 +14,11 @@
 
 #include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
 
+#include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_dbc/mcm_heartbeat.h"
 
 namespace polymath::sygnal
 {
-
-namespace
-{
-
-/// @brief Generate the crc8 checksum assuming 8 byte data with crc at data[7]
-/// @param data Data buffer to calculate the checksum for
-/// @return crc8 checksum
-uint8_t generate_crc8(uint8_t * data)
-{
-  uint8_t crc = 0x00;
-  size_t i, j;
-  // Assumes length 8 data with last bit being checksum
-  for (i = 0; i < 7; i++) {
-    crc ^= data[i];
-    for (j = 0; j < 8; j++) {
-      if ((crc & 0x80) != 0) {
-        crc = (uint8_t)((crc << 1) ^ 0x07);
-      } else {
-        crc <<= 1;
-      }
-    }
-  }
-  return crc;
-}
-
-/// @brief Check the crc8 checksum of incoming data assuming 8 byte data with crc at data[7]
-/// @param data Data buffer to check
-/// @return true if checksum matches, false otherwise
-bool check_crc8(uint8_t * data)
-{
-  return data[7] == generate_crc8(data);
-}
-
-}  // namespace
 
 SygnalMcmInterface::SygnalMcmInterface()
 : sygnal_mcm_0_state_(SygnalSystemState::FAIL_HARD)
