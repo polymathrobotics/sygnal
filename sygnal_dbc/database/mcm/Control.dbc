@@ -42,12 +42,14 @@ BO_ 353 ControlCommandResponse: 8 MCM
  SG_ Count8 : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
  SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubSystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
 
 BO_ 97 ControlEnableResponse: 8 MCM
  SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ Enable : 16|1@1+ (1,0) [0|0] "" Vector__XXX
  SG_ InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
  SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubSystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
 
 BO_ 352 ControlCommand: 8 UserApplication
  SG_ Count8 : 16|8@1+ (1,0) [0|0] "" Vector__XXX
@@ -55,12 +57,14 @@ BO_ 352 ControlCommand: 8 UserApplication
  SG_ Value : 24|32@1- (1,0) [0|0] "" Vector__XXX
  SG_ InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
  SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubSystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
 
 BO_ 96 ControlEnable: 8 UserApplication
  SG_ CRC : 56|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ Enable : 16|1@1+ (1,0) [0|0] "" Vector__XXX
  SG_ InterfaceID : 13|3@1+ (1,0) [0|0] "" Vector__XXX
  SG_ BusAddress : 0|7@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ SubSystemID : 7|1@1+ (1,0) [0|0] "" Vector__XXX
 
 
 
