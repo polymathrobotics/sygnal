@@ -33,6 +33,16 @@ std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createContr
   const SygnalControlState control_state,
   std::string & error_message)
 {
+  if (interface_id >= MAX_SYGNAL_INTERFACES) {
+    error_message = error_message + "Interface ID exceeds maximum allowed interfaces. \n";
+    return std::nullopt;
+  }
+
+  if (subsystem_id >= MAX_SYGNAL_SUBSYSTEMS) {
+    error_message = error_message + "Subsystem ID exceeds maximum allowed subsystems. \n";
+    return std::nullopt;
+  }
+
   polymath::socketcan::CanFrame frame;
   uint8_t control_enable_buffer[CAN_MAX_DLC];
   mcm_control_control_enable_t mcm_unpacked_control_enable_t;
@@ -82,6 +92,16 @@ std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createContr
   const double value,
   std::string & error_message)
 {
+  if (interface_id >= MAX_SYGNAL_INTERFACES) {
+    error_message = error_message + "Interface ID exceeds maximum allowed interfaces. \n";
+    return std::nullopt;
+  }
+
+  if (subsystem_id >= MAX_SYGNAL_SUBSYSTEMS) {
+    error_message = error_message + "Subsystem ID exceeds maximum allowed subsystems. \n";
+    return std::nullopt;
+  }
+
   polymath::socketcan::CanFrame frame;
   uint8_t control_command_buffer[CAN_MAX_DLC];
   mcm_control_control_command_t mcm_unpacked_control_command_t;
