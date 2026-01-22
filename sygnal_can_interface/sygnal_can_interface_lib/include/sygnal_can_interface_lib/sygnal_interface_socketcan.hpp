@@ -47,7 +47,7 @@ public:
 
   /// @brief Parse incoming CAN frame for MCM heartbeat and command responses
   /// @param frame CAN frame to parse
-  void parse(const socketcan::CanFrame & frame);
+  bool parse(const socketcan::CanFrame & frame);
 
   /// @brief Get interface states array from MCM 0
   std::array<SygnalSystemState, 5> get_interface_states_0() const;
