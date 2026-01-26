@@ -1,6 +1,6 @@
 # Lexington Interface Layout and Procedure
 
-### Control Device Interface Table
+## Control Device Interface Table
 
 | Control Device | Interface | System | Control Range |
 | :--- | :---: | :--- | :--- |
@@ -35,7 +35,7 @@
 | | R7 | Engine Start | 0/1 |
 | | R8 | Parking Brake Engage | 0/1 |
 
-### Procedures
+## Procedures
 
 * **Vehicle power up** – Turn on R3 to turn on Accessory power.
 * **Vehicle engine start** – Turn on R7 for a few seconds then turn it off again.
