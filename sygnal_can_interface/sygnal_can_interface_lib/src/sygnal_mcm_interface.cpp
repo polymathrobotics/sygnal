@@ -14,6 +14,8 @@
 
 #include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
 
+#include <chrono>
+
 #include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_dbc/mcm_heartbeat.h"
 
@@ -52,6 +54,8 @@ bool SygnalMcmInterface::parseMcmHeartbeatFrame(const socketcan::CanFrame & fram
   if (unpacked_heartbeat_t.subsystem_id != subsystem_id_) {
     return false;
   }
+
+  last_heartbeat_timestamp_ = std::chrono::system_clock::now();
 
   // Set the MCM state
   sygnal_mcm_state_ = SygnalSystemState(unpacked_heartbeat_t.system_state);

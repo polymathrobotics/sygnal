@@ -118,6 +118,10 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
     std::promise<SygnalControlCommandResponse> promise;
     future_opt = promise.get_future();
     std::lock_guard<std::mutex> lock(promises_mutex_);
+    if (enable_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
+      // Really old promises are dropped silently for now. We should warn in the future
+      enable_response_promises_.pop();
+    }
     enable_response_promises_.push(std::move(promise));
   }
 
@@ -150,6 +154,10 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
     std::promise<SygnalControlCommandResponse> promise;
     future_opt = promise.get_future();
     std::lock_guard<std::mutex> lock(promises_mutex_);
+    if (control_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
+      // Really old promises are dropped silently for now. We should warn in the future
+      control_response_promises_.pop();
+    }
     control_response_promises_.push(std::move(promise));
   }
 
@@ -176,6 +184,10 @@ SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
     std::promise<SygnalControlCommandResponse> promise;
     future_opt = promise.get_future();
     std::lock_guard<std::mutex> lock(promises_mutex_);
+    if (relay_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
+      // Really old promises are dropped silently for now. We should warn in the future
+      relay_response_promises_.pop();
+    }
     relay_response_promises_.push(std::move(promise));
   }
 

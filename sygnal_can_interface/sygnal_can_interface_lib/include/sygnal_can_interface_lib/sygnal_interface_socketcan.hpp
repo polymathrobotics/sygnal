@@ -36,6 +36,8 @@ struct SendCommandResult
   std::optional<std::future<SygnalControlCommandResponse>> response_future;
 };
 
+constexpr uint32_t MAX_PROMISE_QUEUE_LENGTH = 100;
+
 /// @brief Combined Sygnal MCM and Control interface with SocketCAN communication
 /// Provides thread-safe async communication with promise/future pattern for responses
 class SygnalInterfaceSocketcan

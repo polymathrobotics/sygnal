@@ -24,6 +24,7 @@
 #endif
 
 #include <algorithm>
+#include <future>
 #include <string>
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
@@ -156,8 +157,12 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
 
   auto sygnal_interface = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(interface_adapter);
 
+  std::promise<void> frame_received_promise;
+  std::future<void> frame_received_future = frame_received_promise.get_future();
+
   REQUIRE(interface_adapter->setOnReceiveCallback(
-    [&sygnal_interface](std::unique_ptr<const polymath::socketcan::CanFrame> frame) {
+    [&sygnal_interface, &frame_received_promise](std::unique_ptr<const polymath::socketcan::CanFrame> frame) {
+      frame_received_promise.set_value();
       sygnal_interface->parse(*frame);
     }));
 
@@ -176,7 +181,7 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
     REQUIRE(result.success);
     REQUIRE(result.response_future.has_value());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     auto response_frame = createEnableResponseFrame(bus_id, interface_id, 1);
     auto send_err = simulator_adapter->send(response_frame);
@@ -206,7 +211,7 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
     REQUIRE(result.success);
     REQUIRE(result.response_future.has_value());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     auto response_frame = createControlResponseFrame(bus_id, interface_id, static_cast<float>(control_value));
     auto send_err = simulator_adapter->send(response_frame);
@@ -234,7 +239,7 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
     REQUIRE(result.success);
     REQUIRE(result.response_future.has_value());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     auto response_frame = createRelayResponseFrame(bus_id, subsystem_id, 1);
     auto send_err = simulator_adapter->send(response_frame);
@@ -261,7 +266,9 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
     auto send_err = simulator_adapter->send(heartbeat_frame);
     REQUIRE_FALSE(send_err.has_value());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    frame_received_future.wait_for(std::chrono::seconds(2));
 
     auto mcm0_state = sygnal_interface->get_sygnal_mcm0_state();
     REQUIRE(mcm0_state == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
@@ -285,7 +292,7 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
     auto send_err = simulator_adapter->send(heartbeat_frame);
     REQUIRE_FALSE(send_err.has_value());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    frame_received_future.wait_for(std::chrono::seconds(2));
 
     auto mcm1_state = sygnal_interface->get_sygnal_mcm1_state();
     REQUIRE(mcm1_state == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);

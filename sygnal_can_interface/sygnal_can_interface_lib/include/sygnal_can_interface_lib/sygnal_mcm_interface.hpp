@@ -74,12 +74,18 @@ public:
     return sygnal_mcm_state_;
   }
 
+  std::chrono::system_clock::time_point get_last_heartbeat_timestamp() const
+  {
+    return last_heartbeat_timestamp_;
+  }
+
   bool parseMcmHeartbeatFrame(const socketcan::CanFrame & frame);
 
 private:
   uint8_t subsystem_id_;
   SygnalSystemState sygnal_mcm_state_;
   std::array<SygnalSystemState, 5> sygnal_interface_states_;
+  std::chrono::system_clock::time_point last_heartbeat_timestamp_;
 };
 
 }  // namespace polymath::sygnal
