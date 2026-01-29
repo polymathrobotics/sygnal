@@ -92,6 +92,17 @@ if(BUILD_TESTING)
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
   catch_discover_tests(sygnal_command_interface_tests)
+
+  if(DEFINED ENV{CAN_AVAILABLE})
+    add_executable(sygnal_interface_socketcan_tests
+      test/sygnal_interface_socketcan_test.cpp
+    )
+    target_link_libraries(sygnal_interface_socketcan_tests
+      PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
+    )
+    catch_discover_tests(sygnal_interface_socketcan_tests)
+    message(STATUS "CAN_AVAILABLE set - including hardware tests")
+  endif()
 endif()
 
 ament_package()
