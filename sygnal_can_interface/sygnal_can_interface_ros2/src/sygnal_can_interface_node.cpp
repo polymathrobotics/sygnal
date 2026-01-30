@@ -33,10 +33,8 @@ namespace polymath::sygnal
 SygnalCanInterfaceNode::SygnalCanInterfaceNode(const rclcpp::NodeOptions & options)
 : rclcpp_lifecycle::LifecycleNode("sygnal_can_interface_node", "", options)
 {
-  // Declare parameters
-  declare_parameter("can_interface", std::string("can0"));
-  declare_parameter("publish_rate", 3.0);  // Hz
-  declare_parameter("timeout_ms", 500);  // ms
+  param_listener_ = std::make_shared<sygnal_can_interface_ros2::ParamListener>(get_node_parameters_interface());
+  params_ = param_listener_->get_params();
 }
 
 SygnalCanInterfaceNode::~SygnalCanInterfaceNode()
@@ -50,20 +48,18 @@ SygnalCanInterfaceNode::~SygnalCanInterfaceNode()
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn SygnalCanInterfaceNode::on_configure(
   const rclcpp_lifecycle::State &)
 {
-  // Get parameters
-  can_interface_ = get_parameter("can_interface").as_string();
-  publish_rate_ = get_parameter("publish_rate").as_double();
-  auto timeout_ms = get_parameter("timeout_ms").as_int();
-  timeout_ms_ = std::chrono::milliseconds(timeout_ms);
+  // Get parameters (refresh in case they changed)
+  params_ = param_listener_->get_params();
 
-  RCLCPP_INFO(get_logger(), "Configuring Sygnal CAN Interface node with CAN interface: %s", can_interface_.c_str());
+  RCLCPP_INFO(
+    get_logger(), "Configuring Sygnal CAN Interface node with CAN interface: %s", params_.can_interface.c_str());
 
   try {
     // Initialize SocketCAN adapter
-    socketcan_adapter_ = std::make_shared<polymath::socketcan::SocketcanAdapter>(can_interface_);
+    socketcan_adapter_ = std::make_shared<polymath::socketcan::SocketcanAdapter>(params_.can_interface);
 
     if (!socketcan_adapter_->openSocket()) {
-      RCLCPP_ERROR(get_logger(), "Failed to open SocketCAN interface: %s", can_interface_.c_str());
+      RCLCPP_ERROR(get_logger(), "Failed to open SocketCAN interface: %s", params_.can_interface.c_str());
       return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
@@ -100,7 +96,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
       std::bind(&SygnalCanInterfaceNode::sendRelayCommandCallback, this, std::placeholders::_1, std::placeholders::_2));
 
     // Create timer for publishing
-    auto period = std::chrono::duration<double>(1.0 / publish_rate_);
+    auto period = std::chrono::duration<double>(1.0 / params_.publish_rate);
     timer_ = create_wall_timer(
       std::chrono::duration_cast<std::chrono::milliseconds>(period),
       std::bind(&SygnalCanInterfaceNode::timerCallback, this));
@@ -242,7 +238,7 @@ void SygnalCanInterfaceNode::setControlStateCallback(
   // If we expect a reply, wait for response with timeout
   if (request->expect_reply && result.response_future.has_value()) {
     auto future = std::move(result.response_future.value());
-    auto status = future.wait_for(timeout_ms_);
+    auto status = future.wait_for(std::chrono::milliseconds(params_.timeout_ms));
 
     if (status == std::future_status::ready) {
       auto command_response = future.get();
@@ -297,7 +293,7 @@ void SygnalCanInterfaceNode::sendControlCommandCallback(
   // If we expect a reply, wait for response with timeout
   if (request->expect_reply && result.response_future.has_value()) {
     auto future = std::move(result.response_future.value());
-    auto status = future.wait_for(timeout_ms_);
+    auto status = future.wait_for(std::chrono::milliseconds(params_.timeout_ms));
 
     if (status == std::future_status::ready) {
       auto command_response = future.get();
@@ -378,7 +374,7 @@ void SygnalCanInterfaceNode::sendRelayCommandCallback(
   // If we expect a reply, wait for response with timeout
   if (request->expect_reply && result.response_future.has_value()) {
     auto future = std::move(result.response_future.value());
-    auto status = future.wait_for(timeout_ms_);
+    auto status = future.wait_for(std::chrono::milliseconds(params_.timeout_ms));
 
     if (status == std::future_status::ready) {
       auto command_response = future.get();

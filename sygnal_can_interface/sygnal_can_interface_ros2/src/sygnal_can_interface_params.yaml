@@ -1,0 +1,17 @@
+sygnal_can_interface_ros2:
+  can_interface:
+    type: string
+    default_value: "can0"
+    description: "CAN network interface name"
+  publish_rate:
+    type: double
+    default_value: 3.0
+    description: "Publishing frequency in Hz"
+    validation:
+      gt<>: [0.0]
+  timeout_ms:
+    type: int
+    default_value: 500
+    description: "Command response timeout in milliseconds"
+    validation:
+      gt<>: [0]

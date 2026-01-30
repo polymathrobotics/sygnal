@@ -21,6 +21,8 @@
 #include <string>
 #include <thread>
 
+#include <sygnal_can_interface_ros2/sygnal_can_interface_params.hpp>
+
 #include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
@@ -95,9 +97,8 @@ private:
   diagnostic_msgs::msg::DiagnosticArray createDiagnosticsMessage();
 
   // Parameters
-  std::string can_interface_;
-  double publish_rate_;
-  std::chrono::milliseconds timeout_ms_;
+  std::shared_ptr<sygnal_can_interface_ros2::ParamListener> param_listener_;
+  sygnal_can_interface_ros2::Params params_;
 
   // SocketCAN and Sygnal components
   std::shared_ptr<polymath::socketcan::SocketcanAdapter> socketcan_adapter_;

@@ -26,7 +26,13 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake_auto REQUIRED)
+find_package(generate_parameter_library REQUIRED)
 ament_auto_find_build_dependencies()
+
+generate_parameter_library(
+  sygnal_can_interface_params
+  src/sygnal_can_interface_params.yaml
+)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   message(STATUS "Enabling AddressSanitizer (ASAN) for Debug build")
@@ -55,6 +61,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ${sygnal_can_msgs_TARGETS}
   sygnal_can_interface_lib::sygnal_can_interface_lib
   socketcan_adapter::socketcan_adapter
+  sygnal_can_interface_params
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
@@ -65,7 +72,7 @@ rclcpp_components_register_node(${PROJECT_NAME}
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME} sygnal_can_interface_params
   EXPORT ${PROJECT_NAME}_TARGETS
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
