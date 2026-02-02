@@ -1,0 +1,23 @@
+# Service to send a relay command (enable/disable)
+# Request
+
+# Bus ID (0-127)
+uint8 bus_id
+
+# Subsystem ID
+uint8 subsystem_id
+
+# Relay state: 0 = DISABLE, 1 = ENABLE
+uint8 relay_state
+
+# Whether to expect a reply
+bool expect_reply
+
+---
+# Response
+
+# Success flag - true if command was acknowledged
+bool success
+
+# Optional message describing result or error
+string message

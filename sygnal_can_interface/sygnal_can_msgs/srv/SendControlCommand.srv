@@ -1,0 +1,16 @@
+# Service to send a control command with a value
+# Request
+
+sygnal_can_msgs/ControlCommand command
+
+# Whether to expect a reply
+bool expect_reply
+
+---
+# Response
+
+# Success flag - true if command was acknowledged
+bool success
+
+# Optional message describing result or error
+string message
