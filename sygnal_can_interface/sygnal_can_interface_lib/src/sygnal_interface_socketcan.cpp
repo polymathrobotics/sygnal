@@ -14,7 +14,6 @@
 
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
 
-#include <cstdio>
 #include <string>
 #include <utility>
 #include <vector>
@@ -133,11 +132,6 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
   }
 
   auto data = frame_opt->get_data();
-  printf(
-    "ControlStateCommand frame: bus_id=%u, subsystem_id=%u, interface_id=%u -> "
-    "[%02X %02X %02X %02X %02X %02X %02X %02X]\n",
-    bus_id, subsystem_id, interface_id,
-    data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 
   std::optional<std::future<SygnalControlCommandResponse>> future_opt;
   if (expect_reply) {
