@@ -24,6 +24,9 @@
 namespace polymath::sygnal
 {
 
+constexpr uint8_t DEFAULT_MCM_BUS_ADDRESS = 1;
+constexpr uint8_t SECONDARY_MCM_BUS_ADDRESS = 2;
+
 /// @brief Enum representing the overall state of the system
 enum class SygnalSystemState : uint8_t
 {
@@ -61,7 +64,8 @@ inline std::string sygnalSystemStateToString(SygnalSystemState state)
 class SygnalMcmInterface
 {
 public:
-  explicit SygnalMcmInterface(uint8_t subsystem_id);
+  SygnalMcmInterface();
+  explicit SygnalMcmInterface(const uint8_t bus_address, const uint8_t subsystem_id);
   ~SygnalMcmInterface() = default;
 
   std::array<SygnalSystemState, 5> get_interface_states() const
@@ -83,6 +87,7 @@ public:
 
 private:
   uint8_t subsystem_id_;
+  uint8_t bus_address_;
   SygnalSystemState sygnal_mcm_state_;
   std::array<SygnalSystemState, 5> sygnal_interface_states_;
   std::chrono::system_clock::time_point last_heartbeat_timestamp_;

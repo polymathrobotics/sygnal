@@ -15,6 +15,7 @@
 #ifndef SYGNAL_CAN_INTERFACE_NODE__SYGNAL_CAN_INTERFACE_NODE_HPP_
 #define SYGNAL_CAN_INTERFACE_NODE__SYGNAL_CAN_INTERFACE_NODE_HPP_
 
+#include <array>
 #include <chrono>
 #include <memory>
 #include <optional>
@@ -110,16 +111,20 @@ private:
   rclcpp::Service<sygnal_can_msgs::srv::SendControlCommand>::SharedPtr send_control_command_service_;
   rclcpp::Service<sygnal_can_msgs::srv::SendRelayCommand>::SharedPtr send_relay_command_service_;
 
+  // MCM heartbeat publisher entry
+  struct McmHeartbeatEntry
+  {
+    uint8_t bus_id;
+    uint8_t subsystem_id;
+    rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr publisher;
+    std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_state;
+  };
+
   // Publishers
   rclcpp_lifecycle::LifecyclePublisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
-  rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr mcm0_heartbeat_pub_;
-  rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmHeartbeat>::SharedPtr mcm1_heartbeat_pub_;
+  std::array<McmHeartbeatEntry, 4> mcm_heartbeat_entries_;
 
   rclcpp::Subscription<sygnal_can_msgs::msg::ControlCommand>::SharedPtr control_command_sub_;
-
-  // Current MCM state storage
-  std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_mcm0_state_;
-  std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_mcm1_state_;
 };
 
 }  // namespace polymath::sygnal

@@ -36,6 +36,13 @@ struct SendCommandResult
   std::optional<std::future<SygnalControlCommandResponse>> response_future;
 };
 
+struct McmSystem
+{
+  uint8_t bus_address;
+  SygnalMcmInterface mcm_0;
+  SygnalMcmInterface mcm_1;
+};
+
 constexpr uint32_t MAX_PROMISE_QUEUE_LENGTH = 100;
 
 /// @brief Combined Sygnal MCM and Control interface with SocketCAN communication
@@ -52,16 +59,11 @@ public:
   bool parse(const socketcan::CanFrame & frame);
 
   /// @brief Get interface states array from MCM 0
-  std::array<SygnalSystemState, 5> get_interface_states_0() const;
-
-  /// @brief Get interface states array from MCM 1
-  std::array<SygnalSystemState, 5> get_interface_states_1() const;
+  std::optional<std::array<SygnalSystemState, 5>> get_interface_state(
+    const uint8_t bus_address, const uint8_t subsystem_id) const;
 
   /// @brief Get MCM 0 system state
-  SygnalSystemState get_sygnal_mcm0_state() const;
-
-  /// @brief Get MCM 1 system state
-  SygnalSystemState get_sygnal_mcm1_state() const;
+  std::optional<SygnalSystemState> get_sygnal_mcm_state(const uint8_t bus_address, const uint8_t subsystem_id) const;
 
   /// @brief Send control state (enable/disable) command
   /// @param bus_id Bus address
@@ -105,8 +107,7 @@ public:
 
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  SygnalMcmInterface mcm_interface_0_;
-  SygnalMcmInterface mcm_interface_1_;
+  std::array<McmSystem, 2> mcm_systems_;  // Assuming max 2 MCMs for now, indexed by bus address
   SygnalControlInterface control_interface_;
 
   // Promise queues for each response type

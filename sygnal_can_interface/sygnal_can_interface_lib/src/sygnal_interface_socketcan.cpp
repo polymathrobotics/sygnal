@@ -22,22 +22,29 @@ namespace polymath::sygnal
 {
 
 SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter)
-: socketcan_adapter_(std::move(socketcan_adapter))
-, mcm_interface_0_(0)
-, mcm_interface_1_(1)
+: socketcan_adapter_(socketcan_adapter)
 , control_interface_()
-{}
+{
+  mcm_systems_[0].bus_address = DEFAULT_MCM_BUS_ADDRESS;
+  mcm_systems_[0].mcm_0 = SygnalMcmInterface(mcm_systems_[0].bus_address, 0);
+  mcm_systems_[0].mcm_1 = SygnalMcmInterface(mcm_systems_[0].bus_address, 1);
+
+  mcm_systems_[1].bus_address = SECONDARY_MCM_BUS_ADDRESS;
+  mcm_systems_[1].mcm_0 = SygnalMcmInterface(mcm_systems_[1].bus_address, 0);
+  mcm_systems_[1].mcm_1 = SygnalMcmInterface(mcm_systems_[1].bus_address, 1);
+}
 
 bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
 {
   // Try parsing as MCM heartbeat (both interfaces will check subsystem_id)
-  if (mcm_interface_0_.parseMcmHeartbeatFrame(frame)) {
-    return true;
-  };
-
-  if (mcm_interface_1_.parseMcmHeartbeatFrame(frame)) {
-    return true;
-  };
+  for (auto & mcm_system : mcm_systems_) {
+    if (mcm_system.mcm_0.parseMcmHeartbeatFrame(frame)) {
+      return true;
+    }
+    if (mcm_system.mcm_1.parseMcmHeartbeatFrame(frame)) {
+      return true;
+    }
+  }
 
   // Try parsing as command response
   auto response = control_interface_.parseCommandResponseFrame(frame);
@@ -78,24 +85,35 @@ bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
   return true;
 }
 
-std::array<SygnalSystemState, 5> SygnalInterfaceSocketcan::get_interface_states_0() const
+std::optional<std::array<SygnalSystemState, 5>> SygnalInterfaceSocketcan::get_interface_state(
+  const uint8_t bus_address, const uint8_t subsystem_id) const
 {
-  return mcm_interface_0_.get_interface_states();
+  for (const auto & mcm_system : mcm_systems_) {
+    if (mcm_system.bus_address == bus_address) {
+      if (subsystem_id == 0) {
+        return mcm_system.mcm_0.get_interface_states();
+      } else if (subsystem_id == 1) {
+        return mcm_system.mcm_1.get_interface_states();
+      }
+    }
+  }
+
+  return std::nullopt;
 }
 
-std::array<SygnalSystemState, 5> SygnalInterfaceSocketcan::get_interface_states_1() const
+std::optional<SygnalSystemState> SygnalInterfaceSocketcan::get_sygnal_mcm_state(
+  const uint8_t bus_address, const uint8_t subsystem_id) const
 {
-  return mcm_interface_1_.get_interface_states();
-}
-
-SygnalSystemState SygnalInterfaceSocketcan::get_sygnal_mcm0_state() const
-{
-  return mcm_interface_0_.get_mcm_state();
-}
-
-SygnalSystemState SygnalInterfaceSocketcan::get_sygnal_mcm1_state() const
-{
-  return mcm_interface_1_.get_mcm_state();
+  for (const auto & mcm_system : mcm_systems_) {
+    if (mcm_system.bus_address == bus_address) {
+      if (subsystem_id == 0) {
+        return mcm_system.mcm_0.get_mcm_state();
+      } else if (subsystem_id == 1) {
+        return mcm_system.mcm_1.get_mcm_state();
+      }
+    }
+  }
+  return std::nullopt;
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(

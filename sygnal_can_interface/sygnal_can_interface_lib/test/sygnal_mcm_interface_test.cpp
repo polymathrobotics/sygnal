@@ -40,7 +40,7 @@ static polymath::socketcan::CanFrame createTestFrame(uint32_t can_id, const std:
 
 TEST_CASE("SygnalMcmInterface constructor initializes to FAIL_HARD for subsystem 0", "[sygnal_mcm_interface]")
 {
-  polymath::sygnal::SygnalMcmInterface interface(0);
+  polymath::sygnal::SygnalMcmInterface interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
 
   REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
 
@@ -52,7 +52,7 @@ TEST_CASE("SygnalMcmInterface constructor initializes to FAIL_HARD for subsystem
 
 TEST_CASE("SygnalMcmInterface constructor initializes to FAIL_HARD for subsystem 1", "[sygnal_mcm_interface]")
 {
-  polymath::sygnal::SygnalMcmInterface interface(1);
+  polymath::sygnal::SygnalMcmInterface interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 1);
 
   REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
 
@@ -64,7 +64,7 @@ TEST_CASE("SygnalMcmInterface constructor initializes to FAIL_HARD for subsystem
 
 TEST_CASE("SygnalMcmInterface parses MCM_CONTROL heartbeat", "[sygnal_mcm_interface]")
 {
-  polymath::sygnal::SygnalMcmInterface interface(0);
+  polymath::sygnal::SygnalMcmInterface interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
 
   // Generated from DBC: MCM_CONTROL state, subsystem 0, all interfaces MCM_CONTROL
   std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0x98};
@@ -81,7 +81,7 @@ TEST_CASE("SygnalMcmInterface parses MCM_CONTROL heartbeat", "[sygnal_mcm_interf
 
 TEST_CASE("SygnalMcmInterface parses HUMAN_CONTROL heartbeat", "[sygnal_mcm_interface]")
 {
-  polymath::sygnal::SygnalMcmInterface interface(1);
+  polymath::sygnal::SygnalMcmInterface interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 1);
 
   // Generated from DBC: HUMAN_CONTROL state, subsystem 1
   std::vector<uint8_t> data = {0x81, 0x00, 0x00, 0x00, 0x00, 0x32, 0x00, 0x86};
@@ -98,7 +98,7 @@ TEST_CASE("SygnalMcmInterface parses HUMAN_CONTROL heartbeat", "[sygnal_mcm_inte
 
 TEST_CASE("SygnalMcmInterface rejects wrong frame ID", "[sygnal_mcm_interface]")
 {
-  polymath::sygnal::SygnalMcmInterface interface(0);
+  polymath::sygnal::SygnalMcmInterface interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
 
   std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0x98};
   auto frame = createTestFrame(0x999, data);  // Wrong ID
@@ -110,7 +110,7 @@ TEST_CASE("SygnalMcmInterface rejects wrong frame ID", "[sygnal_mcm_interface]")
 
 TEST_CASE("SygnalMcmInterface rejects bad CRC", "[sygnal_mcm_interface]")
 {
-  polymath::sygnal::SygnalMcmInterface interface(0);
+  polymath::sygnal::SygnalMcmInterface interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
 
   // Valid data but corrupted CRC (last byte)
   std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0xFF};
@@ -123,7 +123,7 @@ TEST_CASE("SygnalMcmInterface rejects bad CRC", "[sygnal_mcm_interface]")
 TEST_CASE("SygnalMcmInterface only parses matching subsystem_id", "[sygnal_mcm_interface]")
 {
   // Interface configured for subsystem 0 should ignore subsystem 1 frames
-  polymath::sygnal::SygnalMcmInterface interface_0(0);
+  polymath::sygnal::SygnalMcmInterface interface_0(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
 
   // Heartbeat frame for subsystem 1
   std::vector<uint8_t> data_sub1 = {0x81, 0x00, 0x00, 0x00, 0x00, 0x32, 0x00, 0x86};
@@ -134,7 +134,7 @@ TEST_CASE("SygnalMcmInterface only parses matching subsystem_id", "[sygnal_mcm_i
   REQUIRE(interface_0.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
 
   // Interface configured for subsystem 1 should ignore subsystem 0 frames
-  polymath::sygnal::SygnalMcmInterface interface_1(1);
+  polymath::sygnal::SygnalMcmInterface interface_1(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 1);
 
   // Heartbeat frame for subsystem 0
   std::vector<uint8_t> data_sub0 = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0x98};
