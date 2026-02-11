@@ -22,8 +22,17 @@
 namespace polymath::sygnal
 {
 
-SygnalMcmInterface::SygnalMcmInterface(uint8_t subsystem_id)
+SygnalMcmInterface::SygnalMcmInterface()
+: subsystem_id_(0)
+, bus_address_(0)
+, sygnal_mcm_state_(SygnalSystemState::FAIL_HARD)
+{
+  sygnal_interface_states_.fill(SygnalSystemState::FAIL_HARD);
+}
+
+SygnalMcmInterface::SygnalMcmInterface(const uint8_t bus_address, const uint8_t subsystem_id)
 : subsystem_id_(subsystem_id)
+, bus_address_(bus_address)
 , sygnal_mcm_state_(SygnalSystemState::FAIL_HARD)
 {
   sygnal_interface_states_.fill(SygnalSystemState::FAIL_HARD);
@@ -52,6 +61,10 @@ bool SygnalMcmInterface::parseMcmHeartbeatFrame(const socketcan::CanFrame & fram
 
   // Only parse if this frame is for our subsystem
   if (unpacked_heartbeat_t.subsystem_id != subsystem_id_) {
+    return false;
+  }
+
+  if (unpacked_heartbeat_t.bus_address != bus_address_) {
     return false;
   }
 

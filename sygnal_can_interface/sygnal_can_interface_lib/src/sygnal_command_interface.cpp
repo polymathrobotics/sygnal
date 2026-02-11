@@ -53,6 +53,7 @@ std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createContr
   }
 
   mcm_unpacked_control_enable_t.bus_address = bus_id;
+  mcm_unpacked_control_enable_t.sub_system_id = subsystem_id;
   mcm_unpacked_control_enable_t.interface_id = interface_id;
   mcm_unpacked_control_enable_t.enable = static_cast<uint8_t>(control_state);
   mcm_unpacked_control_enable_t.crc = 0;
@@ -112,6 +113,7 @@ std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createContr
   }
 
   mcm_unpacked_control_command_t.bus_address = bus_id;
+  mcm_unpacked_control_command_t.sub_system_id = subsystem_id;
   mcm_unpacked_control_command_t.interface_id = interface_id;
   mcm_unpacked_control_command_t.count8 = mcm_control_control_command_count8_encode(0.0);
   mcm_unpacked_control_command_t.value = mcm_control_control_command_value_encode(value);

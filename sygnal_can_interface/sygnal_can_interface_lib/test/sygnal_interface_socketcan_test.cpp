@@ -270,10 +270,13 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
 
     frame_received_future.wait_for(std::chrono::seconds(2));
 
-    auto mcm0_state = sygnal_interface->get_sygnal_mcm0_state();
-    REQUIRE(mcm0_state == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
+    auto mcm0_state_opt = sygnal_interface->get_sygnal_mcm_state(bus_id, 0);
+    REQUIRE(mcm0_state_opt.has_value());
+    REQUIRE(mcm0_state_opt.value() == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
 
-    auto interface_states_result = sygnal_interface->get_interface_states_0();
+    auto interface_states_opt = sygnal_interface->get_interface_state(bus_id, 0);
+    REQUIRE(interface_states_opt.has_value());
+    auto interface_states_result = interface_states_opt.value();
     REQUIRE(interface_states_result[0] == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
     REQUIRE(interface_states_result[1] == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
     REQUIRE(interface_states_result[2] == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
@@ -294,10 +297,13 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
 
     frame_received_future.wait_for(std::chrono::seconds(2));
 
-    auto mcm1_state = sygnal_interface->get_sygnal_mcm1_state();
-    REQUIRE(mcm1_state == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
+    auto mcm1_state_opt = sygnal_interface->get_sygnal_mcm_state(bus_id, 1);
+    REQUIRE(mcm1_state_opt.has_value());
+    REQUIRE(mcm1_state_opt.value() == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
 
-    auto interface_states_result = sygnal_interface->get_interface_states_1();
+    auto interface_states_opt = sygnal_interface->get_interface_state(bus_id, 1);
+    REQUIRE(interface_states_opt.has_value());
+    auto interface_states_result = interface_states_opt.value();
     REQUIRE(interface_states_result[0] == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
     REQUIRE(interface_states_result[1] == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
     REQUIRE(interface_states_result[2] == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
