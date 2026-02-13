@@ -46,7 +46,7 @@ enum class SygnalControlCommandResponseType : uint8_t
 };
 
 constexpr uint32_t MAX_SYGNAL_INTERFACES = 6;
-constexpr uint32_t MAX_SYGNAL_SUBSYSTEMS = 2;
+constexpr uint32_t MAX_SYGNAL_SUBSYSTEMS = 1;
 
 struct SygnalControlCommandResponse
 {
