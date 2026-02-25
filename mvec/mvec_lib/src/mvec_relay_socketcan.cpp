@@ -25,8 +25,7 @@ MvecRelaySocketcan::MvecRelaySocketcan(std::shared_ptr<socketcan::SocketcanAdapt
 {}
 
 MvecRelaySocketcan::MvecRelaySocketcan(
-  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-  std::chrono::milliseconds response_timeout)
+  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, std::chrono::milliseconds response_timeout)
 : socketcan_adapter_(socketcan_adapter)
 , relay_impl_()
 , response_timeout_(response_timeout)

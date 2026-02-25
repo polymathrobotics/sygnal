@@ -40,8 +40,7 @@ public:
   /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
   /// @param response_timeout Timeout for all MVEC response types
   MvecRelaySocketcan(
-    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-    std::chrono::milliseconds response_timeout);
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, std::chrono::milliseconds response_timeout);
 
   /// @brief Parse incoming CAN frame and fulfill waiting promises
   /// @param frame CAN frame to parse
