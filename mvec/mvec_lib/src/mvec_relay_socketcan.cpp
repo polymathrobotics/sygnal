@@ -14,6 +14,7 @@
 
 #include "mvec_lib/mvec_relay_socketcan.hpp"
 
+#include <memory>
 #include <mutex>
 #include <utility>
 
