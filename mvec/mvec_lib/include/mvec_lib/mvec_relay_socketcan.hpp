@@ -15,10 +15,11 @@
 #ifndef MVEC_LIB__MVEC_RELAY_SOCKETCAN_HPP_
 #define MVEC_LIB__MVEC_RELAY_SOCKETCAN_HPP_
 
+#include <chrono>
 #include <future>
 #include <memory>
 #include <mutex>
-#include <queue>
+#include <optional>
 
 #include "mvec_lib/mvec_relay.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
@@ -31,9 +32,16 @@ namespace polymath::sygnal
 class MvecRelaySocketcan
 {
 public:
-  /// @brief Constructor
+  /// @brief Constructor with default 500ms response timeout
   /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
   explicit MvecRelaySocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter);
+
+  /// @brief Constructor with custom response timeout
+  /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
+  /// @param response_timeout Timeout for all MVEC response types
+  MvecRelaySocketcan(
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+    std::chrono::milliseconds response_timeout);
 
   /// @brief Parse incoming CAN frame and fulfill waiting promises
   /// @param frame CAN frame to parse
@@ -49,16 +57,16 @@ public:
   void clear_relay();
 
   /// @brief Query current relay states asynchronously
-  /// @return Future that will contain relay query reply
-  std::future<MvecRelayQueryReply> get_relay_state();
+  /// @return Future containing reply, or nullopt on timeout or rejection due to pending requests.
+  std::future<std::optional<MvecRelayQueryReply>> get_relay_state();
 
   /// @brief Send relay command and wait for confirmation
-  /// @return Future that will contain command reply
-  std::future<MvecRelayCommandReply> send_relay_command();
+  /// @return Future containing reply, or nullopt on timeout or rejection due to pending requests.
+  std::future<std::optional<MvecRelayCommandReply>> send_relay_command();
 
   /// @brief Query device population (which relays/fuses are installed)
-  /// @return Future that will contain population reply
-  std::future<MvecPopulationReply> get_relay_population();
+  /// @return Future containing reply, or nullopt on timeout or rejection due to pending requests.
+  std::future<std::optional<MvecPopulationReply>> get_relay_population();
 
   /// @brief Get last received fuse status message
   /// @return Optional containing fuse status if valid data available
@@ -72,21 +80,32 @@ public:
   /// @return Optional containing error status if valid data available
   const std::optional<MvecErrorStatusMessage> get_last_error_status();
 
+  /// @brief Default timeout for MVEC responses (500ms)
+  static constexpr std::chrono::milliseconds MVEC_DEFAULT_RESPONSE_TIMEOUT{500};
+
 private:
   /// @brief SocketCAN adapter for CAN communication
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
   /// @brief Core MVEC relay implementation
   MvecRelay relay_impl_;
 
-  /// @brief Queue of promises waiting for relay query responses
-  std::queue<std::promise<MvecRelayQueryReply>> query_reply_promises_;
-  /// @brief Queue of promises waiting for relay command responses
-  std::queue<std::promise<MvecRelayCommandReply>> command_reply_promises_;
-  /// @brief Queue of promises waiting for population query responses
-  std::queue<std::promise<MvecPopulationReply>> population_reply_promises_;
+  /// @brief Timeout for all MVEC response types
+  std::chrono::milliseconds response_timeout_;
 
-  /// @brief Mutex protecting promise queues for thread safety
-  std::mutex promises_mutex_;
+  /// @brief Single-slot promise for relay query response
+  std::optional<std::promise<std::optional<MvecRelayQueryReply>>> query_reply_promise_;
+  std::chrono::steady_clock::time_point query_send_time_;
+  std::mutex query_mutex_;
+
+  /// @brief Single-slot promise for relay command response
+  std::optional<std::promise<std::optional<MvecRelayCommandReply>>> command_reply_promise_;
+  std::chrono::steady_clock::time_point command_send_time_;
+  std::mutex command_mutex_;
+
+  /// @brief Single-slot promise for population query response
+  std::optional<std::promise<std::optional<MvecPopulationReply>>> population_reply_promise_;
+  std::chrono::steady_clock::time_point population_send_time_;
+  std::mutex population_mutex_;
 };
 
 }  // namespace polymath::sygnal

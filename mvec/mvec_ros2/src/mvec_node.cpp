@@ -165,8 +165,13 @@ void MvecNode::timerCallback()
   auto status = relay_state_future.wait_for(std::chrono::milliseconds(100));
 
   if (status == std::future_status::ready) {
-    auto relay_query_reply = relay_state_future.get();
-    if (relay_query_reply.is_valid()) {
+    auto relay_query_result = relay_state_future.get();
+    if (!relay_query_result.has_value()) {
+      RCLCPP_DEBUG(get_logger(), "Relay state query returned nullopt (timed out or rejected due to pending request)");
+    } else if (!relay_query_result->is_valid()) {
+      RCLCPP_DEBUG(get_logger(), "Invalid relay query response received");
+    } else {
+      const auto & relay_query_reply = relay_query_result.value();
       // Store current relay states
       mvec_msgs::msg::MvecFeedback feedback_msg;
       feedback_msg.header.stamp = get_clock()->now();
@@ -187,11 +192,9 @@ void MvecNode::timerCallback()
       addDefaultPresetIfNotPresent(defaults);
       current_relay_states_ = feedback_msg;
       RCLCPP_DEBUG(get_logger(), "Updated relay states from hardware");
-    } else {
-      RCLCPP_DEBUG(get_logger(), "Invalid relay query response received");
     }
   } else {
-    RCLCPP_DEBUG(get_logger(), "Relay state query timed out");
+    RCLCPP_DEBUG(get_logger(), "Relay state query timed out waiting for future");
   }
 
   // Publish diagnostics array
@@ -244,21 +247,27 @@ std::optional<std::string> MvecNode::set_single_relay(mvec_msgs::msg::Relay rela
   auto future = mvec_socketcan_->send_relay_command();
   auto status = future.wait_for(timeout_ms_);
 
-  if (status == std::future_status::ready) {
-    auto command_reply = future.get();
-    if (command_reply.get_success() == 1) {
-      RCLCPP_INFO(get_logger(), "Successfully set relay %d to state %s", relay.relay_id, relay.state ? "ON" : "OFF");
-      return std::nullopt;  // Success
-    } else {
-      std::string error_msg = "MVEC device rejected relay command";
-      RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
-      return error_msg;
-    }
-  } else {
+  if (status != std::future_status::ready) {
     std::string error_msg = "Timeout waiting for relay command response";
     RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
     return error_msg;
   }
+
+  auto command_result = future.get();
+  if (!command_result.has_value()) {
+    std::string error_msg = "Relay command returned no response (timeout or rejected)";
+    RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+    return error_msg;
+  }
+
+  if (command_result->get_success() == 1) {
+    RCLCPP_INFO(get_logger(), "Successfully set relay %d to state %s", relay.relay_id, relay.state ? "ON" : "OFF");
+    return std::nullopt;  // Success
+  }
+
+  std::string error_msg = "MVEC device rejected relay command";
+  RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+  return error_msg;
 }
 
 std::optional<std::string> MvecNode::set_multi_relay(const std::vector<mvec_msgs::msg::Relay> & relays)
@@ -286,21 +295,27 @@ std::optional<std::string> MvecNode::set_multi_relay(const std::vector<mvec_msgs
     auto future = mvec_socketcan_->send_relay_command();
     auto status = future.wait_for(timeout_ms_);
 
-    if (status == std::future_status::ready) {
-      auto command_reply = future.get();
-      if (command_reply.get_success() == 1) {
-        RCLCPP_INFO(get_logger(), "Successfully set %zu relays", relays.size());
-        return std::nullopt;  // Success
-      } else {
-        std::string error_msg = "MVEC device rejected multi-relay command";
-        RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
-        return error_msg;
-      }
-    } else {
+    if (status != std::future_status::ready) {
       std::string error_msg = "Timeout waiting for multi-relay command response";
       RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
       return error_msg;
     }
+
+    auto command_result = future.get();
+    if (!command_result.has_value()) {
+      std::string error_msg = "Multi-relay command returned no response (timeout or rejected)";
+      RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+      return error_msg;
+    }
+
+    if (command_result->get_success() == 1) {
+      RCLCPP_INFO(get_logger(), "Successfully set %zu relays", relays.size());
+      return std::nullopt;  // Success
+    }
+
+    std::string error_msg = "MVEC device rejected multi-relay command";
+    RCLCPP_WARN(get_logger(), "%s", error_msg.c_str());
+    return error_msg;
   } catch (const std::exception & e) {
     std::string error_msg = "Exception during multi-relay command: " + std::string(e.what());
     RCLCPP_ERROR(get_logger(), "%s", error_msg.c_str());

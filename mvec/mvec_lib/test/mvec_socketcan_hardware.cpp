@@ -58,7 +58,10 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
     auto status = population_future.wait_for(std::chrono::seconds(5));
 
     if (status == std::future_status::ready) {
-      auto population_reply = population_future.get();
+      auto population_result = population_future.get();
+      REQUIRE(population_result.has_value());
+
+      const auto & population_reply = population_result.value();
       std::cout << "Population query successful! Valid: " << population_reply.is_valid() << std::endl;
 
       // Check that we got a valid response
@@ -95,7 +98,10 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
     auto status = relay_state_future.wait_for(std::chrono::seconds(5));
 
     if (status == std::future_status::ready) {
-      auto relay_query_reply = relay_state_future.get();
+      auto relay_query_result = relay_state_future.get();
+      REQUIRE(relay_query_result.has_value());
+
+      const auto & relay_query_reply = relay_query_result.value();
       std::cout << "Relay state query successful! Valid: " << relay_query_reply.is_valid() << std::endl;
 
       // Check that we got a valid response
@@ -213,18 +219,20 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
 
     REQUIRE(status == std::future_status::ready);
 
-    auto response = relay_command_response_future.get();
+    auto response_result = relay_command_response_future.get();
+    REQUIRE(response_result.has_value());
 
     // 1 is no error
-    REQUIRE(response.get_success() == 1);
+    REQUIRE(response_result->get_success() == 1);
     std::cout << "Relay response message confirms success" << std::endl;
 
     auto mvec_query_future = mvec_socketcan->get_relay_state();
     status = mvec_query_future.wait_for(std::chrono::seconds(5));
-    auto relay_state = mvec_query_future.get();
+    auto relay_state_result = mvec_query_future.get();
+    REQUIRE(relay_state_result.has_value());
 
-    REQUIRE(relay_state.get_relay_state(8) == 1);
-    REQUIRE(relay_state.get_relay_state(9) == 1);
+    REQUIRE(relay_state_result->get_relay_state(8) == 1);
+    REQUIRE(relay_state_result->get_relay_state(9) == 1);
     std::cout << "Relay states queried and confirm command" << std::endl;
   }
 
