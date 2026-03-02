@@ -25,11 +25,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_link_options("-Wl,--no-undefined")
 endif()
 
-find_package(ament_cmake REQUIRED)
-find_package(socketcan_adapter REQUIRED)
-
-# socketcan adapter's improperly configured dependencies
-# TODO (Zeerek): Remove when socketcan adapter's dependencies are cleaned up
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
 add_library(
   ${PROJECT_NAME} SHARED
@@ -79,7 +76,6 @@ ament_export_dependencies(
 )
 
 if(BUILD_TESTING)
-  find_package(ament_cmake_auto REQUIRED)
   ament_auto_find_test_dependencies()
   find_package(Catch2 REQUIRED)
 

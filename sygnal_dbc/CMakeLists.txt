@@ -15,7 +15,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project(sygnal_dbc VERSION 0.1.0 LANGUAGES C CXX)
 
-find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 include(GNUInstallDirs)
 
@@ -95,7 +96,6 @@ ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 
 if(BUILD_TESTING)
-  find_package(ament_cmake_auto REQUIRED)
   ament_auto_find_test_dependencies()
   find_package(Catch2 REQUIRED)
 

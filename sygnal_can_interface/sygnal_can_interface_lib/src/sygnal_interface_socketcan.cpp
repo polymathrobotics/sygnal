@@ -131,8 +131,6 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
     return {false, std::nullopt};
   }
 
-  auto data = frame_opt->get_data();
-
   std::optional<std::future<SygnalControlCommandResponse>> future_opt;
   if (expect_reply) {
     std::promise<SygnalControlCommandResponse> promise;
