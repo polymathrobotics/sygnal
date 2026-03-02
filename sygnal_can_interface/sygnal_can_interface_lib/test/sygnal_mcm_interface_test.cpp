@@ -19,8 +19,6 @@
 
 #if __has_include(<catch2/catch_all.hpp>)
   #include <catch2/catch_all.hpp>
-  #include <catch2/catch_approx.hpp>
-using Catch::Approx;
 #elif __has_include(<catch2/catch.hpp>)
   #include <catch2/catch.hpp>
 #else
