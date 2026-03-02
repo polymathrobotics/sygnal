@@ -95,9 +95,8 @@ ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 
 if(BUILD_TESTING)
-  find_package(ament_cmake_pytest REQUIRED)
-  find_package(Catch2 REQUIRED)
-  include(Catch)
+  find_package(ament_cmake_auto REQUIRED)
+  ament_auto_find_test_dependencies()
 
   ament_add_pytest_test(test_mcm_heartbeat_python
     test/test_mcm_heartbeat.py
@@ -106,6 +105,14 @@ if(BUILD_TESTING)
 
   add_executable(test_mcm_heartbeat_cpp test/test_mcm_heartbeat.cpp)
   target_link_libraries(test_mcm_heartbeat_cpp PRIVATE Catch2::Catch2WithMain ${PROJECT_NAME})
-  catch_discover_tests(test_mcm_heartbeat_cpp)
+  ament_add_test(
+    test_mcm_heartbeat_cpp
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:test_mcm_heartbeat_cpp>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/test_mcm_heartbeat_cpp_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
 
 endif()

@@ -74,8 +74,8 @@ ament_export_dependencies(
 )
 
 if(BUILD_TESTING)
-  find_package(Catch2 2 REQUIRED)
-  include(Catch)
+  find_package(ament_cmake_auto REQUIRED)
+  ament_auto_find_test_dependencies()
 
   add_executable(sygnal_mcm_interface_tests
     test/sygnal_mcm_interface_test.cpp
@@ -83,7 +83,15 @@ if(BUILD_TESTING)
   target_link_libraries(sygnal_mcm_interface_tests
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
-  catch_discover_tests(sygnal_mcm_interface_tests)
+  ament_add_test(
+    sygnal_mcm_interface_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:sygnal_mcm_interface_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/sygnal_mcm_interface_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
 
   add_executable(sygnal_command_interface_tests
     test/sygnal_command_interface_test.cpp
@@ -91,7 +99,15 @@ if(BUILD_TESTING)
   target_link_libraries(sygnal_command_interface_tests
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
-  catch_discover_tests(sygnal_command_interface_tests)
+  ament_add_test(
+    sygnal_command_interface_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:sygnal_command_interface_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/sygnal_command_interface_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
 
   if(DEFINED ENV{CAN_AVAILABLE})
     add_executable(sygnal_interface_socketcan_tests
@@ -100,7 +116,15 @@ if(BUILD_TESTING)
     target_link_libraries(sygnal_interface_socketcan_tests
       PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
     )
-    catch_discover_tests(sygnal_interface_socketcan_tests)
+    ament_add_test(
+      sygnal_interface_socketcan_tests
+      GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+      COMMAND "$<TARGET_FILE:sygnal_interface_socketcan_tests>"
+        -r junit -s
+        -o test_results/${PROJECT_NAME}/sygnal_interface_socketcan_tests_output.xml
+      ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+      WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
     message(STATUS "CAN_AVAILABLE set - including hardware tests")
   endif()
 endif()
