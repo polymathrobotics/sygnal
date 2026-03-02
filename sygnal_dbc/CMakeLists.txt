@@ -97,6 +97,7 @@ ament_package(CONFIG_EXTRAS "cmake/${PROJECT_NAME}-extras.cmake")
 if(BUILD_TESTING)
   find_package(ament_cmake_auto REQUIRED)
   ament_auto_find_test_dependencies()
+  find_package(Catch2 REQUIRED)
 
   ament_add_pytest_test(test_mcm_heartbeat_python
     test/test_mcm_heartbeat.py

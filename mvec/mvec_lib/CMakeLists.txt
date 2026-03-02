@@ -81,6 +81,7 @@ ament_export_dependencies(
 if(BUILD_TESTING)
   find_package(ament_cmake_auto REQUIRED)
   ament_auto_find_test_dependencies()
+  find_package(Catch2 REQUIRED)
 
   add_executable(relay_tests
     test/mvec_relay.cpp

@@ -76,6 +76,7 @@ ament_export_dependencies(
 if(BUILD_TESTING)
   find_package(ament_cmake_auto REQUIRED)
   ament_auto_find_test_dependencies()
+  find_package(Catch2 REQUIRED)
 
   add_executable(sygnal_mcm_interface_tests
     test/sygnal_mcm_interface_test.cpp
