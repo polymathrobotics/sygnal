@@ -25,11 +25,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_link_options("-Wl,--no-undefined")
 endif()
 
-find_package(ament_cmake REQUIRED)
-find_package(socketcan_adapter REQUIRED)
-
-# socketcan adapter's improperly configured dependencies
-# TODO (Zeerek): Remove when socketcan adapter's dependencies are cleaned up
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
 add_library(
   ${PROJECT_NAME} SHARED
@@ -79,8 +76,8 @@ ament_export_dependencies(
 )
 
 if(BUILD_TESTING)
-  find_package(Catch2 2 REQUIRED)
-  include(Catch)
+  ament_auto_find_test_dependencies()
+  find_package(Catch2 REQUIRED)
 
   add_executable(relay_tests
     test/mvec_relay.cpp
@@ -88,7 +85,15 @@ if(BUILD_TESTING)
   target_link_libraries(relay_tests
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
-  catch_discover_tests(relay_tests)
+  ament_add_test(
+    relay_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:relay_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/relay_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
 
   add_executable(status_messages_tests
     test/status_messages.cpp
@@ -96,7 +101,15 @@ if(BUILD_TESTING)
   target_link_libraries(status_messages_tests
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
-  catch_discover_tests(status_messages_tests)
+  ament_add_test(
+    status_messages_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:status_messages_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/status_messages_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
 
   add_executable(status_enums_tests
     test/status_enums.cpp
@@ -104,7 +117,15 @@ if(BUILD_TESTING)
   target_link_libraries(status_enums_tests
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
-  catch_discover_tests(status_enums_tests)
+  ament_add_test(
+    status_enums_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:status_enums_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/status_enums_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
 
   # Only build hardware tests if CAN_AVAILABLE is set in the environment
   if(DEFINED ENV{CAN_AVAILABLE})
@@ -114,7 +135,15 @@ if(BUILD_TESTING)
     target_link_libraries(socketcan_hardware_tests
       PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
     )
-    catch_discover_tests(socketcan_hardware_tests)
+    ament_add_test(
+      socketcan_hardware_tests
+      GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+      COMMAND "$<TARGET_FILE:socketcan_hardware_tests>"
+        -r junit -s
+        -o test_results/${PROJECT_NAME}/socketcan_hardware_tests_output.xml
+      ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+      WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
     message(STATUS "CAN_AVAILABLE set - including hardware tests")
   else()
     message(STATUS "CAN_AVAILABLE not set - skipping hardware tests (set CAN_AVAILABLE=1 to enable)")

@@ -23,7 +23,13 @@
 #include <utility>
 #include <vector>
 
-#include <magic_enum.hpp>
+#if __has_include(<magic_enum/magic_enum.hpp>)
+  #include <magic_enum/magic_enum.hpp>
+#elif __has_include(<magic_enum.hpp>)
+  #include <magic_enum.hpp>
+#else
+  #error "magic_enum headers not found. Please install magic_enum."
+#endif
 
 #include "mvec_lib/core/mvec_constants.hpp"
 

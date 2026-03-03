@@ -9,8 +9,11 @@
   <author email="zeerekahmad@hotmail.com">Zeerek Ahmad</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <depend>socketcan_adapter</depend>
   <depend>sygnal_dbc</depend>
+
+  <test_depend>catch2</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

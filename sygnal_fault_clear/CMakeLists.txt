@@ -20,27 +20,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 
-# find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
-find_package(rclcpp_lifecycle REQUIRED)
-find_package(rclcpp_components REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
-
-include_directories(
-  include
-)
-
-set(dependencies
-  rclcpp
-  rclcpp_action
-  rclcpp_lifecycle
-  rclcpp_components
-  std_msgs
-  std_srvs
-)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
 set(library_name ${PROJECT_NAME}_lib)
 add_library(
@@ -48,8 +29,18 @@ add_library(
   src/fault_clear_node.cpp
 )
 
-ament_target_dependencies(${library_name}
-  ${dependencies}
+target_include_directories(${library_name} PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:include>"
+)
+
+target_link_libraries(${library_name} PUBLIC
+  ${std_msgs_TARGETS}
+  ${std_srvs_TARGETS}
+  rclcpp::rclcpp
+  rclcpp_action::rclcpp_action
+  rclcpp_lifecycle::rclcpp_lifecycle
+  rclcpp_components::component
 )
 
 set(executable_name sygnal_fault_clear)
