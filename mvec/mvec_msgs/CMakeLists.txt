@@ -15,10 +15,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(mvec_msgs)
 
-find_package(ament_cmake REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
-find_package(builtin_interfaces REQUIRED)
-find_package(std_msgs REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
 set(msg_files
   "msg/Relay.msg"
