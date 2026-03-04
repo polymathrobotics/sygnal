@@ -13,21 +13,20 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.8)
-project(mvec_msgs)
+project(sygnal_can_msgs)
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
 set(msg_files
-  "msg/Relay.msg"
-  "msg/Preset.msg"
-  "msg/MvecFeedback.msg"
+  "msg/McmHeartbeat.msg"
+  "msg/ControlCommand.msg"
 )
 
 set(srv_files
-  "srv/SetSingleRelay.srv"
-  "srv/SetMultiRelay.srv"
-  "srv/TriggerPreset.srv"
+  "srv/SetControlState.srv"
+  "srv/SendControlCommand.srv"
+  "srv/SendRelayCommand.srv"
 )
 
 set(msg_dependencies

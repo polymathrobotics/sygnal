@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>mvec_lib</name>
+  <name>sygnal_can_interface_lib</name>
   <version>0.0.0</version>
-  <description>Library for Interfacing with an MVEC Relay using Socketcan Adapter</description>
+  <description>Library for interfacing with Sygnal MCM over CAN using Socketcan Adapter</description>
   <maintainer email="engineering@polymathrobotics.com">Polymath Engineering</maintainer>
   <license>Apache-2.0</license>
   <author email="zeerekahmad@hotmail.com">Zeerek Ahmad</author>
@@ -11,8 +11,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <depend>socketcan_adapter</depend>
+  <depend>sygnal_dbc</depend>
 
-  <test_depend>ament_cmake_test</test_depend>
   <test_depend>catch2</test_depend>
 
   <export>

@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# Copyright (c) 2025-present Polymath Robotics, Inc. All rights reserved
-# Proprietary. Any unauthorized copying, distribution, or modification of this software is strictly prohibited.
+
 cmake_minimum_required(VERSION 3.8)
-project(mvec_lib)
+project(sygnal_can_interface_lib)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -30,15 +29,10 @@ ament_auto_find_build_dependencies()
 
 add_library(
   ${PROJECT_NAME} SHARED
-  src/mvec_relay.cpp
-  src/mvec_relay_socketcan.cpp
-  src/status_messages/mvec_fuse_status_message.cpp
-  src/status_messages/mvec_relay_status_message.cpp
-  src/status_messages/mvec_error_status_message.cpp
-  src/responses/mvec_response_base.cpp
-  src/responses/mvec_relay_command_reply.cpp
-  src/responses/mvec_relay_query_reply.cpp
-  src/responses/mvec_population_reply.cpp
+  src/crc8.cpp
+  src/sygnal_mcm_interface.cpp
+  src/sygnal_command_interface.cpp
+  src/sygnal_interface_socketcan.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -47,7 +41,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
-  PUBLIC socketcan_adapter::socketcan_adapter
+  PUBLIC
+    socketcan_adapter::socketcan_adapter
+    sygnal_dbc::sygnal_dbc
 )
 
 install(
@@ -73,80 +69,62 @@ install(
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_export_dependencies(
   socketcan_adapter
+  sygnal_dbc
 )
 
 if(BUILD_TESTING)
   ament_auto_find_test_dependencies()
   find_package(Catch2 REQUIRED)
 
-  add_executable(relay_tests
-    test/mvec_relay.cpp
+  add_executable(sygnal_mcm_interface_tests
+    test/sygnal_mcm_interface_test.cpp
   )
-  target_link_libraries(relay_tests
+  target_link_libraries(sygnal_mcm_interface_tests
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
   ament_add_test(
-    relay_tests
+    sygnal_mcm_interface_tests
     GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:relay_tests>"
+    COMMAND "$<TARGET_FILE:sygnal_mcm_interface_tests>"
       -r junit -s
-      -o test_results/${PROJECT_NAME}/relay_tests_output.xml
+      -o test_results/${PROJECT_NAME}/sygnal_mcm_interface_tests_output.xml
     ENV CATCH_CONFIG_CONSOLE_WIDTH=120
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   )
 
-  add_executable(status_messages_tests
-    test/status_messages.cpp
+  add_executable(sygnal_command_interface_tests
+    test/sygnal_command_interface_test.cpp
   )
-  target_link_libraries(status_messages_tests
+  target_link_libraries(sygnal_command_interface_tests
     PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
   ament_add_test(
-    status_messages_tests
+    sygnal_command_interface_tests
     GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:status_messages_tests>"
+    COMMAND "$<TARGET_FILE:sygnal_command_interface_tests>"
       -r junit -s
-      -o test_results/${PROJECT_NAME}/status_messages_tests_output.xml
+      -o test_results/${PROJECT_NAME}/sygnal_command_interface_tests_output.xml
     ENV CATCH_CONFIG_CONSOLE_WIDTH=120
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   )
 
-  add_executable(status_enums_tests
-    test/status_enums.cpp
-  )
-  target_link_libraries(status_enums_tests
-    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
-  )
-  ament_add_test(
-    status_enums_tests
-    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:status_enums_tests>"
-      -r junit -s
-      -o test_results/${PROJECT_NAME}/status_enums_tests_output.xml
-    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-  )
-
-  # Only build hardware tests if CAN_AVAILABLE is set in the environment
   if(DEFINED ENV{CAN_AVAILABLE})
-    add_executable(socketcan_hardware_tests
-      test/mvec_socketcan_hardware.cpp
+    add_executable(sygnal_interface_socketcan_tests
+      test/sygnal_interface_socketcan_test.cpp
     )
-    target_link_libraries(socketcan_hardware_tests
+    target_link_libraries(sygnal_interface_socketcan_tests
       PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
     )
     ament_add_test(
-      socketcan_hardware_tests
+      sygnal_interface_socketcan_tests
       GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-      COMMAND "$<TARGET_FILE:socketcan_hardware_tests>"
+      COMMAND "$<TARGET_FILE:sygnal_interface_socketcan_tests>"
         -r junit -s
-        -o test_results/${PROJECT_NAME}/socketcan_hardware_tests_output.xml
+        -o test_results/${PROJECT_NAME}/sygnal_interface_socketcan_tests_output.xml
       ENV CATCH_CONFIG_CONSOLE_WIDTH=120
       WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
     message(STATUS "CAN_AVAILABLE set - including hardware tests")
-  else()
-    message(STATUS "CAN_AVAILABLE not set - skipping hardware tests (set CAN_AVAILABLE=1 to enable)")
   endif()
 endif()
 

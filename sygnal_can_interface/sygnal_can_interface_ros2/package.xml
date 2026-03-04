@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>sygnal_can_interface_ros2</name>
+  <version>0.0.0</version>
+  <description>ROS2 node for Sygnal CAN interface control system with MCM heartbeat publishing and command services</description>
+  <maintainer email="engineering@polymathrobotics.com">Polymath Robotics Engineering</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>generate_parameter_library</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>rclcpp_components</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>magic_enum</depend>
+  <depend>sygnal_can_msgs</depend>
+  <depend>sygnal_can_interface_lib</depend>
+  <depend>socketcan_adapter</depend>
+
+  <test_depend>ament_cmake_test</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
