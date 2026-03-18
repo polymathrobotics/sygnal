@@ -15,7 +15,6 @@
 #ifndef MVEC_LIB__MVEC_RELAY_SOCKETCAN_HPP_
 #define MVEC_LIB__MVEC_RELAY_SOCKETCAN_HPP_
 
-#include <chrono>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -27,20 +26,16 @@
 namespace polymath::sygnal
 {
 
-/// @brief MVEC relay controller with async SocketCAN communication
-/// Provides high-level interface for MVEC relay control with thread-safe promise/future pattern
+/// @brief MVEC relay controller with async SocketCAN communication.
+/// Each request method (query/command/population) abandons any in-flight request of the same type,
+/// sends a new CAN frame, and returns a future for the response.
+/// If a previous request was still pending, its promise is destroyed and the caller's future
+/// throws broken_promise on get(). Callers use wait_for() to handle response timeouts.
 class MvecRelaySocketcan
 {
 public:
-  /// @brief Constructor with default 500ms response timeout
   /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
   explicit MvecRelaySocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter);
-
-  /// @brief Constructor with custom response timeout
-  /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
-  /// @param response_timeout Timeout for all MVEC response types
-  MvecRelaySocketcan(
-    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, std::chrono::milliseconds response_timeout);
 
   /// @brief Parse incoming CAN frame and fulfill waiting promises
   /// @param frame CAN frame to parse
@@ -56,54 +51,43 @@ public:
   void clear_relay();
 
   /// @brief Query current relay states asynchronously
-  /// @return Future containing reply, or nullopt on timeout or rejection due to pending requests.
-  std::future<std::optional<MvecRelayQueryReply>> get_relay_state();
+  /// Abandons any in-flight query (caller's future throws broken_promise).
+  /// @return Future containing relay query reply. Use wait_for() to handle timeouts.
+  std::future<MvecRelayQueryReply> get_relay_state();
 
-  /// @brief Send relay command and wait for confirmation
-  /// @return Future containing reply, or nullopt on timeout or rejection due to pending requests.
-  std::future<std::optional<MvecRelayCommandReply>> send_relay_command();
+  /// @brief Send relay command and get confirmation asynchronously
+  /// Abandons any in-flight command (caller's future throws broken_promise).
+  /// @return Future containing command reply. Use wait_for() to handle timeouts.
+  std::future<MvecRelayCommandReply> send_relay_command();
 
   /// @brief Query device population (which relays/fuses are installed)
-  /// @return Future containing reply, or nullopt on timeout or rejection due to pending requests.
-  std::future<std::optional<MvecPopulationReply>> get_relay_population();
+  /// Abandons any in-flight query (caller's future throws broken_promise).
+  /// @return Future containing population reply. Use wait_for() to handle timeouts.
+  std::future<MvecPopulationReply> get_relay_population();
 
   /// @brief Get last received fuse status message
   /// @return Optional containing fuse status if valid data available
-  const std::optional<MvecFuseStatusMessage> get_last_fuse_status();
+  std::optional<MvecFuseStatusMessage> get_last_fuse_status() const;
 
   /// @brief Get last received relay status message
   /// @return Optional containing relay status if valid data available
-  const std::optional<MvecRelayStatusMessage> get_last_relay_status();
+  std::optional<MvecRelayStatusMessage> get_last_relay_status() const;
 
   /// @brief Get last received error status message
   /// @return Optional containing error status if valid data available
-  const std::optional<MvecErrorStatusMessage> get_last_error_status();
-
-  /// @brief Default timeout for MVEC responses (500ms)
-  static constexpr std::chrono::milliseconds MVEC_DEFAULT_RESPONSE_TIMEOUT{500};
+  std::optional<MvecErrorStatusMessage> get_last_error_status() const;
 
 private:
-  /// @brief SocketCAN adapter for CAN communication
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  /// @brief Core MVEC relay implementation
   MvecRelay relay_impl_;
 
-  /// @brief Timeout for all MVEC response types
-  std::chrono::milliseconds response_timeout_;
-
-  /// @brief Single-slot promise for relay query response
-  std::optional<std::promise<std::optional<MvecRelayQueryReply>>> query_reply_promise_;
-  std::chrono::steady_clock::time_point query_send_time_;
+  std::optional<std::promise<MvecRelayQueryReply>> query_reply_promise_;
   std::mutex query_mutex_;
 
-  /// @brief Single-slot promise for relay command response
-  std::optional<std::promise<std::optional<MvecRelayCommandReply>>> command_reply_promise_;
-  std::chrono::steady_clock::time_point command_send_time_;
+  std::optional<std::promise<MvecRelayCommandReply>> command_reply_promise_;
   std::mutex command_mutex_;
 
-  /// @brief Single-slot promise for population query response
-  std::optional<std::promise<std::optional<MvecPopulationReply>>> population_reply_promise_;
-  std::chrono::steady_clock::time_point population_send_time_;
+  std::optional<std::promise<MvecPopulationReply>> population_reply_promise_;
   std::mutex population_mutex_;
 };
 

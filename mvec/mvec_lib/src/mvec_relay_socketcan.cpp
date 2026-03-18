@@ -22,26 +22,22 @@ namespace polymath::sygnal
 {
 
 MvecRelaySocketcan::MvecRelaySocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter)
-: MvecRelaySocketcan(socketcan_adapter, MVEC_DEFAULT_RESPONSE_TIMEOUT)
-{}
-
-MvecRelaySocketcan::MvecRelaySocketcan(
-  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, std::chrono::milliseconds response_timeout)
 : socketcan_adapter_(socketcan_adapter)
 , relay_impl_()
-, response_timeout_(response_timeout)
 {}
 
 MvecMessageType MvecRelaySocketcan::parse(const socketcan::CanFrame & frame)
 {
-  MvecMessageType message_type = relay_impl_.parseMessage(frame);
+  const MvecMessageType message_type = relay_impl_.parseMessage(frame);
 
+  // Check if we received an expected response type and fulfill the waiting promise
   switch (message_type) {
     case MvecMessageType::RELAY_QUERY_RESPONSE: {
       const auto & reply = relay_impl_.get_last_relay_query_reply();
       std::lock_guard<std::mutex> lock(query_mutex_);
       if (reply.is_valid() && query_reply_promise_.has_value()) {
-        query_reply_promise_->set_value(std::make_optional(reply));
+        // Fulfill the promise and clear the slot
+        query_reply_promise_->set_value(reply);
         query_reply_promise_.reset();
       }
       break;
@@ -50,7 +46,7 @@ MvecMessageType MvecRelaySocketcan::parse(const socketcan::CanFrame & frame)
       const auto & reply = relay_impl_.get_last_relay_command_reply();
       std::lock_guard<std::mutex> lock(command_mutex_);
       if (reply.is_valid() && command_reply_promise_.has_value()) {
-        command_reply_promise_->set_value(std::make_optional(reply));
+        command_reply_promise_->set_value(reply);
         command_reply_promise_.reset();
       }
       break;
@@ -59,7 +55,7 @@ MvecMessageType MvecRelaySocketcan::parse(const socketcan::CanFrame & frame)
       const auto & reply = relay_impl_.get_last_population_reply();
       std::lock_guard<std::mutex> lock(population_mutex_);
       if (reply.is_valid() && population_reply_promise_.has_value()) {
-        population_reply_promise_->set_value(std::make_optional(reply));
+        population_reply_promise_->set_value(reply);
         population_reply_promise_.reset();
       }
       break;
@@ -83,130 +79,82 @@ void MvecRelaySocketcan::clear_relay()
   relay_impl_.clearRelayCommands();
 }
 
-std::future<std::optional<MvecRelayQueryReply>> MvecRelaySocketcan::get_relay_state()
+std::future<MvecRelayQueryReply> MvecRelaySocketcan::get_relay_state()
 {
   std::lock_guard<std::mutex> lock(query_mutex_);
 
-  // If a request is already in-flight, check if it has timed out
-  if (query_reply_promise_.has_value()) {
-    auto elapsed = std::chrono::steady_clock::now() - query_send_time_;
-    if (elapsed < response_timeout_) {
-      // Still in-flight, reject this request
-      std::promise<std::optional<MvecRelayQueryReply>> rejected;
-      auto future = rejected.get_future();
-      rejected.set_value(std::nullopt);
-      return future;
-    }
-    // Timed out — fulfill the old promise with nullopt so any waiter gets a clean result
-    query_reply_promise_->set_value(std::nullopt);
-    query_reply_promise_.reset();
-  }
+  // Abandon any in-flight query, caller's future becomes broken_promise if still waiting
+  query_reply_promise_.reset();
 
-  std::promise<std::optional<MvecRelayQueryReply>> promise;
+  // Create a new promise and get its future
+  std::promise<MvecRelayQueryReply> promise;
   auto future = promise.get_future();
   query_reply_promise_.emplace(std::move(promise));
-  query_send_time_ = std::chrono::steady_clock::now();
 
-  auto query_frame = relay_impl_.getRelayQueryMessage();
-  socketcan_adapter_->send(query_frame);
-
+  // Transmit the query message via socketcan adapter
+  socketcan_adapter_->send(relay_impl_.getRelayQueryMessage());
   return future;
 }
 
-std::future<std::optional<MvecRelayCommandReply>> MvecRelaySocketcan::send_relay_command()
+std::future<MvecRelayCommandReply> MvecRelaySocketcan::send_relay_command()
 {
   std::lock_guard<std::mutex> lock(command_mutex_);
 
-  if (command_reply_promise_.has_value()) {
-    auto elapsed = std::chrono::steady_clock::now() - command_send_time_;
-    if (elapsed < response_timeout_) {
-      std::promise<std::optional<MvecRelayCommandReply>> rejected;
-      auto future = rejected.get_future();
-      rejected.set_value(std::nullopt);
-      return future;
-    }
-    command_reply_promise_->set_value(std::nullopt);
-    command_reply_promise_.reset();
-  }
+  // Abandon any in-flight command, caller's future becomes broken_promise if still waiting
+  command_reply_promise_.reset();
 
-  std::promise<std::optional<MvecRelayCommandReply>> promise;
+  // Create a new promise and get its future
+  std::promise<MvecRelayCommandReply> promise;
   auto future = promise.get_future();
   command_reply_promise_.emplace(std::move(promise));
-  command_send_time_ = std::chrono::steady_clock::now();
 
-  auto command_frame = relay_impl_.getRelayCommandMessage();
-  socketcan_adapter_->send(command_frame);
-
+  // Transmit the command message via socketcan adapter
+  socketcan_adapter_->send(relay_impl_.getRelayCommandMessage());
   return future;
 }
 
-std::future<std::optional<MvecPopulationReply>> MvecRelaySocketcan::get_relay_population()
+std::future<MvecPopulationReply> MvecRelaySocketcan::get_relay_population()
 {
   std::lock_guard<std::mutex> lock(population_mutex_);
 
-  if (population_reply_promise_.has_value()) {
-    auto elapsed = std::chrono::steady_clock::now() - population_send_time_;
-    if (elapsed < response_timeout_) {
-      std::promise<std::optional<MvecPopulationReply>> rejected;
-      auto future = rejected.get_future();
-      rejected.set_value(std::nullopt);
-      return future;
-    }
-    population_reply_promise_->set_value(std::nullopt);
-    population_reply_promise_.reset();
-  }
+  // Abandon any in-flight query, caller's future becomes broken_promise if still waiting
+  population_reply_promise_.reset();
 
-  std::promise<std::optional<MvecPopulationReply>> promise;
+  // Create a new promise and get its future
+  std::promise<MvecPopulationReply> promise;
   auto future = promise.get_future();
   population_reply_promise_.emplace(std::move(promise));
-  population_send_time_ = std::chrono::steady_clock::now();
 
-  auto population_frame = relay_impl_.getPopulationQueryMessage();
-  socketcan_adapter_->send(population_frame);
-
+  // Transmit the population query message via socketcan adapter
+  socketcan_adapter_->send(relay_impl_.getPopulationQueryMessage());
   return future;
 }
 
-const std::optional<MvecFuseStatusMessage> MvecRelaySocketcan::get_last_fuse_status()
+std::optional<MvecFuseStatusMessage> MvecRelaySocketcan::get_last_fuse_status() const
 {
-  static std::optional<MvecFuseStatusMessage> result;
-
   const auto & fuse_status = relay_impl_.get_fuse_status_message();
   if (fuse_status.is_valid()) {
-    result = fuse_status;
-  } else {
-    result = std::nullopt;
+    return fuse_status;
   }
-
-  return result;
+  return std::nullopt;
 }
 
-const std::optional<MvecRelayStatusMessage> MvecRelaySocketcan::get_last_relay_status()
+std::optional<MvecRelayStatusMessage> MvecRelaySocketcan::get_last_relay_status() const
 {
-  static std::optional<MvecRelayStatusMessage> result;
-
   const auto & relay_status = relay_impl_.get_relay_status_message();
   if (relay_status.is_valid()) {
-    result = relay_status;
-  } else {
-    result = std::nullopt;
+    return relay_status;
   }
-
-  return result;
+  return std::nullopt;
 }
 
-const std::optional<MvecErrorStatusMessage> MvecRelaySocketcan::get_last_error_status()
+std::optional<MvecErrorStatusMessage> MvecRelaySocketcan::get_last_error_status() const
 {
-  static std::optional<MvecErrorStatusMessage> result;
-
   const auto & error_status = relay_impl_.get_error_status_message();
   if (error_status.is_valid()) {
-    result = error_status;
-  } else {
-    result = std::nullopt;
+    return error_status;
   }
-
-  return result;
+  return std::nullopt;
 }
 
 }  // namespace polymath::sygnal
