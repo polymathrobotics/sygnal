@@ -32,7 +32,7 @@
 #include "socketcan_adapter/can_frame.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
 
-using namespace std::chrono_literals;
+using std::chrono_literals::operator""ms;
 
 static polymath::socketcan::CanFrame createTestFrame(uint32_t can_id, const std::vector<uint8_t> & data)
 {
@@ -251,7 +251,9 @@ TEST_CASE("Fuse status getter returns value after parse", "[mvec_relay_socketcan
   auto mvec = polymath::sygnal::MvecRelaySocketcan(makeDummyAdapter());
 
   J1939_ID fuse_status_id(
-    6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU,
+    6,
+    0,
+    polymath::sygnal::MvecProtocol::STATUS_PDU,
     0x00 + polymath::sygnal::MvecProtocol::DEFAULT_PGN_BASE_VALUE,
     polymath::sygnal::MvecProtocol::DEFAULT_SOURCE_ADDRESS);
   auto frame = createTestFrame(fuse_status_id.get_can_id(), {0x00, 0x55, 0xAA, 0x33, 0xCC, 0x0F, 0xF0, 0x99});
@@ -269,7 +271,9 @@ TEST_CASE("Relay status getter returns value after parse", "[mvec_relay_socketca
   auto mvec = polymath::sygnal::MvecRelaySocketcan(makeDummyAdapter());
 
   J1939_ID relay_status_id(
-    6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU,
+    6,
+    0,
+    polymath::sygnal::MvecProtocol::STATUS_PDU,
     0x01 + polymath::sygnal::MvecProtocol::DEFAULT_PGN_BASE_VALUE,
     polymath::sygnal::MvecProtocol::DEFAULT_SOURCE_ADDRESS);
   auto frame = createTestFrame(relay_status_id.get_can_id(), {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77});
@@ -287,7 +291,9 @@ TEST_CASE("Error status getter returns value after parse", "[mvec_relay_socketca
   auto mvec = polymath::sygnal::MvecRelaySocketcan(makeDummyAdapter());
 
   J1939_ID error_status_id(
-    6, 0, polymath::sygnal::MvecProtocol::STATUS_PDU,
+    6,
+    0,
+    polymath::sygnal::MvecProtocol::STATUS_PDU,
     0x02 + polymath::sygnal::MvecProtocol::DEFAULT_PGN_BASE_VALUE,
     polymath::sygnal::MvecProtocol::DEFAULT_SOURCE_ADDRESS);
   auto frame = createTestFrame(
