@@ -127,6 +127,22 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   )
 
+  add_executable(relay_socketcan_tests
+    test/mvec_relay_socketcan.cpp
+  )
+  target_link_libraries(relay_socketcan_tests
+    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
+  )
+  ament_add_test(
+    relay_socketcan_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:relay_socketcan_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/relay_socketcan_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
+
   # Only build hardware tests if CAN_AVAILABLE is set in the environment
   if(DEFINED ENV{CAN_AVAILABLE})
     add_executable(socketcan_hardware_tests

@@ -219,18 +219,18 @@ TEST_CASE("MvecRelaySocketcan hardware integration test", "[hardware]")
 
     REQUIRE(status == std::future_status::ready);
 
-    auto response = relay_command_response_future.get();
+    auto relay_command_reply = relay_command_response_future.get();
 
     // 1 is no error
-    REQUIRE(response.get_success() == 1);
+    REQUIRE(relay_command_reply.get_success() == 1);
     std::cout << "Relay response message confirms success" << std::endl;
 
     auto mvec_query_future = mvec_socketcan->get_relay_state();
     status = mvec_query_future.wait_for(std::chrono::seconds(5));
-    auto relay_state = mvec_query_future.get();
+    auto relay_state_result = mvec_query_future.get();
 
-    REQUIRE(relay_state.get_relay_state(8) == 1);
-    REQUIRE(relay_state.get_relay_state(9) == 1);
+    REQUIRE(relay_state_result.get_relay_state(8) == 1);
+    REQUIRE(relay_state_result.get_relay_state(9) == 1);
     std::cout << "Relay states queried and confirm command" << std::endl;
   }
 

@@ -18,7 +18,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
-#include <queue>
+#include <optional>
 
 #include "mvec_lib/mvec_relay.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
@@ -26,12 +26,14 @@
 namespace polymath::sygnal
 {
 
-/// @brief MVEC relay controller with async SocketCAN communication
-/// Provides high-level interface for MVEC relay control with thread-safe promise/future pattern
+/// @brief MVEC relay controller with async SocketCAN communication.
+/// Each request method (query/command/population) abandons any in-flight request of the same type,
+/// sends a new CAN frame, and returns a future for the response.
+/// If a previous request was still pending, its promise is destroyed and the caller's future
+/// throws broken_promise on get(). Callers use wait_for() to handle response timeouts.
 class MvecRelaySocketcan
 {
 public:
-  /// @brief Constructor
   /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
   explicit MvecRelaySocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter);
 
@@ -49,44 +51,44 @@ public:
   void clear_relay();
 
   /// @brief Query current relay states asynchronously
-  /// @return Future that will contain relay query reply
+  /// Abandons any in-flight query (caller's future throws broken_promise).
+  /// @return Future containing relay query reply. Use wait_for() to handle timeouts.
   std::future<MvecRelayQueryReply> get_relay_state();
 
-  /// @brief Send relay command and wait for confirmation
-  /// @return Future that will contain command reply
+  /// @brief Send relay command and get confirmation asynchronously
+  /// Abandons any in-flight command (caller's future throws broken_promise).
+  /// @return Future containing command reply. Use wait_for() to handle timeouts.
   std::future<MvecRelayCommandReply> send_relay_command();
 
   /// @brief Query device population (which relays/fuses are installed)
-  /// @return Future that will contain population reply
+  /// Abandons any in-flight query (caller's future throws broken_promise).
+  /// @return Future containing population reply. Use wait_for() to handle timeouts.
   std::future<MvecPopulationReply> get_relay_population();
 
   /// @brief Get last received fuse status message
   /// @return Optional containing fuse status if valid data available
-  const std::optional<MvecFuseStatusMessage> get_last_fuse_status();
+  std::optional<MvecFuseStatusMessage> get_last_fuse_status() const;
 
   /// @brief Get last received relay status message
   /// @return Optional containing relay status if valid data available
-  const std::optional<MvecRelayStatusMessage> get_last_relay_status();
+  std::optional<MvecRelayStatusMessage> get_last_relay_status() const;
 
   /// @brief Get last received error status message
   /// @return Optional containing error status if valid data available
-  const std::optional<MvecErrorStatusMessage> get_last_error_status();
+  std::optional<MvecErrorStatusMessage> get_last_error_status() const;
 
 private:
-  /// @brief SocketCAN adapter for CAN communication
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  /// @brief Core MVEC relay implementation
   MvecRelay relay_impl_;
 
-  /// @brief Queue of promises waiting for relay query responses
-  std::queue<std::promise<MvecRelayQueryReply>> query_reply_promises_;
-  /// @brief Queue of promises waiting for relay command responses
-  std::queue<std::promise<MvecRelayCommandReply>> command_reply_promises_;
-  /// @brief Queue of promises waiting for population query responses
-  std::queue<std::promise<MvecPopulationReply>> population_reply_promises_;
+  std::optional<std::promise<MvecRelayQueryReply>> query_reply_promise_;
+  std::mutex query_mutex_;
 
-  /// @brief Mutex protecting promise queues for thread safety
-  std::mutex promises_mutex_;
+  std::optional<std::promise<MvecRelayCommandReply>> command_reply_promise_;
+  std::mutex command_mutex_;
+
+  std::optional<std::promise<MvecPopulationReply>> population_reply_promise_;
+  std::mutex population_mutex_;
 };
 
 }  // namespace polymath::sygnal
