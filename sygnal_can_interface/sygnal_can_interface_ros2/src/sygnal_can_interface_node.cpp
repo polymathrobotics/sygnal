@@ -134,7 +134,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     entry.publisher->on_activate();
   }
 
-  create_subscription<sygnal_can_msgs::msg::ControlCommand>(
+  control_command_sub_ = create_subscription<sygnal_can_msgs::msg::ControlCommand>(
     "~/control_command",
     rclcpp::QoS(10),
     std::bind(&SygnalCanInterfaceNode::controlCommandCallback, this, std::placeholders::_1));
