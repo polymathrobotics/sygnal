@@ -14,6 +14,7 @@
 
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
 
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,6 +43,22 @@ bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
       return true;
     }
     if (mcm_system.mcm_1.parseMcmHeartbeatFrame(frame)) {
+      return true;
+    }
+  }
+
+  // Try parsing as fault frames (FaultState, FaultIncrement, FaultList, FaultRootCause)
+  for (auto & mcm_system : mcm_systems_) {
+    if (mcm_system.mcm_0.parseFaultStateFrame(frame) || mcm_system.mcm_1.parseFaultStateFrame(frame)) {
+      return true;
+    }
+    if (mcm_system.mcm_0.parseFaultIncrementFrame(frame) || mcm_system.mcm_1.parseFaultIncrementFrame(frame)) {
+      return true;
+    }
+    if (mcm_system.mcm_0.parseFaultListFrame(frame) || mcm_system.mcm_1.parseFaultListFrame(frame)) {
+      return true;
+    }
+    if (mcm_system.mcm_0.parseFaultRootCauseFrame(frame) || mcm_system.mcm_1.parseFaultRootCauseFrame(frame)) {
       return true;
     }
   }
@@ -110,6 +127,51 @@ std::optional<SygnalSystemState> SygnalInterfaceSocketcan::get_sygnal_mcm_state(
         return mcm_system.mcm_0.get_mcm_state();
       } else if (subsystem_id == 1) {
         return mcm_system.mcm_1.get_mcm_state();
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<SygnalFaultCause> SygnalInterfaceSocketcan::get_last_fault_cause(
+  const uint8_t bus_address, const uint8_t subsystem_id) const
+{
+  for (const auto & mcm_system : mcm_systems_) {
+    if (mcm_system.bus_address == bus_address) {
+      if (subsystem_id == 0) {
+        return mcm_system.mcm_0.get_last_fault_cause();
+      } else if (subsystem_id == 1) {
+        return mcm_system.mcm_1.get_last_fault_cause();
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<SygnalFaultRootCause> SygnalInterfaceSocketcan::get_last_root_cause(
+  const uint8_t bus_address, const uint8_t subsystem_id) const
+{
+  for (const auto & mcm_system : mcm_systems_) {
+    if (mcm_system.bus_address == bus_address) {
+      if (subsystem_id == 0) {
+        return mcm_system.mcm_0.get_last_root_cause();
+      } else if (subsystem_id == 1) {
+        return mcm_system.mcm_1.get_last_root_cause();
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<std::map<SygnalFaultCause, uint16_t>> SygnalInterfaceSocketcan::get_fault_counts(
+  const uint8_t bus_address, const uint8_t subsystem_id) const
+{
+  for (const auto & mcm_system : mcm_systems_) {
+    if (mcm_system.bus_address == bus_address) {
+      if (subsystem_id == 0) {
+        return mcm_system.mcm_0.get_fault_counts();
+      } else if (subsystem_id == 1) {
+        return mcm_system.mcm_1.get_fault_counts();
       }
     }
   }

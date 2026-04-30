@@ -16,6 +16,7 @@
 #define SYGNAL_CAN_INTERFACE_LIB__SYGNAL_INTERFACE_SOCKETCAN_HPP_
 
 #include <future>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -64,6 +65,17 @@ public:
 
   /// @brief Get MCM 0 system state
   std::optional<SygnalSystemState> get_sygnal_mcm_state(const uint8_t bus_address, const uint8_t subsystem_id) const;
+
+  /// @brief Get the most recent fault cause reported by the MCM (FaultState 0x20).
+  std::optional<SygnalFaultCause> get_last_fault_cause(const uint8_t bus_address, const uint8_t subsystem_id) const;
+
+  /// @brief Get the most recent root cause breakdown reported by the MCM (FaultRootCause 0x221).
+  std::optional<SygnalFaultRootCause> get_last_root_cause(const uint8_t bus_address, const uint8_t subsystem_id) const;
+
+  /// @brief Get the latest per-cause fault counts as last reported in
+  /// FaultIncrement (0x21) / FaultList (0x220) messages.
+  std::optional<std::map<SygnalFaultCause, uint16_t>> get_fault_counts(
+    const uint8_t bus_address, const uint8_t subsystem_id) const;
 
   /// @brief Send control state (enable/disable) command
   /// @param bus_id Bus address

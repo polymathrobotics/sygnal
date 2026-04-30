@@ -17,6 +17,7 @@
 #include <chrono>
 
 #include "sygnal_can_interface_lib/crc8.hpp"
+#include "sygnal_dbc/mcm_fault.h"
 #include "sygnal_dbc/mcm_heartbeat.h"
 
 namespace polymath::sygnal
@@ -79,6 +80,159 @@ bool SygnalMcmInterface::parseMcmHeartbeatFrame(const socketcan::CanFrame & fram
   sygnal_interface_states_[2] = SygnalSystemState(unpacked_heartbeat_t.interface2_state);
   sygnal_interface_states_[3] = SygnalSystemState(unpacked_heartbeat_t.interface3_state);
   sygnal_interface_states_[4] = SygnalSystemState(unpacked_heartbeat_t.interface4_state);
+
+  return true;
+}
+
+bool SygnalMcmInterface::parseFaultStateFrame(const socketcan::CanFrame & frame)
+{
+  if (frame.get_id() != MCM_FAULT_FAULT_STATE_FRAME_ID) {
+    return false;
+  }
+
+  auto frame_copy = frame.get_frame();
+
+  if (!check_crc8(reinterpret_cast<uint8_t *>(frame_copy.data))) {
+    return false;
+  }
+
+  mcm_fault_fault_state_t unpacked;
+  if (mcm_fault_fault_state_init(&unpacked) != 0) {
+    return false;
+  }
+
+  if (mcm_fault_fault_state_unpack(&unpacked, frame_copy.data, frame_copy.len) != 0) {
+    return false;
+  }
+
+  if (unpacked.subsystem_id != subsystem_id_) {
+    return false;
+  }
+
+  if (unpacked.bus_address != bus_address_) {
+    return false;
+  }
+
+  last_fault_state_timestamp_ = std::chrono::system_clock::now();
+
+  // The FaultState message also carries the overall System State byte, mirroring
+  // what comes through Heartbeat. Update sygnal_mcm_state_ so callers see the
+  // fault state immediately rather than waiting for the next heartbeat.
+  sygnal_mcm_state_ = SygnalSystemState(unpacked.fault_state);
+  last_fault_cause_ = unpacked.fault_cause;
+
+  return true;
+}
+
+bool SygnalMcmInterface::parseFaultIncrementFrame(const socketcan::CanFrame & frame)
+{
+  if (frame.get_id() != MCM_FAULT_FAULT_INCREMENT_FRAME_ID) {
+    return false;
+  }
+
+  auto frame_copy = frame.get_frame();
+
+  if (!check_crc8(reinterpret_cast<uint8_t *>(frame_copy.data))) {
+    return false;
+  }
+
+  mcm_fault_fault_increment_t unpacked;
+  if (mcm_fault_fault_increment_init(&unpacked) != 0) {
+    return false;
+  }
+
+  if (mcm_fault_fault_increment_unpack(&unpacked, frame_copy.data, frame_copy.len) != 0) {
+    return false;
+  }
+
+  if (unpacked.subsystem_id != subsystem_id_) {
+    return false;
+  }
+
+  if (unpacked.bus_address != bus_address_) {
+    return false;
+  }
+
+  last_fault_count_timestamp_ = std::chrono::system_clock::now();
+
+  // FaultIncrement carries the latest count for one cause; overwrite rather than accumulate.
+  fault_counts_[unpacked.fault_type] = unpacked.fault_count;
+
+  return true;
+}
+
+bool SygnalMcmInterface::parseFaultListFrame(const socketcan::CanFrame & frame)
+{
+  if (frame.get_id() != MCM_FAULT_FAULT_LIST_FRAME_ID) {
+    return false;
+  }
+
+  auto frame_copy = frame.get_frame();
+
+  if (!check_crc8(reinterpret_cast<uint8_t *>(frame_copy.data))) {
+    return false;
+  }
+
+  mcm_fault_fault_list_t unpacked;
+  if (mcm_fault_fault_list_init(&unpacked) != 0) {
+    return false;
+  }
+
+  if (mcm_fault_fault_list_unpack(&unpacked, frame_copy.data, frame_copy.len) != 0) {
+    return false;
+  }
+
+  if (unpacked.subsystem_id != subsystem_id_) {
+    return false;
+  }
+
+  if (unpacked.bus_address != bus_address_) {
+    return false;
+  }
+
+  last_fault_count_timestamp_ = std::chrono::system_clock::now();
+
+  // FaultList re-broadcasts every non-zero count at the seed rate; one (cause, count)
+  // pair per message. Overwrite to keep the map in sync with the device's view.
+  fault_counts_[unpacked.fault_type] = unpacked.fault_count;
+
+  return true;
+}
+
+bool SygnalMcmInterface::parseFaultRootCauseFrame(const socketcan::CanFrame & frame)
+{
+  if (frame.get_id() != MCM_FAULT_FAULT_ROOT_CAUSE_FRAME_ID) {
+    return false;
+  }
+
+  auto frame_copy = frame.get_frame();
+
+  if (!check_crc8(reinterpret_cast<uint8_t *>(frame_copy.data))) {
+    return false;
+  }
+
+  mcm_fault_fault_root_cause_t unpacked;
+  if (mcm_fault_fault_root_cause_init(&unpacked) != 0) {
+    return false;
+  }
+
+  if (mcm_fault_fault_root_cause_unpack(&unpacked, frame_copy.data, frame_copy.len) != 0) {
+    return false;
+  }
+
+  if (unpacked.subsystem_id != subsystem_id_) {
+    return false;
+  }
+
+  if (unpacked.bus_address != bus_address_) {
+    return false;
+  }
+
+  last_root_cause_timestamp_ = std::chrono::system_clock::now();
+
+  last_root_cause_.fail_op1 = unpacked.fail_op1_cause;
+  last_root_cause_.fail_op2 = unpacked.fail_op2_cause;
+  last_root_cause_.fail_hard = unpacked.fail_hard_cause;
 
   return true;
 }
