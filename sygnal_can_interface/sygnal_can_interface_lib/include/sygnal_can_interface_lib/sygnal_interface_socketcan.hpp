@@ -108,10 +108,7 @@ public:
   /// @param error_message Populated on failure
   /// @return Result with success flag and optional response future
   SendCommandResult sendControlStateCommand(
-    InterfaceEndpoint interface,
-    SygnalControlState control_state,
-    bool expect_reply,
-    std::string & error_message);
+    InterfaceEndpoint interface, SygnalControlState control_state, bool expect_reply, std::string & error_message);
 
   /// @brief Send control command with value
   /// @param bus_id Bus address
@@ -135,10 +132,7 @@ public:
   /// @param error_message Populated on failure
   /// @return Result with success flag and optional response future
   SendCommandResult sendControlCommand(
-    InterfaceEndpoint interface,
-    double value,
-    bool expect_reply,
-    std::string & error_message);
+    InterfaceEndpoint interface, double value, bool expect_reply, std::string & error_message);
 
   /// @brief Send relay command
   /// @param bus_id Bus address

@@ -153,12 +153,10 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
-  InterfaceEndpoint interface,
-  SygnalControlState control_state,
-  bool expect_reply,
-  std::string & error_message)
+  InterfaceEndpoint interface, SygnalControlState control_state, bool expect_reply, std::string & error_message)
 {
-  return sendControlStateCommand(interface.bus_id, interface.interface_id, interface.subsystem_id, control_state, expect_reply, error_message);
+  return sendControlStateCommand(
+    interface.bus_id, interface.interface_id, interface.subsystem_id, control_state, expect_reply, error_message);
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
@@ -198,14 +196,11 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
-  InterfaceEndpoint interface,
-  double value,
-  bool expect_reply,
-  std::string & error_message)
+  InterfaceEndpoint interface, double value, bool expect_reply, std::string & error_message)
 {
-  return sendControlCommand(interface.bus_id, interface.interface_id, interface.subsystem_id, value, expect_reply, error_message);
+  return sendControlCommand(
+    interface.bus_id, interface.interface_id, interface.subsystem_id, value, expect_reply, error_message);
 }
-
 
 SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
   uint8_t bus_id, uint8_t subsystem_id, bool relay_state, bool expect_reply, std::string & error_message)
