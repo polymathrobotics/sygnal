@@ -13,48 +13,41 @@
 # limitations under the License.
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch_ros.actions import Node
-
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
     # Get the launch directory
 
-    print("Launching Sygnal Fault Clear....")
+    print('Launching Sygnal Fault Clear....')
 
-    log_level = LaunchConfiguration("log_level")
-    log_level_arg = DeclareLaunchArgument(
-        "log_level", default_value="info", description="log level"
-    )
+    log_level = LaunchConfiguration('log_level')
+    log_level_arg = DeclareLaunchArgument('log_level', default_value='info', description='log level')
 
-    interface_name = LaunchConfiguration("interface_name")
+    interface_name = LaunchConfiguration('interface_name')
     interface_name_arg = DeclareLaunchArgument(
-        "interface_name",
-        default_value="can0",
-        description="CAN interface name (i.e can0)",
+        'interface_name',
+        default_value='can0',
+        description='CAN interface name (i.e can0)',
     )
 
-    namespace = LaunchConfiguration("namespace")
-    namespace_arg = DeclareLaunchArgument(
-        "namespace", default_value="", description="Top-level namespace"
-    )
+    namespace = LaunchConfiguration('namespace')
+    namespace_arg = DeclareLaunchArgument('namespace', default_value='', description='Top-level namespace')
 
     sygnal_fault_clear_launch_node = Node(
         namespace=namespace,
-        package="sygnal_fault_clear",
-        executable="sygnal_fault_clear",
-        name="sygnal_fault_clear",
-        output="screen",
-        parameters=[{"interface_name": interface_name}],
-        arguments=["--ros-args", "--log-level", log_level],
+        package='sygnal_fault_clear',
+        executable='sygnal_fault_clear',
+        name='sygnal_fault_clear',
+        output='screen',
+        parameters=[{'interface_name': interface_name}],
+        arguments=['--ros-args', '--log-level', log_level],
     )
 
-    return LaunchDescription(
-        [
-            log_level_arg,
-            namespace_arg,
-            interface_name_arg,
-            sygnal_fault_clear_launch_node,
-        ]
-    )
+    return LaunchDescription([
+        log_level_arg,
+        namespace_arg,
+        interface_name_arg,
+        sygnal_fault_clear_launch_node,
+    ])
