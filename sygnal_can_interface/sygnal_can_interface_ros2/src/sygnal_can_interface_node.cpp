@@ -69,8 +69,20 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
       return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
+    // Build the flat MCM endpoint list from parallel params
+    if (params_.mcm_bus_addresses.size() != params_.mcm_subsystem_ids.size()) {
+      RCLCPP_ERROR(get_logger(), "mcm_bus_addresses and mcm_subsystem_ids must be the same length");
+      return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
+    }
+    std::vector<polymath::sygnal::McmId> mcm_ids;
+    mcm_ids.reserve(params_.mcm_bus_addresses.size());
+    for (size_t i = 0; i < params_.mcm_bus_addresses.size(); ++i) {
+      mcm_ids.push_back(
+        {static_cast<uint8_t>(params_.mcm_bus_addresses[i]), static_cast<uint8_t>(params_.mcm_subsystem_ids[i])});
+    }
+
     // Initialize Sygnal Interface SocketCAN controller
-    sygnal_interface_ = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_);
+    sygnal_interface_ = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_, mcm_ids);
 
     // Set up callback to parse incoming messages
     socketcan_adapter_->setOnReceiveCallback(
@@ -85,11 +97,12 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     // Create publishers
     diagnostics_pub_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", rclcpp::QoS(10));
 
-    // Initialize MCM heartbeat publishers for all 4 devices
-    mcm_heartbeat_entries_[0] = {DEFAULT_MCM_BUS_ADDRESS, 0, {}, {}};
-    mcm_heartbeat_entries_[1] = {DEFAULT_MCM_BUS_ADDRESS, 1, {}, {}};
-    mcm_heartbeat_entries_[2] = {SECONDARY_MCM_BUS_ADDRESS, 0, {}, {}};
-    mcm_heartbeat_entries_[3] = {SECONDARY_MCM_BUS_ADDRESS, 1, {}, {}};
+    // Initialize MCM heartbeat publishers from configured endpoints
+    mcm_heartbeat_entries_.clear();
+    mcm_heartbeat_entries_.reserve(mcm_ids.size());
+    for (const auto & id : mcm_ids) {
+      mcm_heartbeat_entries_.push_back({id.bus_id, id.subsystem_id, {}, {}});
+    }
 
     for (auto & entry : mcm_heartbeat_entries_) {
       std::string topic =

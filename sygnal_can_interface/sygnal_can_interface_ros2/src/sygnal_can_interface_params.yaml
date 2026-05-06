@@ -15,3 +15,15 @@ sygnal_can_interface_ros2:
     description: "Command response timeout in milliseconds"
     validation:
       gt<>: [0]
+  mcm_bus_addresses:
+    type: int_array
+    default_value: [1, 1, 2, 2]
+    description: "CAN bus address for each configured MCM endpoint, parallel to mcm_subsystem_ids."
+    validation:
+      element_bounds<>: [0, 255]
+  mcm_subsystem_ids:
+    type: int_array
+    default_value: [0, 1, 0, 1]
+    description: "Subsystem ID for each configured MCM endpoint, parallel to mcm_bus_addresses."
+    validation:
+      element_bounds<>: [0, 255]
