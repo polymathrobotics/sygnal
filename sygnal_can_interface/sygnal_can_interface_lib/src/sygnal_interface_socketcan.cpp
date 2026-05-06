@@ -152,6 +152,15 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
   return {true, std::move(future_opt)};
 }
 
+SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
+  InterfaceEndpoint interface,
+  SygnalControlState control_state,
+  bool expect_reply,
+  std::string & error_message)
+{
+  return sendControlStateCommand(interface.bus_id, interface.interface_id, interface.subsystem_id, control_state, expect_reply, error_message);
+}
+
 SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
   uint8_t bus_id,
   uint8_t interface_id,
@@ -188,6 +197,16 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
   return {true, std::move(future_opt)};
 }
 
+SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
+  InterfaceEndpoint interface,
+  double value,
+  bool expect_reply,
+  std::string & error_message)
+{
+  return sendControlCommand(interface.bus_id, interface.interface_id, interface.subsystem_id, value, expect_reply, error_message);
+}
+
+
 SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
   uint8_t bus_id, uint8_t subsystem_id, bool relay_state, bool expect_reply, std::string & error_message)
 {
@@ -216,6 +235,12 @@ SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
   }
 
   return {true, std::move(future_opt)};
+}
+
+SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
+  InterfaceEndpoint interface, bool relay_state, bool expect_reply, std::string & error_message)
+{
+  return sendRelayCommand(interface.bus_id, interface.subsystem_id, relay_state, expect_reply, error_message);
 }
 
 }  // namespace polymath::sygnal

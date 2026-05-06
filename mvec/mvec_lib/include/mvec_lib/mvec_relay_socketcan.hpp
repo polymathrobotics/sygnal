@@ -26,6 +26,13 @@
 namespace polymath::sygnal
 {
 
+/// @brief Represents an MVEC Relay endpoint..
+struct MvecEndpoint
+{
+  uint8_t id;
+  std::string_view name;
+};
+
 /// @brief MVEC relay controller with async SocketCAN communication
 /// Provides high-level interface for MVEC relay control with thread-safe promise/future pattern
 class MvecRelaySocketcan
@@ -44,6 +51,11 @@ public:
   /// @param relay_id Relay ID (0-11)
   /// @param relay_state Relay state (0=off, 1=on)
   void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
+
+  /// @brief Set relay command state
+  /// @param relay_id Relay ID (0-11)
+  /// @param relay_state Relay state (0=off, 1=on)
+  void set_relay_in_command(MvecEndpoint relay, uint8_t relay_state);
 
   /// @brief Clear all relay commands
   void clear_relay();
