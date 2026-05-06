@@ -15,6 +15,7 @@
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>

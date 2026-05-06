@@ -30,6 +30,7 @@ using Catch::Approx;
 #include <algorithm>
 #include <future>
 #include <string>
+#include <vector>
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"

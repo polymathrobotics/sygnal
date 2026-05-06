@@ -21,6 +21,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #if __has_include(<magic_enum/magic_enum.hpp>)
   #include <magic_enum/magic_enum.hpp>
