@@ -43,7 +43,8 @@ struct McmSystem
   SygnalMcmInterface mcm_1;
 };
 
-/// @brief Represents an interface endpoint in the Sygnal CAN interface
+/// @brief Represents a single control interface in Sygnal's System.
+///        Interfaces can either take floats(default) or ints as inputs.
 struct InterfaceEndpoint
 {
   uint8_t bus_id;
@@ -51,7 +52,7 @@ struct InterfaceEndpoint
   uint8_t interface_id;
   int min_value;
   int max_value;
-  bool is_continuous;
+  bool is_int;
   std::string_view name;
 };
 
