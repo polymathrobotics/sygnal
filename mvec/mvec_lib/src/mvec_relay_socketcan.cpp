@@ -79,8 +79,7 @@ void MvecRelaySocketcan::set_relay_in_command(uint8_t relay_id, uint8_t relay_st
 
 void MvecRelaySocketcan::set_relay_in_command(MvecEndpoint relay, uint8_t relay_state)
 {
-  /// TODO: (zeerek) Where do we check against the population table? When do we initially query the population table?
-  relay_impl_.set_relay_in_command(relay.id, relay_state);
+  set_relay_in_command(relay.id, relay_state);
 }
 
 void MvecRelaySocketcan::clear_relay()
