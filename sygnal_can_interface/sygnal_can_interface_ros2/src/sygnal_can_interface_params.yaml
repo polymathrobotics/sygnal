@@ -17,5 +17,6 @@ sygnal_can_interface_ros2:
       gt<>: [0]
   mcm_endpoints:
     type: string_array
-    default_value: ["1-0", "1-1", "2-0", "2-1"]
-    description: "MCM endpoints, each formatted as '<bus_id>-<subsystem_id>'."
+    default_value: [1-0, 1-1, 2-0, 2-1]
+    description: MCM endpoints, each formatted as '<bus_id>-<subsystem_id>'.
+    read_only: true
