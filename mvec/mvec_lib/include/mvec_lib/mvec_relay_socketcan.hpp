@@ -53,7 +53,7 @@ public:
   void set_relay_in_command(uint8_t relay_id, uint8_t relay_state);
 
   /// @brief Set relay command state
-  /// @param relay_id Relay ID (0-11)
+  /// @param relay Relay Endpoint with relay_id (0-11)
   /// @param relay_state Relay state (0=off, 1=on)
   void set_relay_in_command(MvecEndpoint relay, uint8_t relay_state);
 
