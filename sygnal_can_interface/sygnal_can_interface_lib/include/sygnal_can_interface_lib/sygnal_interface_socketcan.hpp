@@ -56,7 +56,7 @@ struct InterfaceEndpoint
   std::string_view name;
 };
 
-/// @brief Represents a relay endpoint in the Sygnal CAN interface
+/// @brief Represents a single relay in Sygnal's System.
 struct RelayEndpoint
 {
   uint8_t bus_id;
