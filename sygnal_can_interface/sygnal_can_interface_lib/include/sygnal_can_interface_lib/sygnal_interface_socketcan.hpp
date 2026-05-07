@@ -21,6 +21,7 @@
 #include <optional>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/sygnal_command_interface.hpp"
@@ -36,11 +37,11 @@ struct SendCommandResult
   std::optional<std::future<SygnalControlCommandResponse>> response_future;
 };
 
-struct McmSystem
+/// @brief Identifies one MCM endpoint by its CAN bus and subsystem ID.
+struct McmId
 {
-  uint8_t bus_address;
-  SygnalMcmInterface mcm_0;
-  SygnalMcmInterface mcm_1;
+  uint8_t bus_id;
+  uint8_t subsystem_id;
 };
 
 constexpr uint32_t MAX_PROMISE_QUEUE_LENGTH = 100;
@@ -52,7 +53,9 @@ class SygnalInterfaceSocketcan
 public:
   /// @brief Constructor
   /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
-  explicit SygnalInterfaceSocketcan(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter);
+  /// @param mcm_ids Flat list of MCM endpoints to manage, each identified by bus and subsystem ID
+  SygnalInterfaceSocketcan(
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, const std::vector<McmId> & mcm_ids);
 
   /// @brief Parse incoming CAN frame for MCM heartbeat and command responses
   /// @param frame CAN frame to parse
@@ -107,7 +110,7 @@ public:
 
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  std::array<McmSystem, 2> mcm_systems_;  // Assuming max 2 MCMs for now, indexed by bus address
+  std::vector<SygnalMcmInterface> mcms_;
   SygnalControlInterface control_interface_;
 
   // Promise queues for each response type

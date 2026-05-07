@@ -30,6 +30,7 @@ using Catch::Approx;
 #include <algorithm>
 #include <future>
 #include <string>
+#include <vector>
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
@@ -159,7 +160,14 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
   REQUIRE(interface_adapter->openSocket());
   REQUIRE(simulator_adapter->openSocket());
 
-  auto sygnal_interface = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(interface_adapter);
+  const std::vector<polymath::sygnal::McmId> DEFAULT_MCM_IDS{
+    {DEFAULT_MCM_BUS_ADDRESS, 0},
+    {DEFAULT_MCM_BUS_ADDRESS, 1},
+    {SECONDARY_MCM_BUS_ADDRESS, 0},
+    {SECONDARY_MCM_BUS_ADDRESS, 1},
+  };
+  auto sygnal_interface =
+    std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(interface_adapter, DEFAULT_MCM_IDS);
 
   std::promise<void> frame_received_promise;
   std::future<void> frame_received_future = frame_received_promise.get_future();
@@ -365,6 +373,59 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
 
     REQUIRE_FALSE(result.success);
     REQUIRE_FALSE(error_message.empty());
+  }
+
+  interface_adapter->joinReceptionThread();
+  interface_adapter->closeSocket();
+  simulator_adapter->closeSocket();
+}
+
+TEST_CASE("SygnalInterfaceSocketcan arbitrary MCM IDs", "[vcan]")
+{
+  auto interface_adapter = std::make_shared<polymath::socketcan::SocketcanAdapter>(VCAN_INTERFACE);
+  auto simulator_adapter = std::make_shared<polymath::socketcan::SocketcanAdapter>(VCAN_INTERFACE);
+
+  REQUIRE(interface_adapter->openSocket());
+  REQUIRE(simulator_adapter->openSocket());
+
+  // Single bus with non-contiguous subsystem IDs
+  const std::vector<polymath::sygnal::McmId> kCustomMcmIds{
+    {1, 0},
+    {1, 2},
+    {1, 5},
+  };
+  auto sygnal_interface =
+    std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(interface_adapter, kCustomMcmIds);
+
+  std::promise<void> frame_received_promise;
+  std::future<void> frame_received_future = frame_received_promise.get_future();
+
+  REQUIRE(interface_adapter->setOnReceiveCallback(
+    [&sygnal_interface, &frame_received_promise](std::unique_ptr<const polymath::socketcan::CanFrame> frame) {
+      frame_received_promise.set_value();
+      sygnal_interface->parse(*frame);
+    }));
+
+  REQUIRE(interface_adapter->startReceptionThread());
+
+  SECTION("Heartbeat for configured subsystem ID 5 is parsed")
+  {
+    constexpr uint8_t bus_id = 1;
+    constexpr uint8_t subsystem_id = 5;
+    constexpr uint8_t system_state = static_cast<uint8_t>(polymath::sygnal::SygnalSystemState::MCM_CONTROL);
+    std::array<uint8_t, 5> interface_states = {1, 1, 1, 1, 1};
+
+    auto heartbeat_frame = createHeartbeatFrame(bus_id, subsystem_id, system_state, interface_states);
+    REQUIRE_FALSE(simulator_adapter->send(heartbeat_frame).has_value());
+
+    frame_received_future.wait_for(std::chrono::seconds(2));
+
+    auto mcm_state_opt = sygnal_interface->get_sygnal_mcm_state(bus_id, subsystem_id);
+    REQUIRE(mcm_state_opt.has_value());
+    REQUIRE(mcm_state_opt.value() == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
+
+    // Non-configured subsystem on same bus returns nullopt
+    REQUIRE_FALSE(sygnal_interface->get_sygnal_mcm_state(bus_id, 1).has_value());
   }
 
   interface_adapter->joinReceptionThread();
