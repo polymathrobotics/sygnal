@@ -26,7 +26,7 @@
 namespace polymath::sygnal
 {
 
-/// @brief Represents an MVEC Relay endpoint..
+/// @brief Represents a single relay on the MVEC.
 struct MvecEndpoint
 {
   uint8_t id;
