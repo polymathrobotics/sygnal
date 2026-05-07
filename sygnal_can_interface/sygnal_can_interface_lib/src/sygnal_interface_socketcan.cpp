@@ -167,6 +167,7 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
   bool expect_reply,
   std::string & error_message)
 {
+  // TODO(ryan): update function def to include min max values and check the value before sending.
   auto frame_opt =
     control_interface_.createControlCommandFrame(bus_id, interface_id, subsystem_id, value, error_message);
 
