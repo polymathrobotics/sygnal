@@ -160,14 +160,14 @@ TEST_CASE("SygnalInterfaceSocketcan vcan0 integration tests", "[vcan]")
   REQUIRE(interface_adapter->openSocket());
   REQUIRE(simulator_adapter->openSocket());
 
-  const std::vector<polymath::sygnal::McmId> kDefaultMcmIds{
+  const std::vector<polymath::sygnal::McmId> DEFAULT_MCM_IDS{
     {DEFAULT_MCM_BUS_ADDRESS, 0},
     {DEFAULT_MCM_BUS_ADDRESS, 1},
     {SECONDARY_MCM_BUS_ADDRESS, 0},
     {SECONDARY_MCM_BUS_ADDRESS, 1},
   };
   auto sygnal_interface =
-    std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(interface_adapter, kDefaultMcmIds);
+    std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(interface_adapter, DEFAULT_MCM_IDS);
 
   std::promise<void> frame_received_promise;
   std::future<void> frame_received_future = frame_received_promise.get_future();
