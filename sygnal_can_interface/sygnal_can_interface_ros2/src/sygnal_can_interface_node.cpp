@@ -70,16 +70,27 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
       return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
-    // Build the flat MCM endpoint list from parallel params
-    if (params_.mcm_bus_addresses.size() != params_.mcm_subsystem_ids.size()) {
-      RCLCPP_ERROR(get_logger(), "mcm_bus_addresses and mcm_subsystem_ids must be the same length");
-      return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
-    }
+    // Parse "<bus_id>:<subsystem_id>" strings from params into a typed McmId list
     std::vector<polymath::sygnal::McmId> mcm_ids;
-    mcm_ids.reserve(params_.mcm_bus_addresses.size());
-    for (size_t i = 0; i < params_.mcm_bus_addresses.size(); ++i) {
-      mcm_ids.push_back(
-        {static_cast<uint8_t>(params_.mcm_bus_addresses[i]), static_cast<uint8_t>(params_.mcm_subsystem_ids[i])});
+    mcm_ids.reserve(params_.mcm_endpoints.size());
+    for (const auto & endpoint : params_.mcm_endpoints) {
+      const auto colon = endpoint.find(':');
+      if (std::string::npos == colon) {
+        RCLCPP_ERROR(get_logger(), "Invalid mcm_endpoints entry '%s': missing ':'", endpoint.c_str());
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
+      }
+      try {
+        const auto bus = std::stoi(endpoint.substr(0, colon));
+        const auto sub = std::stoi(endpoint.substr(colon + 1));
+        if (bus < 0 || bus > 255 || sub < 0 || sub > 255) {
+          RCLCPP_ERROR(get_logger(), "Invalid mcm_endpoints entry '%s': values must fit in uint8", endpoint.c_str());
+          return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
+        }
+        mcm_ids.push_back({static_cast<uint8_t>(bus), static_cast<uint8_t>(sub)});
+      } catch (const std::exception & e) {
+        RCLCPP_ERROR(get_logger(), "Invalid mcm_endpoints entry '%s': %s", endpoint.c_str(), e.what());
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
+      }
     }
 
     // Initialize Sygnal Interface SocketCAN controller
