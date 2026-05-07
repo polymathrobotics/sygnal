@@ -70,18 +70,18 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
       return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
-    // Parse "<bus_id>:<subsystem_id>" strings from params into a typed McmId list
+    // Parse "<bus_id>-<subsystem_id>" strings from params into a typed McmId list
     std::vector<polymath::sygnal::McmId> mcm_ids;
     mcm_ids.reserve(params_.mcm_endpoints.size());
     for (const auto & endpoint : params_.mcm_endpoints) {
-      const auto colon = endpoint.find(':');
-      if (std::string::npos == colon) {
-        RCLCPP_ERROR(get_logger(), "Invalid mcm_endpoints entry '%s': missing ':'", endpoint.c_str());
+      const auto separator = endpoint.find('-');
+      if (std::string::npos == separator) {
+        RCLCPP_ERROR(get_logger(), "Invalid mcm_endpoints entry '%s': missing '-'", endpoint.c_str());
         return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
       }
       try {
-        const auto bus = std::stoi(endpoint.substr(0, colon));
-        const auto sub = std::stoi(endpoint.substr(colon + 1));
+        const auto bus = std::stoi(endpoint.substr(0, separator));
+        const auto sub = std::stoi(endpoint.substr(separator + 1));
         if (bus < 0 || bus > 255 || sub < 0 || sub > 255) {
           RCLCPP_ERROR(get_logger(), "Invalid mcm_endpoints entry '%s': values must fit in uint8", endpoint.c_str());
           return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
