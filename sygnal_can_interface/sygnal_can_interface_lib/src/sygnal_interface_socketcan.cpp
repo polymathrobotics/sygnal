@@ -142,6 +142,13 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
   return {true, std::move(future_opt)};
 }
 
+SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
+  InterfaceEndpoint interface, SygnalControlState control_state, bool expect_reply, std::string & error_message)
+{
+  return sendControlStateCommand(
+    interface.bus_id, interface.interface_id, interface.subsystem_id, control_state, expect_reply, error_message);
+}
+
 SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
   uint8_t bus_id,
   uint8_t interface_id,
@@ -150,6 +157,7 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
   bool expect_reply,
   std::string & error_message)
 {
+  // TODO(ryan): update function def to include min max values and check the value before sending.
   auto frame_opt =
     control_interface_.createControlCommandFrame(bus_id, interface_id, subsystem_id, value, error_message);
 
@@ -176,6 +184,13 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
   }
 
   return {true, std::move(future_opt)};
+}
+
+SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
+  InterfaceEndpoint interface, double value, bool expect_reply, std::string & error_message)
+{
+  return sendControlCommand(
+    interface.bus_id, interface.interface_id, interface.subsystem_id, value, expect_reply, error_message);
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
@@ -206,6 +221,12 @@ SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
   }
 
   return {true, std::move(future_opt)};
+}
+
+SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
+  InterfaceEndpoint interface, bool relay_state, bool expect_reply, std::string & error_message)
+{
+  return sendRelayCommand(interface.bus_id, interface.subsystem_id, relay_state, expect_reply, error_message);
 }
 
 }  // namespace polymath::sygnal

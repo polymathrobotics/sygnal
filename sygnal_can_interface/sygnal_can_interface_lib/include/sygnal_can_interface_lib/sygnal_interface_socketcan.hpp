@@ -44,6 +44,28 @@ struct McmId
   uint8_t subsystem_id;
 };
 
+/// @brief Represents a single control interface in Sygnal's System.
+///        Interfaces can either take floats(default) or ints as inputs.
+struct InterfaceEndpoint
+{
+  uint8_t bus_id;
+  uint8_t subsystem_id;
+  uint8_t interface_id;
+  int min_value;
+  int max_value;
+  bool is_int;
+  std::string_view name;
+};
+
+/// @brief Represents a single relay in Sygnal's System.
+struct RelayEndpoint
+{
+  uint8_t bus_id;
+  uint8_t subsystem_id;
+  uint8_t relay_id;
+  std::string_view name;
+};
+
 constexpr uint32_t MAX_PROMISE_QUEUE_LENGTH = 100;
 
 /// @brief Combined Sygnal MCM and Control interface with SocketCAN communication
@@ -83,6 +105,15 @@ public:
     bool expect_reply,
     std::string & error_message);
 
+  /// @brief Send control state (enable/disable) command
+  /// @param interface Interface endpoint to control
+  /// @param control_state MCM_CONTROL or HUMAN_CONTROL
+  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
+  /// @param error_message Populated on failure
+  /// @return Result with success flag and optional response future
+  SendCommandResult sendControlStateCommand(
+    InterfaceEndpoint interface, SygnalControlState control_state, bool expect_reply, std::string & error_message);
+
   /// @brief Send control command with value
   /// @param bus_id Bus address
   /// @param interface_id Interface to control
@@ -98,6 +129,15 @@ public:
     bool expect_reply,
     std::string & error_message);
 
+  /// @brief Send control command with value
+  /// @param interface Interface endpoint to control
+  /// @param value Control value
+  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
+  /// @param error_message Populated on failure
+  /// @return Result with success flag and optional response future
+  SendCommandResult sendControlCommand(
+    InterfaceEndpoint interface, double value, bool expect_reply, std::string & error_message);
+
   /// @brief Send relay command
   /// @param bus_id Bus address
   /// @param subsystem_id Subsystem/relay to control
@@ -107,6 +147,15 @@ public:
   /// @return Result with success flag and optional response future
   SendCommandResult sendRelayCommand(
     uint8_t bus_id, uint8_t subsystem_id, bool relay_state, bool expect_reply, std::string & error_message);
+
+  /// @brief Send relay command
+  /// @param interface Interface endpoint to control
+  /// @param relay_state Enable or disable
+  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
+  /// @param error_message Populated on failure
+  /// @return Result with success flag and optional response future
+  SendCommandResult sendRelayCommand(
+    InterfaceEndpoint interface, bool relay_state, bool expect_reply, std::string & error_message);
 
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;

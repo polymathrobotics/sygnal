@@ -77,6 +77,11 @@ void MvecRelaySocketcan::set_relay_in_command(uint8_t relay_id, uint8_t relay_st
   relay_impl_.set_relay_in_command(relay_id, relay_state);
 }
 
+void MvecRelaySocketcan::set_relay_in_command(MvecEndpoint relay, uint8_t relay_state)
+{
+  set_relay_in_command(relay.id, relay_state);
+}
+
 void MvecRelaySocketcan::clear_relay()
 {
   relay_impl_.clearRelayCommands();
