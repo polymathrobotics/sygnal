@@ -72,8 +72,7 @@ bool SygnalHpoInterface::parseHeartbeatFrame(const socketcan::CanFrame & frame)
   hpo_interface_states_[2] = (0 != unpacked.interface2_state);
   hpo_interface_states_[3] = (0 != unpacked.interface3_state);
   hpo_interface_states_[4] = (0 != unpacked.interface4_state);
-  hpo_interface_states_[5] = (0 != unpacked.interface5_state);
-  hpo_interface_states_[6] = (0 != unpacked.interface6_state);
+  // Signals interface5_state / interface6_state are present in the DBC but unused on real HPO hardware.
   hpo_overall_interface_state_ = (0 != unpacked.overall_interface_state);
 
   return true;

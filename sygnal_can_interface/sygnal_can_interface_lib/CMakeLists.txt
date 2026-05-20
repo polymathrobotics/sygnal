@@ -125,6 +125,22 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   )
 
+  add_executable(sygnal_interface_socketcan_routing_tests
+    test/sygnal_interface_socketcan_routing_test.cpp
+  )
+  target_link_libraries(sygnal_interface_socketcan_routing_tests
+    PRIVATE ${PROJECT_NAME} sygnal_dbc::sygnal_dbc Catch2::Catch2WithMain
+  )
+  ament_add_test(
+    sygnal_interface_socketcan_routing_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:sygnal_interface_socketcan_routing_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/sygnal_interface_socketcan_routing_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
+
   if(DEFINED ENV{CAN_AVAILABLE})
     add_executable(sygnal_interface_socketcan_tests
       test/sygnal_interface_socketcan_test.cpp
