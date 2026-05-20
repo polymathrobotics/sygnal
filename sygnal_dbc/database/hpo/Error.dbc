@@ -121,4 +121,3 @@ BA_ "NmStationAddress" BU_ MCM 0;
 BA_ "VFrameFormat" BO_ 48 0;
 VAL_ 48 Error_Type 255 "Other Error" 11 "Command Error" 10 "Password Error" 9 "Key Error" 8 "Count Error" 7 "Feedback Type Error" 6 "State Error" 5 "Permissions Error" 4 "Parameter ID Error" 3 "Interface ID Error" 2 "Section ID Error" 1 "CRC Error" 0 "No Error" ;
 VAL_ 48 Config_SectionID 31 "Report" 11 "Relay" 10 "NLPID" 9 "PID" 8 "Signal" 7 "Heartbeat" 6 "Control" 5 "ClosedLoop" 4 "Override" 3 "Error" 2 "Fault" 1 "MCMGlobal" 0 "SygnalGlobal" ;
-

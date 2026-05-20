@@ -134,4 +134,3 @@ VAL_ 368 Interface2State 1 "MCM Control" 0 "Human Control" ;
 VAL_ 368 Interface1State 1 "MCM Control" 0 "Human Control" ;
 VAL_ 368 Interface0State 1 "MCM Control" 0 "Human Control" ;
 VAL_ 368 SystemState 254 "Fail Hard" 253 "Human Override" 242 "Fail Operational 2" 241 "Fail Operational 1" 1 "MCM Control" 0 "Human Control" ;
-

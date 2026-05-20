@@ -131,4 +131,3 @@ VAL_ 1281 Commissioning_State 128 "Waranty Return" 1 "Commissioned" 0 "Uncommiss
 VAL_ 1281 Commissioning_Command 5 "Deconflict Address" 255 "Set Password" 4 "Erase Config" 3 "Load Config" 2 "Save Config" 1 "Set State" 0 "Get State" ;
 VAL_ 1280 Commissioning_State 128 "Waranty Return" 1 "Commissioned" 0 "Uncommissioned" ;
 VAL_ 1280 Commissioning_Command 5 "Deconflict Address" 255 "Set Password" 4 "Erase Config" 3 "Load Config" 2 "Save Config" 1 "Set State" 0 "Get State" ;
-
