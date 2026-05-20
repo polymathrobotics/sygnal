@@ -73,6 +73,16 @@ public:
     return sygnal_interface_states_;
   }
 
+  uint8_t get_bus_address() const
+  {
+    return bus_address_;
+  }
+
+  uint8_t get_subsystem_id() const
+  {
+    return subsystem_id_;
+  }
+
   SygnalSystemState get_mcm_state() const
   {
     return sygnal_mcm_state_;

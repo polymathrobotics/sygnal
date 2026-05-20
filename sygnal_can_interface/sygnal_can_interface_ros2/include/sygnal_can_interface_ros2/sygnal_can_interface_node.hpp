@@ -15,12 +15,12 @@
 #ifndef SYGNAL_CAN_INTERFACE_NODE__SYGNAL_CAN_INTERFACE_NODE_HPP_
 #define SYGNAL_CAN_INTERFACE_NODE__SYGNAL_CAN_INTERFACE_NODE_HPP_
 
-#include <array>
 #include <chrono>
 #include <memory>
 #include <optional>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <sygnal_can_interface_ros2/sygnal_can_interface_params.hpp>
 
@@ -98,8 +98,9 @@ private:
   diagnostic_msgs::msg::DiagnosticArray createDiagnosticsMessage();
 
   // Parameters
-  std::shared_ptr<sygnal_can_interface_ros2::ParamListener> param_listener_;
+  sygnal_can_interface_ros2::ParamListener param_listener_;
   sygnal_can_interface_ros2::Params params_;
+  const std::vector<polymath::sygnal::McmId> mcm_ids_;
 
   // SocketCAN and Sygnal components
   std::shared_ptr<polymath::socketcan::SocketcanAdapter> socketcan_adapter_;
@@ -122,7 +123,7 @@ private:
 
   // Publishers
   rclcpp_lifecycle::LifecyclePublisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
-  std::array<McmHeartbeatEntry, 4> mcm_heartbeat_entries_;
+  std::vector<McmHeartbeatEntry> mcm_heartbeat_entries_;
 
   rclcpp::Subscription<sygnal_can_msgs::msg::ControlCommand>::SharedPtr control_command_sub_;
 };
