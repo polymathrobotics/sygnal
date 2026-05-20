@@ -8,7 +8,7 @@ A comprehensive C++ library for controlling and monitoring MVEC (multiplexed Veh
 The foundational class providing J1939 message parsing, relay command generation, and status message handling. Supports all MVEC protocol operations including relay control, population queries, and diagnostic monitoring.
 
 ### MvecRelaySocketcan
-High-level asynchronous interface built on top of MvecRelay using SocketCAN for Linux CAN communication. Features thread-safe promise/future patterns for non-blocking operations and automatic response handling.
+High-level asynchronous interface built on top of MvecRelay using SocketCAN. Each request method (query, command, population) returns a `std::future` for the response. If a new request of the same type is made while one is in-flight, the previous promise is abandoned and the caller's future throws `broken_promise`. Callers use `wait_for()` to handle response timeouts. Per-type mutexes ensure thread safety between `parse()` and request methods.
 
 ## Quick Start
 
@@ -44,15 +44,15 @@ cd build/mvec_lib && ./mvec_socketcan_hardware.cpp
 #include "socketcan_adapter/socketcan_adapter.hpp"
 
 // Create SocketCAN adapter
-auto adapter = std::make_shared<socketcan::SocketcanAdapter>("can0");
-adapter->open();
+auto adapter = std::make_shared<polymath::socketcan::SocketcanAdapter>("can0");
+adapter->openSocket();
 
 // Create MVEC controller
 polymath::sygnal::MvecRelaySocketcan controller(adapter);
 
 // Set up callback for incoming messages
-adapter->setReceptionCallback([&controller](const socketcan::CanFrame& frame) {
-    controller.parse(frame);
+adapter->setOnReceiveCallback([&controller](std::unique_ptr<const polymath::socketcan::CanFrame> frame) {
+    controller.parse(*frame);
 });
 ```
 
