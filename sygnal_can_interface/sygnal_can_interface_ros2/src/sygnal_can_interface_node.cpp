@@ -21,6 +21,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #if __has_include(<magic_enum/magic_enum.hpp>)
   #include <magic_enum/magic_enum.hpp>
@@ -33,15 +34,45 @@
 #include "sygnal_can_interface_lib/sygnal_command_interface.hpp"
 #include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
 
+namespace
+{
+
+template <typename T, typename U, typename F>
+static std::vector<T> iife_vector(const std::vector<U> & input, F transform)
+{
+  std::vector<T> result;
+  result.reserve(input.size());
+  for (const auto & item : input) {
+    result.push_back(transform(item));
+  }
+  return result;
+}
+
+static polymath::sygnal::McmId parse_mcm_id(const std::string & endpoint)
+{
+  const auto sep = endpoint.find('-');
+  if (std::string::npos == sep) {
+    throw std::invalid_argument("Invalid mcm_endpoints entry '" + endpoint + "': missing '-'");
+  }
+  const int bus = std::stoi(endpoint.substr(0, sep));
+  const int sub = std::stoi(endpoint.substr(sep + 1));
+  if (0 > bus || bus > 255 || 0 > sub || sub > 255) {
+    throw std::invalid_argument("Invalid mcm_endpoints entry '" + endpoint + "': values must fit in uint8");
+  }
+  return {static_cast<uint8_t>(bus), static_cast<uint8_t>(sub)};
+}
+
+}  // namespace
+
 namespace polymath::sygnal
 {
 
 SygnalCanInterfaceNode::SygnalCanInterfaceNode(const rclcpp::NodeOptions & options)
 : rclcpp_lifecycle::LifecycleNode("sygnal_can_interface_node", "", options)
-{
-  param_listener_ = std::make_shared<sygnal_can_interface_ros2::ParamListener>(get_node_parameters_interface());
-  params_ = param_listener_->get_params();
-}
+, param_listener_(get_node_parameters_interface())
+, params_(param_listener_.get_params())
+, mcm_ids_(iife_vector<McmId>(params_.mcm_endpoints, parse_mcm_id))
+{}
 
 SygnalCanInterfaceNode::~SygnalCanInterfaceNode()
 {
@@ -54,8 +85,7 @@ SygnalCanInterfaceNode::~SygnalCanInterfaceNode()
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn SygnalCanInterfaceNode::on_configure(
   const rclcpp_lifecycle::State &)
 {
-  // Get parameters (refresh in case they changed)
-  params_ = param_listener_->get_params();
+  params_ = param_listener_.get_params();
 
   RCLCPP_INFO(
     get_logger(), "Configuring Sygnal CAN Interface node with CAN interface: %s", params_.can_interface.c_str());
@@ -70,7 +100,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     }
 
     // Initialize Sygnal Interface SocketCAN controller
-    sygnal_interface_ = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_);
+    sygnal_interface_ = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_, mcm_ids_);
 
     // Set up callback to parse incoming messages
     socketcan_adapter_->setOnReceiveCallback(
@@ -85,11 +115,11 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     // Create publishers
     diagnostics_pub_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", rclcpp::QoS(10));
 
-    // Initialize MCM heartbeat publishers for all 4 devices
-    mcm_heartbeat_entries_[0] = {DEFAULT_MCM_BUS_ADDRESS, 0, {}, {}};
-    mcm_heartbeat_entries_[1] = {DEFAULT_MCM_BUS_ADDRESS, 1, {}, {}};
-    mcm_heartbeat_entries_[2] = {SECONDARY_MCM_BUS_ADDRESS, 0, {}, {}};
-    mcm_heartbeat_entries_[3] = {SECONDARY_MCM_BUS_ADDRESS, 1, {}, {}};
+    // Initialize MCM heartbeat publishers from configured endpoints
+    mcm_heartbeat_entries_.reserve(mcm_ids_.size());
+    for (const auto & id : mcm_ids_) {
+      mcm_heartbeat_entries_.push_back({id.bus_id, id.subsystem_id, {}, {}});
+    }
 
     for (auto & entry : mcm_heartbeat_entries_) {
       std::string topic =
@@ -134,7 +164,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     entry.publisher->on_activate();
   }
 
-  create_subscription<sygnal_can_msgs::msg::ControlCommand>(
+  control_command_sub_ = create_subscription<sygnal_can_msgs::msg::ControlCommand>(
     "~/control_command",
     rclcpp::QoS(10),
     std::bind(&SygnalCanInterfaceNode::controlCommandCallback, this, std::placeholders::_1));
