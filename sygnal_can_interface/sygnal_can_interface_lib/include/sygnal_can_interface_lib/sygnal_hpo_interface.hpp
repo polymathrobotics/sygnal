@@ -25,7 +25,10 @@
 namespace polymath::sygnal
 {
 
-constexpr uint8_t HPO_NUM_INTERFACES = 7;
+// HPO hardware exposes 5 interfaces (0-4). The DBC defines 7 signals (0-6) but the
+// remaining two are unused / always zero on real boards; we ignore them, mirroring the
+// same DBC-vs-hardware mismatch already handled by the MCM heartbeat parser.
+constexpr uint8_t HPO_NUM_INTERFACES = 5;
 
 /// @brief Parsed HPO ControlEnableResponse / ControlCommandResponse.
 ///        is_enable_response disambiguates which payload is meaningful:
