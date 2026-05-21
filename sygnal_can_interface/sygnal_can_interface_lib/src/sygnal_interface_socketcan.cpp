@@ -288,9 +288,9 @@ SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
-  InterfaceEndpoint interface, bool relay_state, bool expect_reply, std::string & error_message)
+  RelayEndpoint relay, bool relay_state, bool expect_reply, std::string & error_message)
 {
-  return sendRelayCommand(interface.bus_id, interface.subsystem_id, relay_state, expect_reply, error_message);
+  return sendRelayCommand(relay.bus_id, relay.subsystem_id, relay_state, expect_reply, error_message);
 }
 
 SendHpoCommandResult SygnalInterfaceSocketcan::sendHpoControlEnable(
