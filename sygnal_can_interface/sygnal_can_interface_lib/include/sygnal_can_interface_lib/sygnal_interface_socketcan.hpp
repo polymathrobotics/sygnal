@@ -177,7 +177,7 @@ public:
   /// @param error_message Populated on failure
   /// @return Result with success flag and optional response future
   SendCommandResult sendRelayCommand(
-    InterfaceEndpoint interface, bool relay_state, bool expect_reply, std::string & error_message);
+    RelayEndpoint relay, bool relay_state, bool expect_reply, std::string & error_message);
 
   /// @brief Send an HPO ControlEnable command.
   /// @param bus_id Bus address of the target HPO. Must match one of the hpo_ids passed at construction.
