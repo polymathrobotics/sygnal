@@ -36,8 +36,8 @@ constexpr uint8_t HPO_NUM_INTERFACES = 5;
 ///        the `value` field carries the float command response.
 struct HpoControlResponse
 {
-  uint8_t message_id;
   uint8_t bus_address;
+  uint8_t message_id;
   double value;
   bool enable;
   bool is_enable_response;
