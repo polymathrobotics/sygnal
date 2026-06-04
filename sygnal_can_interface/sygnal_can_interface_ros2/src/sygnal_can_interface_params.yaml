@@ -21,3 +21,12 @@ sygnal_can_interface_ros2:
     default_value: [1-0, 1-1, 2-0, 2-1]
     description: MCM endpoints, each formatted as '<bus_id>-<subsystem_id>'.
     read_only: true
+  hpo_endpoints:
+    type: int_array
+    default_value: []
+    description: >
+      HPO bus addresses to instantiate (0-127). Empty by default, which disables HPO behavior
+      and matches legacy callers. Each entry must NOT collide with any mcm_endpoints bus_id:
+      the SygnalInterfaceSocketcan constructor throws on overlap because the tactical CAN-ID
+      arbitration relies on disjoint bus addresses.
+    read_only: true

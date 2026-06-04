@@ -25,6 +25,7 @@
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/sygnal_command_interface.hpp"
+#include "sygnal_can_interface_lib/sygnal_hpo_interface.hpp"
 #include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
 
 namespace polymath::sygnal
@@ -42,6 +43,20 @@ struct McmId
 {
   uint8_t bus_id;
   uint8_t subsystem_id;
+};
+
+/// @brief Identifies one HPO endpoint by its CAN bus address.
+struct HpoId
+{
+  uint8_t bus_id;
+};
+
+/// @brief Result of an HPO send operation. Mirrors SendCommandResult but is typed for HpoControlResponse
+///        because the HPO response carries a `message_id` instead of MCM's interface_id/subsystem_id.
+struct SendHpoCommandResult
+{
+  bool success;
+  std::optional<std::future<HpoControlResponse>> response_future;
 };
 
 /// @brief Represents a single control interface in Sygnal's System.
@@ -76,8 +91,15 @@ public:
   /// @brief Constructor
   /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
   /// @param mcm_ids Flat list of MCM endpoints to manage, each identified by bus and subsystem ID
+  /// @param hpo_ids Flat list of HPO endpoints to manage, each identified by bus ID. Empty by
+  ///                default; an empty list disables all HPO behavior. The constructor throws
+  ///                std::invalid_argument if any HPO bus_id collides with an MCM bus_id, since
+  ///                disjoint bus addresses are required to route CAN-ID-overloaded frames correctly
+  ///                (see parse() comments).
   SygnalInterfaceSocketcan(
-    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, const std::vector<McmId> & mcm_ids);
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+    const std::vector<McmId> & mcm_ids,
+    const std::vector<HpoId> & hpo_ids = {});
 
   /// @brief Parse incoming CAN frame for MCM heartbeat and command responses
   /// @param frame CAN frame to parse
@@ -155,17 +177,48 @@ public:
   /// @param error_message Populated on failure
   /// @return Result with success flag and optional response future
   SendCommandResult sendRelayCommand(
-    InterfaceEndpoint interface, bool relay_state, bool expect_reply, std::string & error_message);
+    RelayEndpoint relay, bool relay_state, bool expect_reply, std::string & error_message);
+
+  /// @brief Send an HPO ControlEnable command.
+  /// @param bus_id Bus address of the target HPO. Must match one of the hpo_ids passed at construction.
+  /// @param message_id HPO MessageID (8-bit identifier of the specific signal/interface on the HPO).
+  /// @param enable true to grant HPO control of the signal, false to release back to human control.
+  /// @param expect_reply If true, returns a future for the ControlEnableResponse; fire-and-forget otherwise.
+  /// @param[out] error_message Populated on failure.
+  /// @return Result with success flag and optional response future.
+  SendHpoCommandResult sendHpoControlEnable(
+    uint8_t bus_id, uint8_t message_id, bool enable, bool expect_reply, std::string & error_message);
+
+  /// @brief Send an HPO ControlCommand with a float value.
+  /// @param bus_id Bus address of the target HPO. Must match one of the hpo_ids passed at construction.
+  /// @param message_id HPO MessageID (8-bit identifier of the specific signal/interface on the HPO).
+  /// @param value Control value (encoded per DBC SIG_VALTYPE float).
+  /// @param expect_reply If true, returns a future for the ControlCommandResponse; fire-and-forget otherwise.
+  /// @param[out] error_message Populated on failure.
+  /// @return Result with success flag and optional response future.
+  SendHpoCommandResult sendHpoControlCommand(
+    uint8_t bus_id, uint8_t message_id, double value, bool expect_reply, std::string & error_message);
+
+  /// @brief Read the cached interface bits from the named HPO's latest heartbeat.
+  /// @return std::nullopt if no HPO with this bus_address has been registered.
+  std::optional<std::array<bool, HPO_NUM_INTERFACES>> get_hpo_interface_states(uint8_t bus_address) const;
+
+  /// @brief Read the cached overall interface bit from the named HPO's latest heartbeat.
+  /// @return std::nullopt if no HPO with this bus_address has been registered.
+  std::optional<bool> get_hpo_overall_interface_state(uint8_t bus_address) const;
 
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
   std::vector<SygnalMcmInterface> mcms_;
+  std::vector<SygnalHpoInterface> hpos_;
   SygnalControlInterface control_interface_;
 
   // Promise queues for each response type
   std::queue<std::promise<SygnalControlCommandResponse>> enable_response_promises_;
   std::queue<std::promise<SygnalControlCommandResponse>> control_response_promises_;
   std::queue<std::promise<SygnalControlCommandResponse>> relay_response_promises_;
+  std::queue<std::promise<HpoControlResponse>> hpo_enable_response_promises_;
+  std::queue<std::promise<HpoControlResponse>> hpo_command_response_promises_;
 
   std::mutex promises_mutex_;
 };

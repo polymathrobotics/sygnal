@@ -62,6 +62,15 @@ static polymath::sygnal::McmId parse_mcm_id(const std::string & endpoint)
   return {static_cast<uint8_t>(bus), static_cast<uint8_t>(sub)};
 }
 
+static polymath::sygnal::HpoId parse_hpo_id(int64_t value)
+{
+  if (0 > value || value > 127) {
+    throw std::invalid_argument(
+      "Invalid hpo_endpoints entry '" + std::to_string(value) + "': bus address must be in [0, 127]");
+  }
+  return {static_cast<uint8_t>(value)};
+}
+
 }  // namespace
 
 namespace polymath::sygnal
@@ -72,6 +81,7 @@ SygnalCanInterfaceNode::SygnalCanInterfaceNode(const rclcpp::NodeOptions & optio
 , param_listener_(get_node_parameters_interface())
 , params_(param_listener_.get_params())
 , mcm_ids_(iife_vector<McmId>(params_.mcm_endpoints, parse_mcm_id))
+, hpo_ids_(iife_vector<HpoId>(params_.hpo_endpoints, parse_hpo_id))
 {}
 
 SygnalCanInterfaceNode::~SygnalCanInterfaceNode()
@@ -99,8 +109,10 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
       return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
-    // Initialize Sygnal Interface SocketCAN controller
-    sygnal_interface_ = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_, mcm_ids_);
+    // Initialize Sygnal Interface SocketCAN controller. Constructor throws if MCM and HPO bus addresses
+    // overlap; we let that propagate up so on_configure returns FAILURE in the catch block below.
+    sygnal_interface_ =
+      std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_, mcm_ids_, hpo_ids_);
 
     // Set up callback to parse incoming messages
     socketcan_adapter_->setOnReceiveCallback(
