@@ -59,7 +59,7 @@ polymath::socketcan::CanFrame makeFrame(uint32_t can_id, const uint8_t * data, u
 }
 
 polymath::socketcan::CanFrame buildHpoHeartbeat(
-  uint8_t bus_address, const std::array<bool, HPO_NUM_INTERFACES> & interface_states, bool overall_state)
+  uint8_t bus_address, const std::array<bool, HPO_NUM_INTERFACES> & interface_states)
 {
   hpo_heartbeat_heartbeat_t msg;
   hpo_heartbeat_heartbeat_init(&msg);
@@ -70,10 +70,6 @@ polymath::socketcan::CanFrame buildHpoHeartbeat(
   msg.interface1_state = interface_states[1] ? 1 : 0;
   msg.interface2_state = interface_states[2] ? 1 : 0;
   msg.interface3_state = interface_states[3] ? 1 : 0;
-  msg.interface4_state = interface_states[4] ? 1 : 0;
-  msg.interface5_state = 0;
-  msg.interface6_state = 0;
-  msg.overall_interface_state = overall_state ? 1 : 0;
   msg.count16 = 0;
   msg.crc = 0;
 
@@ -148,7 +144,6 @@ TEST_CASE("SygnalHpoInterface default constructor zeroes interface bits", "[sygn
 {
   SygnalHpoInterface hpo;
   REQUIRE(hpo.get_bus_address() == 0);
-  REQUIRE_FALSE(hpo.get_overall_interface_state());
   for (bool state : hpo.get_interface_states()) {
     REQUIRE_FALSE(state);
   }
@@ -158,7 +153,6 @@ TEST_CASE("SygnalHpoInterface explicit constructor sets bus address", "[sygnal_h
 {
   SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
   REQUIRE(hpo.get_bus_address() == TEST_BUS_ADDRESS);
-  REQUIRE_FALSE(hpo.get_overall_interface_state());
   for (bool state : hpo.get_interface_states()) {
     REQUIRE_FALSE(state);
   }
@@ -167,11 +161,10 @@ TEST_CASE("SygnalHpoInterface explicit constructor sets bus address", "[sygnal_h
 TEST_CASE("SygnalHpoInterface parses heartbeat with all interfaces under HPO control", "[sygnal_hpo_interface]")
 {
   SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
-  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true, true};
-  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces, true);
+  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
+  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
 
   REQUIRE(hpo.parseHeartbeatFrame(frame));
-  REQUIRE(hpo.get_overall_interface_state());
   for (bool state : hpo.get_interface_states()) {
     REQUIRE(state);
   }
@@ -180,11 +173,10 @@ TEST_CASE("SygnalHpoInterface parses heartbeat with all interfaces under HPO con
 TEST_CASE("SygnalHpoInterface parses heartbeat with mixed interface bits", "[sygnal_hpo_interface]")
 {
   SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
-  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, false, true, false, true};
-  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces, false);
+  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, false, true, false};
+  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
 
   REQUIRE(hpo.parseHeartbeatFrame(frame));
-  REQUIRE_FALSE(hpo.get_overall_interface_state());
   auto states = hpo.get_interface_states();
   for (size_t i = 0; i < HPO_NUM_INTERFACES; ++i) {
     REQUIRE(states[i] == interfaces[i]);
@@ -194,19 +186,18 @@ TEST_CASE("SygnalHpoInterface parses heartbeat with mixed interface bits", "[syg
 TEST_CASE("SygnalHpoInterface rejects heartbeat with wrong frame ID", "[sygnal_hpo_interface]")
 {
   SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
-  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true, true};
-  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces, true);
+  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
+  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
   frame.set_can_id(0x999);
 
   REQUIRE_FALSE(hpo.parseHeartbeatFrame(frame));
-  REQUIRE_FALSE(hpo.get_overall_interface_state());
 }
 
 TEST_CASE("SygnalHpoInterface rejects heartbeat with bad CRC", "[sygnal_hpo_interface]")
 {
   SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
-  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true, true};
-  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces, true);
+  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
+  auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
 
   // Corrupt the CRC byte.
   auto bytes = frame.get_data();
@@ -219,11 +210,10 @@ TEST_CASE("SygnalHpoInterface rejects heartbeat with bad CRC", "[sygnal_hpo_inte
 TEST_CASE("SygnalHpoInterface rejects heartbeat addressed to a different bus", "[sygnal_hpo_interface]")
 {
   SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
-  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true, true};
-  auto frame = buildHpoHeartbeat(OTHER_BUS_ADDRESS, interfaces, true);
+  std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
+  auto frame = buildHpoHeartbeat(OTHER_BUS_ADDRESS, interfaces);
 
   REQUIRE_FALSE(hpo.parseHeartbeatFrame(frame));
-  REQUIRE_FALSE(hpo.get_overall_interface_state());
 }
 
 TEST_CASE("SygnalHpoInterface creates a ControlEnable frame addressed to itself", "[sygnal_hpo_interface]")

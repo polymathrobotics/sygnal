@@ -203,10 +203,6 @@ public:
   /// @return std::nullopt if no HPO with this bus_address has been registered.
   std::optional<std::array<bool, HPO_NUM_INTERFACES>> get_hpo_interface_states(uint8_t bus_address) const;
 
-  /// @brief Read the cached overall interface bit from the named HPO's latest heartbeat.
-  /// @return std::nullopt if no HPO with this bus_address has been registered.
-  std::optional<bool> get_hpo_overall_interface_state(uint8_t bus_address) const;
-
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
   std::vector<SygnalMcmInterface> mcms_;

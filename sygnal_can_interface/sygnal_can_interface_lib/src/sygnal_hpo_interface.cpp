@@ -28,14 +28,12 @@ namespace polymath::sygnal
 
 SygnalHpoInterface::SygnalHpoInterface()
 : bus_address_(0)
-, hpo_overall_interface_state_(false)
 {
   hpo_interface_states_.fill(false);
 }
 
 SygnalHpoInterface::SygnalHpoInterface(uint8_t bus_address)
 : bus_address_(bus_address)
-, hpo_overall_interface_state_(false)
 {
   hpo_interface_states_.fill(false);
 }
@@ -71,9 +69,7 @@ bool SygnalHpoInterface::parseHeartbeatFrame(const socketcan::CanFrame & frame)
   hpo_interface_states_[1] = (0 != unpacked.interface1_state);
   hpo_interface_states_[2] = (0 != unpacked.interface2_state);
   hpo_interface_states_[3] = (0 != unpacked.interface3_state);
-  hpo_interface_states_[4] = (0 != unpacked.interface4_state);
-  // Signals interface5_state / interface6_state are present in the DBC but unused on real HPO hardware.
-  hpo_overall_interface_state_ = (0 != unpacked.overall_interface_state);
+  // Interface{0-3}Value (2-bit pin-pull: HiZ/Pull_Down/Pull_Up) are also in this frame, not yet surfaced.
 
   return true;
 }

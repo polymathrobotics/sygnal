@@ -62,7 +62,7 @@ polymath::socketcan::CanFrame makeFrame(uint32_t can_id, const uint8_t * buffer,
   return frame;
 }
 
-polymath::socketcan::CanFrame buildHpoHeartbeat(uint8_t bus_address, bool overall_state)
+polymath::socketcan::CanFrame buildHpoHeartbeat(uint8_t bus_address)
 {
   hpo_heartbeat_heartbeat_t msg;
   hpo_heartbeat_heartbeat_init(&msg);
@@ -73,8 +73,6 @@ polymath::socketcan::CanFrame buildHpoHeartbeat(uint8_t bus_address, bool overal
   msg.interface1_state = 0;
   msg.interface2_state = 1;
   msg.interface3_state = 0;
-  msg.interface4_state = 1;
-  msg.overall_interface_state = overall_state ? 1 : 0;
   msg.count16 = 0;
   msg.crc = 0;
 
@@ -164,12 +162,8 @@ TEST_CASE("parse() routes HPO heartbeat to HPO state and leaves MCM untouched", 
 
   polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms, hpos);
 
-  auto frame = buildHpoHeartbeat(HPO_BUS, /*overall_state=*/true);
+  auto frame = buildHpoHeartbeat(HPO_BUS);
   REQUIRE(sygnal.parse(frame));
-
-  auto hpo_state = sygnal.get_hpo_overall_interface_state(HPO_BUS);
-  REQUIRE(hpo_state.has_value());
-  REQUIRE(hpo_state.value());
 
   auto hpo_interfaces = sygnal.get_hpo_interface_states(HPO_BUS);
   REQUIRE(hpo_interfaces.has_value());
@@ -177,7 +171,6 @@ TEST_CASE("parse() routes HPO heartbeat to HPO state and leaves MCM untouched", 
   REQUIRE_FALSE((*hpo_interfaces)[1]);
   REQUIRE((*hpo_interfaces)[2]);
   REQUIRE_FALSE((*hpo_interfaces)[3]);
-  REQUIRE((*hpo_interfaces)[4]);
 
   // MCM state untouched: still default FAIL_HARD.
   auto mcm_state = sygnal.get_sygnal_mcm_state(MCM_BUS, 0);
@@ -200,10 +193,12 @@ TEST_CASE("parse() routes MCM heartbeat to MCM state and leaves HPO untouched", 
   REQUIRE(mcm_state.has_value());
   REQUIRE(mcm_state.value() == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
 
-  // HPO overall interface state stays at the default false.
-  auto hpo_state = sygnal.get_hpo_overall_interface_state(HPO_BUS);
-  REQUIRE(hpo_state.has_value());
-  REQUIRE_FALSE(hpo_state.value());
+  // HPO interface states stay at their default false.
+  auto hpo_interfaces = sygnal.get_hpo_interface_states(HPO_BUS);
+  REQUIRE(hpo_interfaces.has_value());
+  for (bool state : *hpo_interfaces) {
+    REQUIRE_FALSE(state);
+  }
 }
 
 TEST_CASE(
