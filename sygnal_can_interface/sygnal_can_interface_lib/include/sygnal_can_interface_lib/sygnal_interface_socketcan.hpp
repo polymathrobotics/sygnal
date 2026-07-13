@@ -203,6 +203,19 @@ public:
   /// @return std::nullopt if no HPO with this bus_address has been registered.
   std::optional<std::array<bool, HPO_NUM_INTERFACES>> get_hpo_interface_states(uint8_t bus_address) const;
 
+  /// @brief Broadcast an IdentifyCommand.
+  //         Every Sygnal device answers with its IdentifyResponse frames,
+  //         which parse() records into the matching MCM.
+  //         identities are read back via get_mcm_identity()
+  //         after allowing time for responses to arrive.
+  /// @param[out] error_message Populated on failure.
+  /// @return true if the command frame was sent.
+  bool sendIdentifyQuery(std::string & error_message);
+
+  /// @brief Get the recorded identity for the named MCM endpoint.
+  /// @return std::nullopt if no MCM with this bus/subsystem is registered, or none has responded yet.
+  std::optional<McmIdentity> get_mcm_identity(uint8_t bus_address, uint8_t subsystem_id) const;
+
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
   std::vector<SygnalMcmInterface> mcms_;

@@ -96,6 +96,11 @@ public:
   std::optional<polymath::socketcan::CanFrame> createRelayCommandFrame(
     const uint8_t bus_id, const uint8_t subsystem_id, const bool relay_state, std::string & error_message);
 
+  /// @brief Create the broadcast IdentifyCommand frame. Every Sygnal device on the bus answers with
+  ///        its IdentifyResponse frames. The frame is zero-length with no addressing and no CRC.
+  /// @return can frame
+  polymath::socketcan::CanFrame createIdentifyCommandFrame();
+
   /// @brief Parse a command response frame if it is covered by this interface
   /// @param frame Raw cran frame to check and parse
   /// @return Optional, if the frame is a valid response, return the response

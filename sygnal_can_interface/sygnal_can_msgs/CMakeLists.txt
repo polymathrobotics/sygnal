@@ -21,12 +21,14 @@ ament_auto_find_build_dependencies()
 set(msg_files
   "msg/McmHeartbeat.msg"
   "msg/ControlCommand.msg"
+  "msg/McmIdentity.msg"
 )
 
 set(srv_files
   "srv/SetControlState.srv"
   "srv/SendControlCommand.srv"
   "srv/SendRelayCommand.srv"
+  "srv/QueryIdentities.srv"
 )
 
 set(msg_dependencies
