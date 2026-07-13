@@ -38,7 +38,9 @@ struct SygnalVersion
 
 inline bool operator==(const SygnalVersion & a, const SygnalVersion & b)
 {
-  return a.major == b.major && a.minor == b.minor && a.patch == b.patch;
+  return a.major == b.major  // NOLINT(readability/check)
+         && a.minor == b.minor  // NOLINT(readability/check)
+         && a.patch == b.patch;
 }
 
 /// @brief Identity and firmware versions of one MCM, assembled from its three IdentifyResponse
@@ -59,9 +61,14 @@ struct McmIdentity
 
 inline bool operator==(const McmIdentity & a, const McmIdentity & b)
 {
-  return a.module_serial_number == b.module_serial_number && a.product_id == b.product_id &&
-         a.module_boot_state == b.module_boot_state && a.app_version == b.app_version && a.bl_version == b.bl_version &&
-         a.has_main == b.has_main && a.has_app_version == b.has_app_version && a.has_bl_version == b.has_bl_version;
+  return a.module_serial_number == b.module_serial_number  // NOLINT(readability/check)
+         && a.product_id == b.product_id  // NOLINT(readability/check)
+         && a.module_boot_state == b.module_boot_state  // NOLINT(readability/check)
+         && a.app_version == b.app_version  // NOLINT(readability/check)
+         && a.bl_version == b.bl_version  // NOLINT(readability/check)
+         && a.has_main == b.has_main  // NOLINT(readability/check)
+         && a.has_app_version == b.has_app_version  // NOLINT(readability/check)
+         && a.has_bl_version == b.has_bl_version;
 }
 
 /// @brief Enum representing the overall state of the system
