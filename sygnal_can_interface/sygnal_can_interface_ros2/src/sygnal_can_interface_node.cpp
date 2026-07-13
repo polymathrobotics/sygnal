@@ -139,6 +139,19 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
       entry.publisher = create_publisher<sygnal_can_msgs::msg::McmHeartbeat>(topic, rclcpp::QoS(10));
     }
 
+    mcm_identity_entries_.reserve(mcm_ids_.size());
+    for (const auto & id : mcm_ids_) {
+      mcm_identity_entries_.push_back({id.bus_id, id.subsystem_id, {}, {}});
+    }
+
+    rclcpp::QoS latched_publisher_qos{rclcpp::QoS(1).transient_local()};
+
+    for (auto & entry : mcm_identity_entries_) {
+      std::string topic =
+        "~/mcm_identity_bus" + std::to_string(entry.bus_id) + "_sub" + std::to_string(entry.subsystem_id);
+      entry.publisher = create_publisher<sygnal_can_msgs::msg::McmIdentity>(topic, latched_publisher_qos);
+    }
+
     // Create services
     set_control_state_service_ = create_service<sygnal_can_msgs::srv::SetControlState>(
       "~/set_control_state",
@@ -152,6 +165,10 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     send_relay_command_service_ = create_service<sygnal_can_msgs::srv::SendRelayCommand>(
       "~/send_relay_command",
       std::bind(&SygnalCanInterfaceNode::sendRelayCommandCallback, this, std::placeholders::_1, std::placeholders::_2));
+
+    query_identities_service_ = create_service<sygnal_can_msgs::srv::QueryIdentities>(
+      "~/query_identities",
+      std::bind(&SygnalCanInterfaceNode::queryIdentitiesCallback, this, std::placeholders::_1, std::placeholders::_2));
 
     // Create timer for publishing
     auto period = std::chrono::duration<double>(1.0 / params_.publish_rate);
@@ -175,11 +192,21 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
   for (auto & entry : mcm_heartbeat_entries_) {
     entry.publisher->on_activate();
   }
+  for (auto & entry : mcm_identity_entries_) {
+    entry.publisher->on_activate();
+  }
 
   control_command_sub_ = create_subscription<sygnal_can_msgs::msg::ControlCommand>(
     "~/control_command",
     rclcpp::QoS(10),
     std::bind(&SygnalCanInterfaceNode::controlCommandCallback, this, std::placeholders::_1));
+
+  // Broadcast one identify query to pre-populate identity storage. Responses arrive asynchronously on
+  // the reception thread and are published by the timer as they land.
+  std::string identify_error;
+  if (!sygnal_interface_->sendIdentifyQuery(identify_error)) {
+    RCLCPP_WARN(get_logger(), "Failed to broadcast startup identify query: %s", identify_error.c_str());
+  }
 
   RCLCPP_INFO(get_logger(), "Sygnal CAN Interface node activated");
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
@@ -191,6 +218,9 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
   // Deactivate publishers
   diagnostics_pub_->on_deactivate();
   for (auto & entry : mcm_heartbeat_entries_) {
+    entry.publisher->on_deactivate();
+  }
+  for (auto & entry : mcm_identity_entries_) {
     entry.publisher->on_deactivate();
   }
 
@@ -206,8 +236,10 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
   set_control_state_service_.reset();
   send_control_command_service_.reset();
   send_relay_command_service_.reset();
+  query_identities_service_.reset();
   diagnostics_pub_.reset();
   mcm_heartbeat_entries_.clear();
+  mcm_identity_entries_.clear();
 
   if (socketcan_adapter_) {
     socketcan_adapter_->joinReceptionThread();
@@ -241,6 +273,16 @@ void SygnalCanInterfaceNode::timerCallback()
 
     entry.current_state = msg;
     entry.publisher->publish(msg);
+  }
+
+  // Publish identities on the latched topics, but only when they change.
+  for (auto & entry : mcm_identity_entries_) {
+    auto identity_opt = sygnal_interface_->get_mcm_identity(entry.bus_id, entry.subsystem_id);
+    if (!identity_opt || entry.last_published == identity_opt) {
+      continue;
+    }
+    entry.last_published = identity_opt;
+    entry.publisher->publish(makeIdentityMsg(entry.bus_id, entry.subsystem_id, identity_opt.value()));
   }
 
   // Create and publish diagnostics
@@ -438,6 +480,58 @@ void SygnalCanInterfaceNode::sendRelayCommandCallback(
     response->success = true;
     response->message = "Relay command sent (no reply expected)";
   }
+}
+
+sygnal_can_msgs::msg::McmIdentity SygnalCanInterfaceNode::makeIdentityMsg(
+  uint8_t bus_id, uint8_t subsystem_id, const polymath::sygnal::McmIdentity & identity)
+{
+  sygnal_can_msgs::msg::McmIdentity msg;
+  msg.header.stamp = now();
+  msg.bus_id = bus_id;
+  msg.subsystem_id = subsystem_id;
+  msg.module_serial_number = identity.module_serial_number;
+  msg.product_id = identity.product_id;
+  msg.module_boot_state = identity.module_boot_state;
+  msg.app_version_major = identity.app_version.major;
+  msg.app_version_minor = identity.app_version.minor;
+  msg.app_version_patch = identity.app_version.patch;
+  msg.bl_version_major = identity.bl_version.major;
+  msg.bl_version_minor = identity.bl_version.minor;
+  msg.bl_version_patch = identity.bl_version.patch;
+  msg.has_main = identity.has_main;
+  msg.has_app_version = identity.has_app_version;
+  msg.has_bl_version = identity.has_bl_version;
+  return msg;
+}
+
+void SygnalCanInterfaceNode::queryIdentitiesCallback(
+  const std::shared_ptr<sygnal_can_msgs::srv::QueryIdentities::Request>,
+  std::shared_ptr<sygnal_can_msgs::srv::QueryIdentities::Response> response)
+{
+  RCLCPP_INFO(get_logger(), "Query identities service called - broadcasting identify query");
+
+  std::string error_message;
+  if (!sygnal_interface_->sendIdentifyQuery(error_message)) {
+    response->success = false;
+    response->message = "Failed to broadcast identify query: " + error_message;
+    RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+    return;
+  }
+
+  // wait one timeout window for devices to answer
+  std::this_thread::sleep_for(std::chrono::milliseconds(params_.timeout_ms));
+
+  for (const auto & id : mcm_ids_) {
+    auto identity_opt = sygnal_interface_->get_mcm_identity(id.bus_id, id.subsystem_id);
+    if (!identity_opt) {
+      continue;
+    }
+    response->identities.push_back(makeIdentityMsg(id.bus_id, id.subsystem_id, identity_opt.value()));
+  }
+
+  response->success = true;
+  response->message = "Identify query complete: " + std::to_string(response->identities.size()) + " MCM(s) responded";
+  RCLCPP_INFO(get_logger(), "%s", response->message.c_str());
 }
 
 diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsMessage()
