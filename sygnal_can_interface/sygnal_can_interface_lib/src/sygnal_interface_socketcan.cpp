@@ -106,6 +106,14 @@ bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
     }
   }
 
+  // IdentifyResponse frames (0x601-0x603) carry bus_address + subsystem_id and no CRC; each MCM claims
+  // only its own, mirroring the heartbeat filter.
+  for (auto & mcm : mcms_) {
+    if (mcm.parseIdentifyResponseFrame(frame)) {
+      return true;
+    }
+  }
+
   // Try parsing as a (legacy unified) MCM command response. Safe to run last: every HPO-addressed frame
   // has already been claimed above, so anything reaching this line is either an MCM frame or unrelated.
   auto response = control_interface_.parseCommandResponseFrame(frame);
@@ -375,6 +383,29 @@ std::optional<std::array<bool, HPO_NUM_INTERFACES>> SygnalInterfaceSocketcan::ge
     return std::nullopt;
   }
   return it->get_interface_states();
+}
+
+bool SygnalInterfaceSocketcan::sendIdentifyQuery(std::string & error_message)
+{
+  auto frame = control_interface_.createIdentifyCommandFrame();
+
+  auto err = socketcan_adapter_->send(frame);
+  if (err.has_value()) {
+    error_message += "Failed to send identify query: " + err.value() + "\n";
+    return false;
+  }
+  return true;
+}
+
+std::optional<McmIdentity> SygnalInterfaceSocketcan::get_mcm_identity(uint8_t bus_address, uint8_t subsystem_id) const
+{
+  auto it = std::find_if(mcms_.begin(), mcms_.end(), [bus_address, subsystem_id](const SygnalMcmInterface & m) {
+    return m.get_bus_address() == bus_address && m.get_subsystem_id() == subsystem_id;
+  });
+  if (it == mcms_.end()) {
+    return std::nullopt;
+  }
+  return it->get_identity();
 }
 
 }  // namespace polymath::sygnal
