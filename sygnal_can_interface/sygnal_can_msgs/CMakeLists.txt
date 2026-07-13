@@ -28,6 +28,7 @@ set(srv_files
   "srv/SetControlState.srv"
   "srv/SendControlCommand.srv"
   "srv/SendRelayCommand.srv"
+  "srv/QueryIdentities.srv"
 )
 
 set(msg_dependencies

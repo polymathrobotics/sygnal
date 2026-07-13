@@ -1,0 +1,13 @@
+# Service to broadcast an IdentifyCommand and return identities recorded for configured MCMs
+# Request
+---
+# Response
+
+# Success flag - true if the identify query was broadcast successfully
+bool success
+
+# Optional message describing result or error
+string message
+
+# One entry per configured MCM endpoint that has responded
+sygnal_can_msgs/McmIdentity[] identities
