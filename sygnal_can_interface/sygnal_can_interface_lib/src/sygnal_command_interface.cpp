@@ -18,6 +18,7 @@
 
 #include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_dbc/mcm_control.h"
+#include "sygnal_dbc/mcm_identify.h"
 #include "sygnal_dbc/mcm_relay.h"
 
 namespace polymath::sygnal
@@ -187,6 +188,17 @@ std::optional<polymath::socketcan::CanFrame> SygnalControlInterface::createRelay
   frame.set_len(MCM_RELAY_RELAY_COMMAND_LENGTH);
   frame.set_data(mcm_relay_command_packed_data);
 
+  return frame;
+}
+
+polymath::socketcan::CanFrame SygnalControlInterface::createIdentifyCommandFrame()
+{
+  polymath::socketcan::CanFrame frame;
+  std::array<unsigned char, CAN_MAX_DLC> data;
+  data.fill(0);
+  frame.set_can_id(MCM_IDENTIFY_IDENTIFY_COMMAND_FRAME_ID);
+  frame.set_len(MCM_IDENTIFY_IDENTIFY_COMMAND_LENGTH);
+  frame.set_data(data);
   return frame;
 }
 
