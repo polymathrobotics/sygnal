@@ -207,10 +207,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
   send_control_command_service_.reset();
   send_relay_command_service_.reset();
   diagnostics_pub_.reset();
-  for (auto & entry : mcm_heartbeat_entries_) {
-    entry.publisher.reset();
-    entry.current_state.reset();
-  }
+  mcm_heartbeat_entries_.clear();
 
   if (socketcan_adapter_) {
     socketcan_adapter_->joinReceptionThread();
