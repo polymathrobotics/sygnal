@@ -31,6 +31,8 @@
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
 #include "sygnal_can_msgs/msg/mcm_heartbeat.hpp"
+#include "sygnal_can_msgs/msg/mcm_identity.hpp"
+#include "sygnal_can_msgs/srv/query_identities.hpp"
 #include "sygnal_can_msgs/srv/send_control_command.hpp"
 #include "sygnal_can_msgs/srv/send_relay_command.hpp"
 #include "sygnal_can_msgs/srv/set_control_state.hpp"
@@ -93,6 +95,17 @@ private:
   /// @param msg Incoming control command message
   void controlCommandCallback(const sygnal_can_msgs::msg::ControlCommand::UniquePtr msg);
 
+  /// @brief Service callback to broadcast an identify query and return recorded MCM identities
+  /// @param request Service request
+  /// @param response Service response with success flag and recorded identities
+  void queryIdentitiesCallback(
+    const std::shared_ptr<sygnal_can_msgs::srv::QueryIdentities::Request> request,
+    std::shared_ptr<sygnal_can_msgs::srv::QueryIdentities::Response> response);
+
+  /// @brief Build a McmIdentity ROS message from the library's identity struct
+  sygnal_can_msgs::msg::McmIdentity makeIdentityMsg(
+    uint8_t bus_id, uint8_t subsystem_id, const polymath::sygnal::McmIdentity & identity);
+
   /// @brief Create diagnostics array from Sygnal status
   /// @return Diagnostic array message
   diagnostic_msgs::msg::DiagnosticArray createDiagnosticsMessage();
@@ -112,6 +125,7 @@ private:
   rclcpp::Service<sygnal_can_msgs::srv::SetControlState>::SharedPtr set_control_state_service_;
   rclcpp::Service<sygnal_can_msgs::srv::SendControlCommand>::SharedPtr send_control_command_service_;
   rclcpp::Service<sygnal_can_msgs::srv::SendRelayCommand>::SharedPtr send_relay_command_service_;
+  rclcpp::Service<sygnal_can_msgs::srv::QueryIdentities>::SharedPtr query_identities_service_;
 
   // MCM heartbeat publisher entry
   struct McmHeartbeatEntry
@@ -122,9 +136,19 @@ private:
     std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_state;
   };
 
+  // MCM identity publisher entry
+  struct McmIdentityEntry
+  {
+    uint8_t bus_id;
+    uint8_t subsystem_id;
+    rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmIdentity>::SharedPtr publisher;
+    std::optional<polymath::sygnal::McmIdentity> last_published;
+  };
+
   // Publishers
   rclcpp_lifecycle::LifecyclePublisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics_pub_;
   std::vector<McmHeartbeatEntry> mcm_heartbeat_entries_;
+  std::vector<McmIdentityEntry> mcm_identity_entries_;
 
   rclcpp::Subscription<sygnal_can_msgs::msg::ControlCommand>::SharedPtr control_command_sub_;
 };
