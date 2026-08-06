@@ -1,0 +1,63 @@
+---
+name: DBC File Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.dbc'
+      - .github/workflows/validate-dbc.yml
+  pull_request:
+    paths:
+      - '**.dbc'
+      - .github/workflows/validate-dbc.yml
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      dirs: ${{ steps.dirs.outputs.dirs }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed DBC files
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          list-files: shell
+          filters: |
+            dbc:
+              - '**.dbc'
+
+      - name: Reduce changed files to their directories
+        id: dirs
+        env:
+          DBC_CHANGED: ${{ steps.filter.outputs.dbc }}
+          DBC_FILES: ${{ steps.filter.outputs.dbc_files }}
+        run: |
+          if [ "$DBC_CHANGED" = 'true' ]; then
+            dirs="$(for f in $DBC_FILES; do dirname "$f"; done | sort -u | jq -R . | jq -sc .)"
+          else
+            dirs='[]'
+          fi
+          echo "dirs=$dirs" >> "$GITHUB_OUTPUT"
+          echo "Directories to validate: $dirs"
+
+  validate-dbc:
+    needs: discover
+    if: needs.discover.outputs.dirs != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJson(needs.discover.outputs.dirs) }}
+    name: validate-dbc (${{ matrix.dir }})
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Validate DBC files
+        uses: polymathrobotics/validate_dbc@v0.1
+        with:
+          path: ${{ matrix.dir }}

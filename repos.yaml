@@ -1,6 +1,10 @@
 ---
 repositories:
+  dbc_gen_cpp:
+    type: git
+    url: git@github.com:polymathrobotics/dbc_gen_cpp.git
+    version: main
   socketcan_adapter:
     type: git
-    url: https://github.com/polymathrobotics/socketcan_adapter.git
+    url: git@github.com:polymathrobotics/socketcan_adapter.git
     version: main

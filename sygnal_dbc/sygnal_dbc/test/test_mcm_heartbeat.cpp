@@ -24,6 +24,8 @@
 
 extern "C"
 {
+// Deliberately the pre-split include path: this test is what keeps the sygnal_dbc
+// compatibility headers honest.
 #include "sygnal_dbc/mcm_heartbeat.h"
 }
 

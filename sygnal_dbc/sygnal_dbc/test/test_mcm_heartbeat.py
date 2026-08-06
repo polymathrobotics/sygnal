@@ -35,10 +35,11 @@ def test_decode_mcm_heartbeat_from_installed_dbc():
     except Exception:
         pass
 
-    # Fallback to source tree copy (works in non-installed test runs)
+    # Fallback to source tree copy (works in non-installed test runs). The DBCs live in
+    # the sibling per-subsystem package directories, one level above this package.
     if dbc_path is None:
-        src_root = Path(__file__).resolve().parents[1]
-        candidate = src_root / 'database/mcm/Heartbeat.dbc'
+        src_root = Path(__file__).resolve().parents[2]
+        candidate = src_root / 'mcm/Heartbeat.dbc'
         if candidate.is_file():
             dbc_path = candidate
 

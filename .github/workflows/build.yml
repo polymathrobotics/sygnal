@@ -8,34 +8,47 @@ on:
       - main
 
 jobs:
+  dbc-package-structure:
+    # Every directory containing a .dbc must be a ROS package (have package.xml + CMakeLists.txt calling dbc_package())
+    name: DBC package structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every DBC directory is a ROS package
+        run: |
+          status=0
+          while IFS= read -r dir; do
+            if [ ! -f "$dir/package.xml" ] || [ ! -f "$dir/CMakeLists.txt" ]; then
+              echo "::error file=$dir::'$dir' contains .dbc file(s) but is not a ROS package (missing package.xml and/or CMakeLists.txt); colcon will silently skip it."
+              status=1
+            fi
+          done < <(git ls-files '*.dbc' | xargs -r -n1 dirname | sort -u)
+          if [ "$status" -eq 0 ]; then
+            echo "OK: every directory with a .dbc is a ROS package."
+          fi
+          exit "$status"
+
   build_and_test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - ros: humble
-            ubuntu: jammy
-          - ros: jazzy
-            ubuntu: noble
-          - ros: kilted
-            ubuntu: noble
-          - ros: lyrical
-            ubuntu: resolute
-          - ros: rolling
-            ubuntu: resolute
+        ros: [humble, jazzy, lyrical, rolling]
     name: ROS 2 ${{ matrix.ros }}
     container:
-      image: ghcr.io/ros-tooling/setup-ros-docker/setup-ros-docker-ubuntu-${{ matrix.ubuntu }}:latest
+      image: polymathrobotics/ros:${{ matrix.ros }}-builder-ubuntu
     env:
-      ROS_DISTRO: ${{ matrix.ros }}
       PIP_BREAK_SYSTEM_PACKAGES: 1
     steps:
       - uses: actions/checkout@v4
       - uses: ros-tooling/action-ros-ci@v0.4
         with:
           target-ros2-distro: ${{ matrix.ros }}
+          # dbc_gen_cpp's own test suite, pulled in with its checkout; not ours to build.
+          colcon-extra-args: --packages-skip test_dbc_gen_cpp
           vcs-repo-file-url: repos.yaml
+          coverage-result: false
+          import-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: colcon-logs-${{ matrix.ros }}
