@@ -24,7 +24,9 @@
 
 extern "C"
 {
-#include "mcm_heartbeat/mcm_heartbeat.h"
+// Deliberately the pre-split include path: this test is what keeps the sygnal_dbc
+// compatibility headers honest.
+#include "sygnal_dbc/mcm_heartbeat.h"
 }
 
 TEST_CASE("MCM Heartbeat unpack from frame 0x170")

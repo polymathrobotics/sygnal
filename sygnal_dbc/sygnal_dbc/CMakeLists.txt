@@ -105,21 +105,35 @@ if(BUILD_TESTING)
   )
 
   find_package(Catch2 REQUIRED)
-  find_package(dbc_sygnal_mcm REQUIRED)
 
+  # Links the sygnal_dbc INTERFACE target and includes sygnal_dbc/mcm_heartbeat.h, i.e.
+  # exactly what a pre-split consumer does, so the compatibility layer stays covered.
   add_executable(test_mcm_heartbeat_cpp test/test_mcm_heartbeat.cpp)
-  target_link_libraries(test_mcm_heartbeat_cpp
-    PRIVATE Catch2::Catch2WithMain dbc_sygnal_mcm::mcm_heartbeat
+  target_link_libraries(test_mcm_heartbeat_cpp PRIVATE Catch2::Catch2WithMain ${PROJECT_NAME})
+
+  # Covers the C++ API and the four-way Control.dbc name collision that PREFIX prevents.
+  add_executable(test_generated_cpp_api test/test_generated_cpp_api.cpp)
+  target_link_libraries(test_generated_cpp_api PRIVATE
+    Catch2::Catch2WithMain
+    ${PROJECT_NAME}
+    dbc_sygnal_mcm::mcm_heartbeat
+    dbc_sygnal_mcm::mcm_control
+    dbc_sygnal_io::io_control
+    dbc_sygnal_cb::cb_control
+    dbc_sygnal_hpo::hpo_control
   )
-  ament_add_test(
-    test_mcm_heartbeat_cpp
-    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:test_mcm_heartbeat_cpp>"
-      -r junit -s
-      -o test_results/${PROJECT_NAME}/test_mcm_heartbeat_cpp_output.xml
-    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-  )
+
+  foreach(_test test_mcm_heartbeat_cpp test_generated_cpp_api)
+    ament_add_test(
+      ${_test}
+      GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+      COMMAND "$<TARGET_FILE:${_test}>"
+        -r junit -s
+        -o test_results/${PROJECT_NAME}/${_test}_output.xml
+      ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+      WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+  endforeach()
 endif()
 
 ament_package(CONFIG_EXTRAS "sygnal_dbc-extras.cmake")
