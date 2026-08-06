@@ -47,6 +47,7 @@ jobs:
           # dbc_gen_cpp's own test suite, pulled in with its checkout; not ours to build.
           colcon-extra-args: --packages-skip test_dbc_gen_cpp
           vcs-repo-file-url: repos.yaml
+          coverage-result: false
           import-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
