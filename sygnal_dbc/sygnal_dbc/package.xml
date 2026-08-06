@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sygnal_dbc</name>
+  <version>0.1.0</version>
+  <description>Umbrella package for the Sygnal DBC databases. Installs the raw DBC files, exposes SYGNAL_DBC_DIR, and depends on the per-subsystem packages that provide the generated C/C++ CAN message libraries.</description>
+  <maintainer email="engineering@polymathrobotics.com">Polymath Engineering</maintainer>
+  <license>Apache-2.0</license>
+  <author email="zeerekahmad@hotmail.com">Zeerek Ahmad</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- The generated CAN message libraries. Depending on sygnal_dbc pulls all of them,
+       so consumers that already declared <depend>sygnal_dbc</depend> keep working. -->
+  <depend>dbc_sygnal_cb</depend>
+  <depend>dbc_sygnal_cb_niro_dcan</depend>
+  <depend>dbc_sygnal_hpo</depend>
+  <depend>dbc_sygnal_io</depend>
+  <depend>dbc_sygnal_mcm</depend>
+  <depend>dbc_sygnal_vehicles</depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>ament_index_python</test_depend>
+  <test_depend>catch2</test_depend>
+  <test_depend>python3-cantools-pip</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
