@@ -27,12 +27,12 @@ The library — and its C++ namespace, C-symbol prefix and header directory — 
 - `mcm/Control.dbc` → library `mcm_control`, headers `mcm_control/mcm_control.{h,hpp}`,
   namespace `mcm_control`, C symbols `mcm_control_*`.
 
-The `PREFIX` is required, unlike the same helper in `sygnal_polymath_internal`. Sygnal
-reuses stems across subsystems — `Control.dbc`, `Heartbeat.dbc`, `Identify.dbc`,
-`Configuration.dbc`, `Error.dbc` and `Commissioning.dbc` each exist in `cb/`, `hpo/`,
-`io/` **and** `mcm/`. Naming libraries after the bare stem would give four libraries
-called `Control`, all defining `control_*` symbols and all installing
-`include/Control/Control.hpp` — a duplicate-symbol error for anything linking two of them.
+The `PREFIX` is required because stems repeat across subsystems: `Control.dbc`,
+`Heartbeat.dbc`, `Identify.dbc`, `Configuration.dbc`, `Error.dbc` and `Commissioning.dbc`
+each exist in `cb/`, `hpo/`, `io/` **and** `mcm/`. Naming libraries after the bare stem
+would give four libraries called `Control`, all defining `control_*` symbols and all
+installing `include/Control/Control.hpp` — a duplicate-symbol error for anything linking
+two of them.
 
 `cb_niro_dcan/` is a sibling directory rather than `cb/niro_dcan/` because colcon does not
 descend into a directory it has already identified as a package. The installed
