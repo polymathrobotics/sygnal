@@ -18,10 +18,10 @@
 #include <chrono>
 #include <string>
 
+#include "hpo_control/hpo_control.hpp"
+#include "hpo_error/hpo_error.hpp"
+#include "hpo_heartbeat/hpo_heartbeat.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
-#include "sygnal_dbc/hpo_control.h"
-#include "sygnal_dbc/hpo_error.h"
-#include "sygnal_dbc/hpo_heartbeat.h"
 
 namespace polymath::sygnal
 {
@@ -157,9 +157,11 @@ std::optional<HpoErrorStatus> SygnalHpoInterface::parseErrorFrame(const socketca
   HpoErrorStatus status{};
   status.bus_address = unpacked.bus_address;
   status.subsystem_id = unpacked.subsystem_id;
-  status.error_type = unpacked.error_type;
+  // Wire values outside the DBC value tables are preserved rather than rejected; callers
+  // see them via hpo_error::to_string() as "UNKNOWN" instead of a silently dropped frame.
+  status.error_type = static_cast<HpoErrorType>(unpacked.error_type);
   status.error_can_id = unpacked.error_canid;
-  status.config_section_id = unpacked.config_section_id;
+  status.config_section_id = static_cast<HpoConfigSectionID>(unpacked.config_section_id);
   status.config_interface_id = unpacked.config_interface_id;
   return status;
 }

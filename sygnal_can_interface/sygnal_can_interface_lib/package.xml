@@ -11,7 +11,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <depend>socketcan_adapter</depend>
-  <depend>sygnal_dbc</depend>
+  <depend>dbc_sygnal_hpo</depend>
+  <depend>dbc_sygnal_mcm</depend>
 
   <test_depend>catch2</test_depend>
 

@@ -33,14 +33,14 @@
   #error "Catch2 headers not found. Please install Catch2 (v2 or v3)."
 #endif
 
+#include "hpo_control/hpo_control.hpp"
+#include "hpo_heartbeat/hpo_heartbeat.hpp"
+#include "mcm_control/mcm_control.hpp"
+#include "mcm_heartbeat/mcm_heartbeat.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
-#include "sygnal_dbc/hpo_control.h"
-#include "sygnal_dbc/hpo_heartbeat.h"
-#include "sygnal_dbc/mcm_control.h"
-#include "sygnal_dbc/mcm_heartbeat.h"
 
 namespace
 {

@@ -20,10 +20,14 @@
 #include <optional>
 #include <string>
 
+#include "hpo_error/hpo_error.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 
 namespace polymath::sygnal
 {
+
+using HpoErrorType = hpo_error::ErrorStatus::ErrorType;
+using HpoConfigSectionID = hpo_error::ErrorStatus::ConfigSectionID;
 
 // HPO hardware exposes 4 interfaces (0-3). The heartbeat reports a 1-bit control-state per
 // interface (Interface{N}State) plus a 2-bit pin-pull value (Interface{N}Value:
@@ -48,9 +52,9 @@ struct HpoErrorStatus
 {
   uint8_t bus_address;
   uint8_t subsystem_id;
-  uint8_t error_type;
+  HpoErrorType error_type;
   uint16_t error_can_id;
-  uint8_t config_section_id;
+  HpoConfigSectionID config_section_id;
   uint8_t config_interface_id;
 };
 

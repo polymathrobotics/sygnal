@@ -44,7 +44,12 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     socketcan_adapter::socketcan_adapter
-    sygnal_dbc::sygnal_dbc
+    dbc_sygnal_hpo::hpo_control
+    dbc_sygnal_hpo::hpo_error
+    dbc_sygnal_hpo::hpo_heartbeat
+    dbc_sygnal_mcm::mcm_control
+    dbc_sygnal_mcm::mcm_heartbeat
+    dbc_sygnal_mcm::mcm_relay
 )
 
 install(
@@ -70,7 +75,8 @@ install(
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_export_dependencies(
   socketcan_adapter
-  sygnal_dbc
+  dbc_sygnal_hpo
+  dbc_sygnal_mcm
 )
 
 if(BUILD_TESTING)
@@ -113,7 +119,7 @@ if(BUILD_TESTING)
     test/sygnal_hpo_interface_test.cpp
   )
   target_link_libraries(sygnal_hpo_interface_tests
-    PRIVATE ${PROJECT_NAME} sygnal_dbc::sygnal_dbc Catch2::Catch2WithMain
+    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
   ament_add_test(
     sygnal_hpo_interface_tests
@@ -129,7 +135,7 @@ if(BUILD_TESTING)
     test/sygnal_interface_socketcan_routing_test.cpp
   )
   target_link_libraries(sygnal_interface_socketcan_routing_tests
-    PRIVATE ${PROJECT_NAME} sygnal_dbc::sygnal_dbc Catch2::Catch2WithMain
+    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
   )
   ament_add_test(
     sygnal_interface_socketcan_routing_tests
