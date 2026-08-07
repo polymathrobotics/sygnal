@@ -28,10 +28,6 @@ namespace polymath::sygnal
 constexpr uint8_t DEFAULT_MCM_BUS_ADDRESS = 1;
 constexpr uint8_t SECONDARY_MCM_BUS_ADDRESS = 2;
 
-/// @brief Enum representing the overall state of the system.
-/// Generated from the SystemState value table in mcm/Heartbeat.dbc, so the enumerators
-/// cannot drift from the DBC. Aliased rather than redeclared to keep the existing
-/// polymath::sygnal::SygnalSystemState spelling at every call site.
 using SygnalSystemState = mcm_heartbeat::Heartbeat::SystemState;
 
 /// @brief Get the string of the Sygnal System State

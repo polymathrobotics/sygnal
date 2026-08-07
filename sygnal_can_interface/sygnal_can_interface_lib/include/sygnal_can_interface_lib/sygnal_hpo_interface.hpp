@@ -26,9 +26,6 @@
 namespace polymath::sygnal
 {
 
-/// @brief Error and config-section codes reported in an HPO ErrorStatus frame.
-/// Generated from the value tables in hpo/Error.dbc, so they cannot drift from the DBC.
-/// hpo_error::to_string() gives the DBC label for either.
 using HpoErrorType = hpo_error::ErrorStatus::ErrorType;
 using HpoConfigSectionID = hpo_error::ErrorStatus::ConfigSectionID;
 
@@ -58,7 +55,6 @@ struct HpoErrorStatus
   HpoErrorType error_type;
   uint16_t error_can_id;
   HpoConfigSectionID config_section_id;
-  /// Plain interface index (0-3); the DBC gives it no value table.
   uint8_t config_interface_id;
 };
 
