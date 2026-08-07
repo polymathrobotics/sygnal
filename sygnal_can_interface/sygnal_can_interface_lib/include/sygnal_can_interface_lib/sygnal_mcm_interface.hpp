@@ -18,6 +18,7 @@
 #include <array>
 #include <string>
 
+#include "mcm_heartbeat/mcm_heartbeat.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
 
@@ -27,38 +28,18 @@ namespace polymath::sygnal
 constexpr uint8_t DEFAULT_MCM_BUS_ADDRESS = 1;
 constexpr uint8_t SECONDARY_MCM_BUS_ADDRESS = 2;
 
-/// @brief Enum representing the overall state of the system
-enum class SygnalSystemState : uint8_t
-{
-  FAIL_HARD = 254,
-  HUMAN_OVERRIDE = 253,
-  FAIL_OPERATIONAL_2 = 242,
-  FAIL_OPERATIONAL_1 = 241,
-  MCM_CONTROL = 1,
-  HUMAN_CONTROL = 0
-};
+/// @brief Enum representing the overall state of the system.
+/// Generated from the SystemState value table in mcm/Heartbeat.dbc, so the enumerators
+/// cannot drift from the DBC. Aliased rather than redeclared to keep the existing
+/// polymath::sygnal::SygnalSystemState spelling at every call site.
+using SygnalSystemState = mcm_heartbeat::Heartbeat::SystemState;
 
 /// @brief Get the string of the Sygnal System State
 /// @param state input SygnalSystemState
-/// @return string of the state value
+/// @return string of the state value, as labelled in the DBC value table
 inline std::string sygnalSystemStateToString(SygnalSystemState state)
 {
-  switch (state) {
-    case SygnalSystemState::FAIL_HARD:
-      return "FAIL_HARD";
-    case SygnalSystemState::HUMAN_OVERRIDE:
-      return "HUMAN_OVERRIDE";
-    case SygnalSystemState::FAIL_OPERATIONAL_2:
-      return "FAIL_OPERATIONAL_2";
-    case SygnalSystemState::FAIL_OPERATIONAL_1:
-      return "FAIL_OPERATIONAL_1";
-    case SygnalSystemState::MCM_CONTROL:
-      return "MCM_CONTROL";
-    case SygnalSystemState::HUMAN_CONTROL:
-      return "HUMAN_CONTROL";
-    default:
-      return "UNKNOWN_STATE";
-  }
+  return mcm_heartbeat::to_string(state);
 }
 
 class SygnalMcmInterface
