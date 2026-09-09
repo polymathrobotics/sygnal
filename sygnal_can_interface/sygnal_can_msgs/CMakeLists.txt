@@ -21,7 +21,7 @@ ament_auto_find_build_dependencies()
 set(msg_files
   "msg/McmHeartbeat.msg"
   "msg/ControlCommand.msg"
-  "msg/McmIdentity.msg"
+  "msg/SygnalIdentity.msg"
 )
 
 set(srv_files

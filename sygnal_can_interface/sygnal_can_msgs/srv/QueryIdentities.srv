@@ -1,4 +1,4 @@
-# Service to broadcast an IdentifyCommand and return identities recorded for configured MCMs
+# Service to broadcast an IdentifyCommand and return every device that answered
 # Request
 ---
 # Response
@@ -9,5 +9,5 @@ bool success
 # Optional message describing result or error
 string message
 
-# One entry per configured MCM endpoint that has responded
-sygnal_can_msgs/McmIdentity[] identities
+# One entry per device (any type, configured or not) that answered the IdentifyCommand
+sygnal_can_msgs/SygnalIdentity[] identities
