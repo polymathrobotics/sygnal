@@ -149,7 +149,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     for (auto & entry : mcm_identity_entries_) {
       std::string topic =
         "~/mcm_identity_bus" + std::to_string(entry.bus_id) + "_sub" + std::to_string(entry.subsystem_id);
-      entry.publisher = create_publisher<sygnal_can_msgs::msg::McmIdentity>(topic, latched_publisher_qos);
+      entry.publisher = create_publisher<sygnal_can_msgs::msg::SygnalIdentity>(topic, latched_publisher_qos);
     }
 
     // Create services
@@ -282,7 +282,7 @@ void SygnalCanInterfaceNode::timerCallback()
       continue;
     }
     entry.last_published = identity_opt;
-    entry.publisher->publish(makeIdentityMsg(entry.bus_id, entry.subsystem_id, identity_opt.value()));
+    entry.publisher->publish(makeIdentityMsg(identity_opt.value()));
   }
 
   // Create and publish diagnostics
@@ -482,13 +482,13 @@ void SygnalCanInterfaceNode::sendRelayCommandCallback(
   }
 }
 
-sygnal_can_msgs::msg::McmIdentity SygnalCanInterfaceNode::makeIdentityMsg(
-  uint8_t bus_id, uint8_t subsystem_id, const polymath::sygnal::McmIdentity & identity)
+sygnal_can_msgs::msg::SygnalIdentity SygnalCanInterfaceNode::makeIdentityMsg(
+  const polymath::sygnal::SygnalIdentity & identity)
 {
-  sygnal_can_msgs::msg::McmIdentity msg;
+  sygnal_can_msgs::msg::SygnalIdentity msg;
   msg.header.stamp = now();
-  msg.bus_id = bus_id;
-  msg.subsystem_id = subsystem_id;
+  msg.bus_id = identity.bus_id;
+  msg.subsystem_id = identity.subsystem_id;
   msg.module_serial_number = identity.module_serial_number;
   msg.product_id = identity.product_id;
   msg.module_boot_state = identity.module_boot_state;
@@ -521,16 +521,13 @@ void SygnalCanInterfaceNode::queryIdentitiesCallback(
   // wait one timeout window for devices to answer
   std::this_thread::sleep_for(std::chrono::milliseconds(params_.timeout_ms));
 
-  for (const auto & id : mcm_ids_) {
-    auto identity_opt = sygnal_interface_->get_mcm_identity(id.bus_id, id.subsystem_id);
-    if (!identity_opt) {
-      continue;
-    }
-    response->identities.push_back(makeIdentityMsg(id.bus_id, id.subsystem_id, identity_opt.value()));
+  for (const auto & identity : sygnal_interface_->get_identify_catalog()) {
+    response->identities.push_back(makeIdentityMsg(identity));
   }
 
   response->success = true;
-  response->message = "Identify query complete: " + std::to_string(response->identities.size()) + " MCM(s) responded";
+  response->message =
+    "Identify query complete: " + std::to_string(response->identities.size()) + " device(s) responded";
   RCLCPP_INFO(get_logger(), "%s", response->message.c_str());
 }
 

@@ -31,7 +31,7 @@
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
 #include "sygnal_can_msgs/msg/mcm_heartbeat.hpp"
-#include "sygnal_can_msgs/msg/mcm_identity.hpp"
+#include "sygnal_can_msgs/msg/sygnal_identity.hpp"
 #include "sygnal_can_msgs/srv/query_identities.hpp"
 #include "sygnal_can_msgs/srv/send_control_command.hpp"
 #include "sygnal_can_msgs/srv/send_relay_command.hpp"
@@ -102,9 +102,8 @@ private:
     const std::shared_ptr<sygnal_can_msgs::srv::QueryIdentities::Request> request,
     std::shared_ptr<sygnal_can_msgs::srv::QueryIdentities::Response> response);
 
-  /// @brief Build a McmIdentity ROS message from the library's identity struct
-  sygnal_can_msgs::msg::McmIdentity makeIdentityMsg(
-    uint8_t bus_id, uint8_t subsystem_id, const polymath::sygnal::McmIdentity & identity);
+  /// @brief Build a SygnalIdentity ROS message from the library's identity struct
+  sygnal_can_msgs::msg::SygnalIdentity makeIdentityMsg(const polymath::sygnal::SygnalIdentity & identity);
 
   /// @brief Create diagnostics array from Sygnal status
   /// @return Diagnostic array message
@@ -136,13 +135,13 @@ private:
     std::optional<sygnal_can_msgs::msg::McmHeartbeat> current_state;
   };
 
-  // MCM identity publisher entry
+  // Latched identity publisher for one configured MCM endpoint
   struct McmIdentityEntry
   {
     uint8_t bus_id;
     uint8_t subsystem_id;
-    rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::McmIdentity>::SharedPtr publisher;
-    std::optional<polymath::sygnal::McmIdentity> last_published;
+    rclcpp_lifecycle::LifecyclePublisher<sygnal_can_msgs::msg::SygnalIdentity>::SharedPtr publisher;
+    std::optional<polymath::sygnal::SygnalIdentity> last_published;
   };
 
   // Publishers
