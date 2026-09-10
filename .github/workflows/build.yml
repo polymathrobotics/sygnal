@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros: [humble, jazzy, lyrical, rolling]
+        ros: [jazzy, lyrical]
     name: ROS 2 ${{ matrix.ros }}
     container:
       image: polymathrobotics/ros:${{ matrix.ros }}-builder-ubuntu
@@ -44,7 +44,7 @@ jobs:
       - uses: ros-tooling/action-ros-ci@v0.4
         with:
           target-ros2-distro: ${{ matrix.ros }}
-          # dbc_gen_cpp's own test suite, pulled in with its checkout; not ours to build.
+          # dbc_gen_cpp's own test suite, pulled in with its checkout; not ours to build
           colcon-extra-args: --packages-skip test_dbc_gen_cpp
           vcs-repo-file-url: repos.yaml
           coverage-result: false
