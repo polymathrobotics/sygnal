@@ -1,0 +1,13 @@
+# Service to broadcast an IdentifyCommand and return every device that answered
+# Request
+---
+# Response
+
+# Success flag - true if the identify query was broadcast successfully
+bool success
+
+# Optional message describing result or error
+string message
+
+# One entry per device (any type, configured or not) that answered the IdentifyCommand
+sygnal_can_msgs/SygnalIdentity[] identities

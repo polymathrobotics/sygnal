@@ -203,7 +203,29 @@ public:
   /// @return std::nullopt if no HPO with this bus_address has been registered.
   std::optional<std::array<bool, HPO_NUM_INTERFACES>> get_hpo_interface_states(uint8_t bus_address) const;
 
+  /// @brief Broadcast an IdentifyCommand.
+  //         Every Sygnal device (MCM/HPO/CB/IO) answers with its IdentifyResponse frames. parse() records
+  //         each responder into the discovery catalog (get_identify_catalog()) and, when it matches a
+  //         configured endpoint, into that MCM's slot (get_mcm_identity()). Read either back after allowing
+  //         time for responses to arrive.
+  /// @param[out] error_message Populated on failure.
+  /// @return true if the command frame was sent.
+  bool sendIdentifyQuery(std::string & error_message);
+
+  /// @brief Get the recorded identity for the named MCM endpoint.
+  /// @return std::nullopt if no MCM with this bus/subsystem is registered, or none has responded yet.
+  std::optional<SygnalIdentity> get_mcm_identity(uint8_t bus_address, uint8_t subsystem_id) const;
+
+  /// @brief Get the raw identify catalog: one entry per (bus_id, subsystem_id) that has answered an
+  ///        IdentifyCommand, regardless of device type or whether it was configured as an MCM. This is
+  ///        the discovery view; get_mcm_identity() looks up a single configured MCM endpoint.
+  /// @return A snapshot copy of the catalog.
+  std::vector<SygnalIdentity> get_identify_catalog() const;
+
 private:
+  /// @brief Upsert one decoded IdentifyResponse frame into the raw catalog, keyed by (bus_id, subsystem_id).
+  void recordIdentify(const IdentifyResponseFrame & decoded);
+
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
   std::vector<SygnalMcmInterface> mcms_;
   std::vector<SygnalHpoInterface> hpos_;
@@ -217,6 +239,12 @@ private:
   std::queue<std::promise<HpoControlResponse>> hpo_command_response_promises_;
 
   std::mutex promises_mutex_;
+
+  // Raw identify catalog: every device that answers an IdentifyCommand, keyed by (bus_id, subsystem_id).
+  // Written from parse() on the reception thread; read (by copy) from the service/timer thread, so the
+  // vector must be locked on both paths since it reallocates as devices are discovered.
+  std::vector<SygnalIdentity> identify_catalog_;
+  mutable std::mutex catalog_mutex_;
 };
 
 }  // namespace polymath::sygnal
