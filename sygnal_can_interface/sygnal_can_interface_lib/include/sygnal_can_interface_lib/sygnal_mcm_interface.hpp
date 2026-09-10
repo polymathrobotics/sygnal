@@ -43,12 +43,16 @@ inline bool operator==(const SygnalVersion & a, const SygnalVersion & b)
          && a.patch == b.patch;
 }
 
-/// @brief Identity and firmware versions of one MCM, assembled from its three IdentifyResponse
-///        frames (Main, AppVersion, BLVersion).
-//         Each frame arrives independently
-///        and the has_* flags mark which parts have been recorded.
-struct McmIdentity
+/// @brief One device's identity and firmware versions, assembled from its three IdentifyResponse frames
+///        (Main, AppVersion, BLVersion) and keyed by (bus_id, subsystem_id). Device-type-agnostic: every
+///        Sygnal device (MCM/HPO/CB/IO) answers an IdentifyCommand with the same layout. Each frame arrives
+///        independently; the has_* flags mark which parts have been recorded. product_id is the
+///        discriminator for classifying an entry into a typed device once a product_id -> device_type map
+///        exists.
+struct SygnalIdentity
 {
+  uint8_t bus_id{0};
+  uint8_t subsystem_id{0};
   uint32_t module_serial_number{0};
   uint16_t product_id{0};
   uint8_t module_boot_state{0};
@@ -59,9 +63,11 @@ struct McmIdentity
   bool has_bl_version{false};
 };
 
-inline bool operator==(const McmIdentity & a, const McmIdentity & b)
+inline bool operator==(const SygnalIdentity & a, const SygnalIdentity & b)
 {
-  return a.module_serial_number == b.module_serial_number  // NOLINT(readability/check)
+  return a.bus_id == b.bus_id  // NOLINT(readability/check)
+         && a.subsystem_id == b.subsystem_id  // NOLINT(readability/check)
+         && a.module_serial_number == b.module_serial_number  // NOLINT(readability/check)
          && a.product_id == b.product_id  // NOLINT(readability/check)
          && a.module_boot_state == b.module_boot_state  // NOLINT(readability/check)
          && a.app_version == b.app_version  // NOLINT(readability/check)
@@ -69,6 +75,56 @@ inline bool operator==(const McmIdentity & a, const McmIdentity & b)
          && a.has_main == b.has_main  // NOLINT(readability/check)
          && a.has_app_version == b.has_app_version  // NOLINT(readability/check)
          && a.has_bl_version == b.has_bl_version;
+}
+
+/// @brief Decoded contents of a single IdentifyResponse frame, before endpoint filtering. Decoding is
+///        device-type-agnostic because every Sygnal device answers with the same three-frame layout.
+struct IdentifyResponseFrame
+{
+  enum class Kind : uint8_t
+  {
+    kMain,
+    kAppVersion,
+    kBlVersion
+  };
+
+  uint8_t bus_id{0};
+  uint8_t subsystem_id{0};
+  Kind kind{Kind::kMain};
+
+  // Populated when kind == kMain.
+  uint32_t module_serial_number{0};
+  uint16_t product_id{0};
+  uint8_t module_boot_state{0};
+
+  // Populated when kind == kAppVersion or kBlVersion.
+  SygnalVersion version{};
+};
+
+/// @brief Decode an IdentifyResponse CAN frame (Main / AppVersion / BLVersion) without endpoint
+///        filtering. Identify frames carry no CRC. std::nullopt if the frame is not an IdentifyResponse.
+std::optional<IdentifyResponseFrame> decodeIdentifyResponseFrame(const socketcan::CanFrame & frame);
+
+/// @brief Merge one decoded IdentifyResponse frame into an identity record. Does not touch bus_id /
+///        subsystem_id; the caller owns the (bus, subsystem) key.
+inline void applyIdentifyFrame(SygnalIdentity & identity, const IdentifyResponseFrame & decoded)
+{
+  switch (decoded.kind) {
+    case IdentifyResponseFrame::Kind::kMain:
+      identity.module_serial_number = decoded.module_serial_number;
+      identity.product_id = decoded.product_id;
+      identity.module_boot_state = decoded.module_boot_state;
+      identity.has_main = true;
+      break;
+    case IdentifyResponseFrame::Kind::kAppVersion:
+      identity.app_version = decoded.version;
+      identity.has_app_version = true;
+      break;
+    case IdentifyResponseFrame::Kind::kBlVersion:
+      identity.bl_version = decoded.version;
+      identity.has_bl_version = true;
+      break;
+  }
 }
 
 /// @brief Enum representing the overall state of the system
@@ -139,12 +195,12 @@ public:
 
   /// @brief Get the identity assembled from this MCM's IdentifyResponse frames.
   /// @return std::nullopt until at least one IdentifyResponse frame has been recorded.
-  std::optional<McmIdentity> get_identity() const
+  std::optional<SygnalIdentity> get_identity() const
   {
-    if (!mcm_identity_.has_main && !mcm_identity_.has_app_version && !mcm_identity_.has_bl_version) {
+    if (!identity_.has_main && !identity_.has_app_version && !identity_.has_bl_version) {
       return std::nullopt;
     }
-    return mcm_identity_;
+    return identity_;
   }
 
   bool parseMcmHeartbeatFrame(const socketcan::CanFrame & frame);
@@ -161,7 +217,7 @@ private:
   SygnalSystemState sygnal_mcm_state_;
   std::array<SygnalSystemState, 5> sygnal_interface_states_;
   std::chrono::system_clock::time_point last_heartbeat_timestamp_;
-  McmIdentity mcm_identity_;
+  SygnalIdentity identity_;
 };
 
 }  // namespace polymath::sygnal

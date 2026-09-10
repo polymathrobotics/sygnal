@@ -15,6 +15,7 @@
 #include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
 
 #include <chrono>
+#include <optional>
 
 #include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_dbc/mcm_heartbeat.h"
@@ -29,6 +30,8 @@ SygnalMcmInterface::SygnalMcmInterface()
 , sygnal_mcm_state_(SygnalSystemState::FAIL_HARD)
 {
   sygnal_interface_states_.fill(SygnalSystemState::FAIL_HARD);
+  identity_.bus_id = bus_address_;
+  identity_.subsystem_id = subsystem_id_;
 }
 
 SygnalMcmInterface::SygnalMcmInterface(const uint8_t bus_address, const uint8_t subsystem_id)
@@ -37,6 +40,8 @@ SygnalMcmInterface::SygnalMcmInterface(const uint8_t bus_address, const uint8_t 
 , sygnal_mcm_state_(SygnalSystemState::FAIL_HARD)
 {
   sygnal_interface_states_.fill(SygnalSystemState::FAIL_HARD);
+  identity_.bus_id = bus_address_;
+  identity_.subsystem_id = subsystem_id_;
 }
 
 bool SygnalMcmInterface::parseMcmHeartbeatFrame(const socketcan::CanFrame & frame)
@@ -84,66 +89,77 @@ bool SygnalMcmInterface::parseMcmHeartbeatFrame(const socketcan::CanFrame & fram
   return true;
 }
 
-bool SygnalMcmInterface::parseIdentifyResponseFrame(const socketcan::CanFrame & frame)
+std::optional<IdentifyResponseFrame> decodeIdentifyResponseFrame(const socketcan::CanFrame & frame)
 {
   auto frame_copy = frame.get_frame();
+  IdentifyResponseFrame result;
 
   switch (frame.get_id()) {
     case MCM_IDENTIFY_IDENTIFY_RESPONSE_MAIN_FRAME_ID: {
       mcm_identify_identify_response_main_t unpacked;
       if (mcm_identify_identify_response_main_init(&unpacked) != 0) {
-        return false;
+        return std::nullopt;
       }
       if (mcm_identify_identify_response_main_unpack(&unpacked, frame_copy.data, frame_copy.len) != 0) {
-        return false;
+        return std::nullopt;
       }
-      if (unpacked.bus_address != bus_address_ || unpacked.subsystem_id != subsystem_id_) {
-        return false;
-      }
-      mcm_identity_.module_serial_number = unpacked.module_serial_number;
-      mcm_identity_.product_id = unpacked.product_id;
-      mcm_identity_.module_boot_state = unpacked.module_boot_state;
-      mcm_identity_.has_main = true;
-      return true;
+      result.kind = IdentifyResponseFrame::Kind::kMain;
+      result.bus_id = unpacked.bus_address;
+      result.subsystem_id = unpacked.subsystem_id;
+      result.module_serial_number = unpacked.module_serial_number;
+      result.product_id = unpacked.product_id;
+      result.module_boot_state = unpacked.module_boot_state;
+      return result;
     }
 
     case MCM_IDENTIFY_IDENTIFY_RESPONSE_APP_VERSION_FRAME_ID: {
       mcm_identify_identify_response_app_version_t unpacked;
       if (mcm_identify_identify_response_app_version_init(&unpacked) != 0) {
-        return false;
+        return std::nullopt;
       }
       if (mcm_identify_identify_response_app_version_unpack(&unpacked, frame_copy.data, frame_copy.len) != 0) {
-        return false;
+        return std::nullopt;
       }
-      if (unpacked.bus_address != bus_address_ || unpacked.subsystem_id != subsystem_id_) {
-        return false;
-      }
-      mcm_identity_.app_version = {
+      result.kind = IdentifyResponseFrame::Kind::kAppVersion;
+      result.bus_id = unpacked.bus_address;
+      result.subsystem_id = unpacked.subsystem_id;
+      result.version = {
         unpacked.software_version_major, unpacked.software_version_minor, unpacked.software_version_patch};
-      mcm_identity_.has_app_version = true;
-      return true;
+      return result;
     }
 
     case MCM_IDENTIFY_IDENTIFY_RESPONSE_BL_VERSION_FRAME_ID: {
       mcm_identify_identify_response_bl_version_t unpacked;
       if (mcm_identify_identify_response_bl_version_init(&unpacked) != 0) {
-        return false;
+        return std::nullopt;
       }
       if (mcm_identify_identify_response_bl_version_unpack(&unpacked, frame_copy.data, frame_copy.len) != 0) {
-        return false;
+        return std::nullopt;
       }
-      if (unpacked.bus_address != bus_address_ || unpacked.subsystem_id != subsystem_id_) {
-        return false;
-      }
-      mcm_identity_.bl_version = {
+      result.kind = IdentifyResponseFrame::Kind::kBlVersion;
+      result.bus_id = unpacked.bus_address;
+      result.subsystem_id = unpacked.subsystem_id;
+      result.version = {
         unpacked.software_version_major, unpacked.software_version_minor, unpacked.software_version_patch};
-      mcm_identity_.has_bl_version = true;
-      return true;
+      return result;
     }
 
     default:
-      return false;
+      return std::nullopt;
   }
+}
+
+bool SygnalMcmInterface::parseIdentifyResponseFrame(const socketcan::CanFrame & frame)
+{
+  auto decoded = decodeIdentifyResponseFrame(frame);
+  if (!decoded) {
+    return false;
+  }
+  if (decoded->bus_id != bus_address_ || decoded->subsystem_id != subsystem_id_) {
+    return false;
+  }
+  applyIdentifyFrame(identity_, *decoded);
+  return true;
 }
 
 }  // namespace polymath::sygnal

@@ -106,12 +106,16 @@ bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
     }
   }
 
-  // IdentifyResponse frames (0x601-0x603) carry bus_address + subsystem_id and no CRC; each MCM claims
-  // only its own, mirroring the heartbeat filter.
-  for (auto & mcm : mcms_) {
-    if (mcm.parseIdentifyResponseFrame(frame)) {
-      return true;
+  // IdentifyResponse frames (0x601-0x603) carry bus_address + subsystem_id and no CRC. Every Sygnal device
+  // answers with the same layout, so we run two steps: (1) record every responder into the device-agnostic
+  // catalog for discovery, then (2) merge into the matching configured MCM's typed identity. Step 2 is a
+  // no-op for responders (HPO/CB/IO or unconfigured MCMs) that don't match a registered endpoint.
+  if (auto decoded = decodeIdentifyResponseFrame(frame)) {
+    recordIdentify(*decoded);
+    for (auto & mcm : mcms_) {
+      mcm.parseIdentifyResponseFrame(frame);
     }
+    return true;
   }
 
   // Try parsing as a (legacy unified) MCM command response. Safe to run last: every HPO-addressed frame
@@ -397,7 +401,8 @@ bool SygnalInterfaceSocketcan::sendIdentifyQuery(std::string & error_message)
   return true;
 }
 
-std::optional<McmIdentity> SygnalInterfaceSocketcan::get_mcm_identity(uint8_t bus_address, uint8_t subsystem_id) const
+std::optional<SygnalIdentity> SygnalInterfaceSocketcan::get_mcm_identity(
+  uint8_t bus_address, uint8_t subsystem_id) const
 {
   auto it = std::find_if(mcms_.begin(), mcms_.end(), [bus_address, subsystem_id](const SygnalMcmInterface & m) {
     return m.get_bus_address() == bus_address && m.get_subsystem_id() == subsystem_id;
@@ -406,6 +411,29 @@ std::optional<McmIdentity> SygnalInterfaceSocketcan::get_mcm_identity(uint8_t bu
     return std::nullopt;
   }
   return it->get_identity();
+}
+
+void SygnalInterfaceSocketcan::recordIdentify(const IdentifyResponseFrame & decoded)
+{
+  std::lock_guard<std::mutex> lock(catalog_mutex_);
+  auto it = std::find_if(identify_catalog_.begin(), identify_catalog_.end(), [&decoded](const SygnalIdentity & e) {
+    return e.bus_id == decoded.bus_id && e.subsystem_id == decoded.subsystem_id;
+  });
+  if (it == identify_catalog_.end()) {
+    SygnalIdentity entry;
+    entry.bus_id = decoded.bus_id;
+    entry.subsystem_id = decoded.subsystem_id;
+    applyIdentifyFrame(entry, decoded);
+    identify_catalog_.push_back(entry);
+    return;
+  }
+  applyIdentifyFrame(*it, decoded);
+}
+
+std::vector<SygnalIdentity> SygnalInterfaceSocketcan::get_identify_catalog() const
+{
+  std::lock_guard<std::mutex> lock(catalog_mutex_);
+  return identify_catalog_;
 }
 
 }  // namespace polymath::sygnal

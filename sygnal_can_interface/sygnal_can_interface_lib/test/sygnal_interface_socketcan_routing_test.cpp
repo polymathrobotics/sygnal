@@ -41,6 +41,7 @@
 #include "sygnal_dbc/hpo_heartbeat.h"
 #include "sygnal_dbc/mcm_control.h"
 #include "sygnal_dbc/mcm_heartbeat.h"
+#include "sygnal_dbc/mcm_identify.h"
 
 namespace
 {
@@ -122,6 +123,37 @@ polymath::socketcan::CanFrame buildMcmHeartbeat(uint8_t bus_address, uint8_t sub
   msg.crc = polymath::sygnal::generate_crc8(buffer);
   mcm_heartbeat_heartbeat_pack(buffer, &msg, sizeof(buffer));
   return makeFrame(MCM_HEARTBEAT_HEARTBEAT_FRAME_ID, buffer, MCM_HEARTBEAT_HEARTBEAT_LENGTH);
+}
+
+polymath::socketcan::CanFrame buildIdentifyMain(
+  uint8_t bus, uint8_t sub, uint8_t boot, uint16_t product, uint32_t serial)
+{
+  mcm_identify_identify_response_main_t msg;
+  mcm_identify_identify_response_main_init(&msg);
+  msg.bus_address = bus;
+  msg.subsystem_id = sub;
+  msg.module_boot_state = boot;
+  msg.product_id = product;
+  msg.module_serial_number = serial;
+  uint8_t buffer[CAN_MAX_DLC];
+  mcm_identify_identify_response_main_pack(buffer, &msg, sizeof(buffer));
+  return makeFrame(MCM_IDENTIFY_IDENTIFY_RESPONSE_MAIN_FRAME_ID, buffer, MCM_IDENTIFY_IDENTIFY_RESPONSE_MAIN_LENGTH);
+}
+
+polymath::socketcan::CanFrame buildIdentifyAppVersion(
+  uint8_t bus, uint8_t sub, uint16_t major, uint16_t minor, uint16_t patch)
+{
+  mcm_identify_identify_response_app_version_t msg;
+  mcm_identify_identify_response_app_version_init(&msg);
+  msg.bus_address = bus;
+  msg.subsystem_id = sub;
+  msg.software_version_major = major;
+  msg.software_version_minor = minor;
+  msg.software_version_patch = patch;
+  uint8_t buffer[CAN_MAX_DLC];
+  mcm_identify_identify_response_app_version_pack(buffer, &msg, sizeof(buffer));
+  return makeFrame(
+    MCM_IDENTIFY_IDENTIFY_RESPONSE_APP_VERSION_FRAME_ID, buffer, MCM_IDENTIFY_IDENTIFY_RESPONSE_APP_VERSION_LENGTH);
 }
 
 // SocketcanAdapter constructor stores config only; no socket is opened until openSocket() is called.
@@ -255,4 +287,83 @@ TEST_CASE("sendHpoControlEnable to an unregistered bus address fails cleanly", "
   REQUIRE_FALSE(result.success);
   REQUIRE_FALSE(result.response_future.has_value());
   REQUIRE_FALSE(err.empty());
+}
+
+TEST_CASE("parse() catalogs an identify response from an unconfigured device", "[sygnal_socketcan_routing]")
+{
+  // Every Sygnal device answers an IdentifyCommand, so discovery must record responders that were never
+  // configured as MCMs. Here only MCM_BUS/sub 0 is configured; a device on a different bus/subsystem still
+  // lands in the catalog, while get_mcm_identity() (the configured view) does not see it.
+  auto adapter = makeUnopenedAdapter();
+  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
+  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
+
+  constexpr uint8_t kUnconfiguredBus = 7;
+  constexpr uint8_t kUnconfiguredSub = 1;
+  REQUIRE(
+    sygnal.parse(buildIdentifyMain(kUnconfiguredBus, kUnconfiguredSub, /*boot=*/2, /*product=*/0xABCD, 0x11223344)));
+
+  auto catalog = sygnal.get_identify_catalog();
+  REQUIRE(catalog.size() == 1);
+  REQUIRE(catalog[0].bus_id == kUnconfiguredBus);
+  REQUIRE(catalog[0].subsystem_id == kUnconfiguredSub);
+  REQUIRE(catalog[0].product_id == 0xABCD);
+  REQUIRE(catalog[0].module_serial_number == 0x11223344);
+  REQUIRE(catalog[0].has_main);
+
+  // The configured-MCM view does not surface an unconfigured responder.
+  REQUIRE_FALSE(sygnal.get_mcm_identity(kUnconfiguredBus, kUnconfiguredSub).has_value());
+}
+
+TEST_CASE("parse() records a configured MCM in both the catalog and its typed slot", "[sygnal_socketcan_routing]")
+{
+  auto adapter = makeUnopenedAdapter();
+  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
+  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
+
+  REQUIRE(sygnal.parse(buildIdentifyMain(MCM_BUS, 0, /*boot=*/1, /*product=*/42, /*serial=*/100)));
+  REQUIRE(sygnal.parse(buildIdentifyAppVersion(MCM_BUS, 0, 3, 4, 5)));
+
+  auto configured = sygnal.get_mcm_identity(MCM_BUS, 0);
+  REQUIRE(configured.has_value());
+  REQUIRE(configured->product_id == 42);
+  REQUIRE(configured->app_version == polymath::sygnal::SygnalVersion{3, 4, 5});
+
+  auto catalog = sygnal.get_identify_catalog();
+  REQUIRE(catalog.size() == 1);
+  REQUIRE(catalog[0].bus_id == MCM_BUS);
+  REQUIRE(catalog[0].has_main);
+  REQUIRE(catalog[0].has_app_version);
+  REQUIRE(catalog[0].app_version == polymath::sygnal::SygnalVersion{3, 4, 5});
+}
+
+TEST_CASE("catalog keys by (bus, subsystem) and merges frames per responder", "[sygnal_socketcan_routing]")
+{
+  auto adapter = makeUnopenedAdapter();
+  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
+  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
+
+  // Two frames for one responder merge into a single entry; a second subsystem is a distinct entry.
+  REQUIRE(sygnal.parse(buildIdentifyMain(MCM_BUS, 0, 0, 1, 1)));
+  REQUIRE(sygnal.parse(buildIdentifyAppVersion(MCM_BUS, 0, 1, 2, 3)));
+  REQUIRE(sygnal.parse(buildIdentifyMain(MCM_BUS, 1, 0, 2, 2)));
+
+  auto catalog = sygnal.get_identify_catalog();
+  REQUIRE(catalog.size() == 2);
+
+  auto find_sub = [&catalog](uint8_t sub) {
+    return std::find_if(catalog.begin(), catalog.end(), [sub](const polymath::sygnal::SygnalIdentity & e) {
+      return e.subsystem_id == sub;
+    });
+  };
+
+  auto sub0 = find_sub(0);
+  REQUIRE(sub0 != catalog.end());
+  REQUIRE(sub0->has_main);
+  REQUIRE(sub0->has_app_version);
+
+  auto sub1 = find_sub(1);
+  REQUIRE(sub1 != catalog.end());
+  REQUIRE(sub1->has_main);
+  REQUIRE_FALSE(sub1->has_app_version);
 }
