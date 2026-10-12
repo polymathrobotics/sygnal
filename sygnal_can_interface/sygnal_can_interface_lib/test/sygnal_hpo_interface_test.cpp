@@ -183,6 +183,15 @@ TEST_CASE("SygnalHpoInterface parses heartbeat with mixed interface bits", "[syg
   }
 }
 
+TEST_CASE("SygnalHpoInterface parses heartbeat SystemState", "[sygnal_hpo_interface]")
+{
+  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  REQUIRE(hpo.get_system_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
+
+  REQUIRE(hpo.parseHeartbeatFrame(buildHpoHeartbeat(TEST_BUS_ADDRESS, {true, true, true, true})));
+  REQUIRE(hpo.get_system_state() == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
+}
+
 TEST_CASE("SygnalHpoInterface rejects heartbeat with wrong frame ID", "[sygnal_hpo_interface]")
 {
   SygnalHpoInterface hpo(TEST_BUS_ADDRESS);

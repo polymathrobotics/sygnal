@@ -21,6 +21,7 @@
 #include <string>
 
 #include "socketcan_adapter/can_frame.hpp"
+#include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
 
 namespace polymath::sygnal
 {
@@ -63,8 +64,7 @@ struct HpoErrorStatus
 /// automatically so callers cannot mismatch addresses.
 ///
 /// Unlike the MCM, the HPO does not hold a Sygnal state machine. Each per-interface
-/// heartbeat signal is a 1-bit boolean (true = HPO in control, false = released). The
-/// MCM's SystemState byte is not tracked here.
+/// heartbeat signal is a 1-bit boolean (true = HPO in control, false = released).
 class SygnalHpoInterface
 {
 public:
@@ -114,6 +114,12 @@ public:
     return hpo_interface_states_;
   }
 
+  /// @brief SystemState from the latest heartbeat. FAIL_HARD until the first heartbeat.
+  SygnalSystemState get_system_state() const
+  {
+    return system_state_;
+  }
+
   std::chrono::system_clock::time_point get_last_heartbeat_timestamp() const
   {
     return last_heartbeat_timestamp_;
@@ -122,6 +128,7 @@ public:
 private:
   uint8_t bus_address_;
   std::array<bool, HPO_NUM_INTERFACES> hpo_interface_states_;
+  SygnalSystemState system_state_;
   std::chrono::system_clock::time_point last_heartbeat_timestamp_;
 };
 
