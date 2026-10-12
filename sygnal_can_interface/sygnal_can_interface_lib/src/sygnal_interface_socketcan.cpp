@@ -377,4 +377,15 @@ std::optional<std::array<bool, HPO_NUM_INTERFACES>> SygnalInterfaceSocketcan::ge
   return it->get_interface_states();
 }
 
+std::optional<SygnalSystemState> SygnalInterfaceSocketcan::get_hpo_system_state(uint8_t bus_address) const
+{
+  auto it = std::find_if(hpos_.begin(), hpos_.end(), [bus_address](const SygnalHpoInterface & h) {
+    return h.get_bus_address() == bus_address;
+  });
+  if (it == hpos_.end()) {
+    return std::nullopt;
+  }
+  return it->get_system_state();
+}
+
 }  // namespace polymath::sygnal

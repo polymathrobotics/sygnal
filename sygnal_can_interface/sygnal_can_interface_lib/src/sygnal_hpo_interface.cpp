@@ -28,12 +28,14 @@ namespace polymath::sygnal
 
 SygnalHpoInterface::SygnalHpoInterface()
 : bus_address_(0)
+, system_state_(SygnalSystemState::FAIL_HARD)
 {
   hpo_interface_states_.fill(false);
 }
 
 SygnalHpoInterface::SygnalHpoInterface(uint8_t bus_address)
 : bus_address_(bus_address)
+, system_state_(SygnalSystemState::FAIL_HARD)
 {
   hpo_interface_states_.fill(false);
 }
@@ -65,6 +67,7 @@ bool SygnalHpoInterface::parseHeartbeatFrame(const socketcan::CanFrame & frame)
 
   last_heartbeat_timestamp_ = std::chrono::system_clock::now();
 
+  system_state_ = SygnalSystemState(unpacked.system_state);
   hpo_interface_states_[0] = (0 != unpacked.interface0_state);
   hpo_interface_states_[1] = (0 != unpacked.interface1_state);
   hpo_interface_states_[2] = (0 != unpacked.interface2_state);
