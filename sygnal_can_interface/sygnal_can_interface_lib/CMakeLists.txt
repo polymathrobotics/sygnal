@@ -30,10 +30,10 @@ ament_auto_find_build_dependencies()
 add_library(
   ${PROJECT_NAME} SHARED
   src/crc8.cpp
-  src/sygnal_mcm_interface.cpp
-  src/sygnal_command_interface.cpp
-  src/sygnal_hpo_interface.cpp
+  src/sygnal_device.cpp
+  src/sygnal_hpo_device.cpp
   src/sygnal_interface_socketcan.cpp
+  src/sygnal_mcm_device.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -43,6 +43,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
+    dbc_gen_cpp::dbc_gen_cpp
     socketcan_adapter::socketcan_adapter
     sygnal_dbc::sygnal_dbc
 )
@@ -69,6 +70,7 @@ install(
 
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_export_dependencies(
+  dbc_gen_cpp
   socketcan_adapter
   sygnal_dbc
 )
@@ -77,69 +79,24 @@ if(BUILD_TESTING)
   ament_auto_find_test_dependencies()
   find_package(Catch2 REQUIRED)
 
-  add_executable(sygnal_mcm_interface_tests
-    test/sygnal_mcm_interface_test.cpp
+  foreach(test_name
+    response_queues
+    sygnal_hpo_device
+    sygnal_interface_socketcan_routing
+    sygnal_mcm_device
   )
-  target_link_libraries(sygnal_mcm_interface_tests
-    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
-  )
-  ament_add_test(
-    sygnal_mcm_interface_tests
-    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:sygnal_mcm_interface_tests>"
-      -r junit -s
-      -o test_results/${PROJECT_NAME}/sygnal_mcm_interface_tests_output.xml
-    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-  )
-
-  add_executable(sygnal_command_interface_tests
-    test/sygnal_command_interface_test.cpp
-  )
-  target_link_libraries(sygnal_command_interface_tests
-    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
-  )
-  ament_add_test(
-    sygnal_command_interface_tests
-    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:sygnal_command_interface_tests>"
-      -r junit -s
-      -o test_results/${PROJECT_NAME}/sygnal_command_interface_tests_output.xml
-    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-  )
-
-  add_executable(sygnal_hpo_interface_tests
-    test/sygnal_hpo_interface_test.cpp
-  )
-  target_link_libraries(sygnal_hpo_interface_tests
-    PRIVATE ${PROJECT_NAME} sygnal_dbc::sygnal_dbc Catch2::Catch2WithMain
-  )
-  ament_add_test(
-    sygnal_hpo_interface_tests
-    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:sygnal_hpo_interface_tests>"
-      -r junit -s
-      -o test_results/${PROJECT_NAME}/sygnal_hpo_interface_tests_output.xml
-    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-  )
-
-  add_executable(sygnal_interface_socketcan_routing_tests
-    test/sygnal_interface_socketcan_routing_test.cpp
-  )
-  target_link_libraries(sygnal_interface_socketcan_routing_tests
-    PRIVATE ${PROJECT_NAME} sygnal_dbc::sygnal_dbc Catch2::Catch2WithMain
-  )
-  ament_add_test(
-    sygnal_interface_socketcan_routing_tests
-    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
-    COMMAND "$<TARGET_FILE:sygnal_interface_socketcan_routing_tests>"
-      -r junit -s
-      -o test_results/${PROJECT_NAME}/sygnal_interface_socketcan_routing_tests_output.xml
-    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-  )
+    add_executable(${test_name}_tests test/${test_name}_test.cpp)
+    target_link_libraries(${test_name}_tests PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain)
+    ament_add_test(
+      ${test_name}_tests
+      GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+      COMMAND "$<TARGET_FILE:${test_name}_tests>"
+        -r junit -s
+        -o test_results/${PROJECT_NAME}/${test_name}_tests_output.xml
+      ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+      WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+  endforeach()
 
   if(DEFINED ENV{CAN_AVAILABLE})
     add_executable(sygnal_interface_socketcan_tests

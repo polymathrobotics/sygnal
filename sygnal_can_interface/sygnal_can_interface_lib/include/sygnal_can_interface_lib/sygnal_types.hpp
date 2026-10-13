@@ -12,22 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SYGNAL_CAN_INTERFACE_LIB__SYGNAL_MCM_INTERFACE_HPP_
-#define SYGNAL_CAN_INTERFACE_LIB__SYGNAL_MCM_INTERFACE_HPP_
+#pragma once
 
-#include <array>
+#include <cstdint>
 #include <string>
-
-#include "socketcan_adapter/can_frame.hpp"
-#include "socketcan_adapter/socketcan_adapter.hpp"
+#include <string_view>
 
 namespace polymath::sygnal
 {
 
-constexpr uint8_t DEFAULT_MCM_BUS_ADDRESS = 1;
-constexpr uint8_t SECONDARY_MCM_BUS_ADDRESS = 2;
-
-/// @brief Enum representing the overall state of the system
+/// @brief Sygnal system state, as reported in Heartbeat (0x170) and MCM FaultState (0x20).
 enum class SygnalSystemState : uint8_t
 {
   FAIL_HARD = 254,
@@ -61,48 +55,45 @@ inline std::string sygnalSystemStateToString(SygnalSystemState state)
   }
 }
 
-class SygnalMcmInterface
+/// @brief Sygnal device kinds. Enumerators are named for `magic_enum` string conversion.
+enum class SygnalControlDeviceType : uint8_t
 {
-public:
-  SygnalMcmInterface();
-  explicit SygnalMcmInterface(const uint8_t bus_address, const uint8_t subsystem_id);
-  ~SygnalMcmInterface() = default;
+  CB,
+  HPO,
+  IO,
+  MCM,
+  NONE  ///< Not a device type: marks an unmapped bus address, and counts the real types.
+};
 
-  std::array<SygnalSystemState, 5> get_interface_states() const
-  {
-    return sygnal_interface_states_;
-  }
+enum class SygnalControlEndpointType : uint8_t
+{
+  CB_IF,
+  HPO_IF,
+  IO_IF,
+  MCM_IF,
+  MCM_RELAY
+};
 
-  uint8_t get_bus_address() const
-  {
-    return bus_address_;
-  }
+/// @brief One device subsystem on the bus.
+struct SygnalControlDevice
+{
+  SygnalControlDeviceType type;
+  uint8_t bus_id;
+  uint8_t subsystem_id = 0;
+};
 
-  uint8_t get_subsystem_id() const
-  {
-    return subsystem_id_;
-  }
-
-  SygnalSystemState get_mcm_state() const
-  {
-    return sygnal_mcm_state_;
-  }
-
-  std::chrono::system_clock::time_point get_last_heartbeat_timestamp() const
-  {
-    return last_heartbeat_timestamp_;
-  }
-
-  bool parseMcmHeartbeatFrame(const socketcan::CanFrame & frame);
-
-private:
-  uint8_t subsystem_id_;
-  uint8_t bus_address_;
-  SygnalSystemState sygnal_mcm_state_;
-  std::array<SygnalSystemState, 5> sygnal_interface_states_;
-  std::chrono::system_clock::time_point last_heartbeat_timestamp_;
+/// @brief One controllable endpoint on a device.
+///        endpoint_id is the MCM interface ID or the HPO message ID; MCM relays ignore it.
+///        Endpoint values are float32 on the wire; an MCM relay takes and reports 1.0 or 0.0.
+struct SygnalEndpoint
+{
+  SygnalControlEndpointType type;
+  SygnalControlDevice device;
+  uint8_t endpoint_id;
+  int min_value;
+  int max_value;
+  bool is_int;
+  std::string_view name;
 };
 
 }  // namespace polymath::sygnal
-
-#endif  // SYGNAL_CAN_INTERFACE_LIB__SYGNAL_MCM_INTERFACE_HPP_

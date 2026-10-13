@@ -15,212 +15,94 @@
 #ifndef SYGNAL_CAN_INTERFACE_LIB__SYGNAL_INTERFACE_SOCKETCAN_HPP_
 #define SYGNAL_CAN_INTERFACE_LIB__SYGNAL_INTERFACE_SOCKETCAN_HPP_
 
+#include <array>
 #include <future>
 #include <memory>
-#include <mutex>
 #include <optional>
-#include <queue>
 #include <string>
 #include <vector>
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
-#include "sygnal_can_interface_lib/sygnal_command_interface.hpp"
-#include "sygnal_can_interface_lib/sygnal_hpo_interface.hpp"
-#include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
+#include "sygnal_can_interface_lib/sygnal_device.hpp"
+#include "sygnal_can_interface_lib/sygnal_hpo_device.hpp"
+#include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
+#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
 
-/// @brief Result of a send command operation
-struct SendCommandResult
-{
-  bool success;
-  std::optional<std::future<SygnalControlCommandResponse>> response_future;
-};
-
-/// @brief Identifies one MCM endpoint by its CAN bus and subsystem ID.
-struct McmId
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-};
-
-/// @brief Identifies one HPO endpoint by its CAN bus address.
-struct HpoId
-{
-  uint8_t bus_id;
-};
-
-/// @brief Result of an HPO send operation. Mirrors SendCommandResult but is typed for HpoControlResponse
-///        because the HPO response carries a `message_id` instead of MCM's interface_id/subsystem_id.
-struct SendHpoCommandResult
-{
-  bool success;
-  std::optional<std::future<HpoControlResponse>> response_future;
-};
-
-/// @brief Represents a single control interface in Sygnal's System.
-///        Interfaces can either take floats(default) or ints as inputs.
-struct InterfaceEndpoint
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-  uint8_t interface_id;
-  int min_value;
-  int max_value;
-  bool is_int;
-  std::string_view name;
-};
-
-/// @brief Represents a single relay in Sygnal's System.
-struct RelayEndpoint
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-  uint8_t relay_id;
-  std::string_view name;
-};
-
-constexpr uint32_t MAX_PROMISE_QUEUE_LENGTH = 100;
-
-/// @brief Combined Sygnal MCM and Control interface with SocketCAN communication
-/// Provides thread-safe async communication with promise/future pattern for responses
+/// @brief Sygnal MCMs and HPOs on one SocketCAN bus.
+///        Received frames are dispatched through a lookup table keyed on data byte 0
+///        (subsystem ID bit 7, bus ID bits 0-6).
+///        Thread-safe: parse() may run on the reception thread while other methods run elsewhere.
 class SygnalInterfaceSocketcan
 {
 public:
-  /// @brief Constructor
-  /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
-  /// @param mcm_ids Flat list of MCM endpoints to manage, each identified by bus and subsystem ID
-  /// @param hpo_ids Flat list of HPO endpoints to manage, each identified by bus ID. Empty by
-  ///                default; an empty list disables all HPO behavior. The constructor throws
-  ///                std::invalid_argument if any HPO bus_id collides with an MCM bus_id, since
-  ///                disjoint bus addresses are required to route CAN-ID-overloaded frames correctly
-  ///                (see parse() comments).
+  /// @param socketcan_adapter Adapter that devices send commands on.
+  /// @param control_devices Devices to manage. MCM and HPO are supported.
+  /// @throws std::invalid_argument on an unsupported type, a bus_id above 127, a subsystem_id above 1,
+  ///         a duplicate device, or a bus_id shared by two device types.
   SygnalInterfaceSocketcan(
     std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-    const std::vector<McmId> & mcm_ids,
-    const std::vector<HpoId> & hpo_ids = {});
+    const std::vector<SygnalControlDevice> & control_devices);
 
-  /// @brief Parse incoming CAN frame for MCM heartbeat and command responses
-  /// @param frame CAN frame to parse
+  /// @brief Route a received frame to the device it addresses.
+  /// @return true if a configured device consumed the frame.
   bool parse(const socketcan::CanFrame & frame);
 
-  /// @brief Get interface states array from MCM 0
-  std::optional<std::array<SygnalSystemState, 5>> get_interface_state(
-    const uint8_t bus_address, const uint8_t subsystem_id) const;
+  /// @brief Get SystemState from the device's latest stashed heartbeat.
+  ///        Returns FAIL_HARD until the first one.
+  /// @throws std::invalid_argument if the device is not configured.
+  SygnalSystemState get_device_system_state(const SygnalControlDevice & device) const;
 
-  /// @brief Get MCM 0 system state
-  std::optional<SygnalSystemState> get_sygnal_mcm_state(const uint8_t bus_address, const uint8_t subsystem_id) const;
+  /// @brief Get whether the endpoint is in MCM_CONTROL or HUMAN_CONTROL based on the device's latest stashed heartbeat.
+  ///        Returns FAIL_HARD until the first stashed heartbeat is received.
+  /// @throws std::invalid_argument if the device is not configured or has no such endpoint.
+  SygnalSystemState get_endpoint_system_state(const SygnalEndpoint & endpoint) const;
 
-  /// @brief Send control state (enable/disable) command
-  /// @param bus_id Bus address
-  /// @param interface_id Interface to enable/disable
-  /// @param control_state MCM_CONTROL or HUMAN_CONTROL
-  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
-  /// @param error_message Populated on failure
-  /// @return Result with success flag and optional response future
-  SendCommandResult sendControlStateCommand(
-    uint8_t bus_id,
-    uint8_t interface_id,
-    uint8_t subsystem_id,
-    SygnalControlState control_state,
-    bool expect_reply,
-    std::string & error_message);
+  /// @brief Value from the endpoint's latest command response;
+  ///        Returns 0 or false until the first command is sent.
+  /// @throws std::invalid_argument if the device is not configured or has no such endpoint.
+  double get_endpoint_value(const SygnalEndpoint & endpoint) const;
 
-  /// @brief Send control state (enable/disable) command
-  /// @param interface Interface endpoint to control
-  /// @param control_state MCM_CONTROL or HUMAN_CONTROL
-  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
-  /// @param error_message Populated on failure
-  /// @return Result with success flag and optional response future
-  SendCommandResult sendControlStateCommand(
-    InterfaceEndpoint interface, SygnalControlState control_state, bool expect_reply, std::string & error_message);
+  /// @brief Fault status of an MCM subsystem.
+  /// @throws std::invalid_argument if no MCM is configured at the device's address.
+  McmFaultStatus get_device_faults(const SygnalControlDevice & device) const;
 
-  /// @brief Send control command with value
-  /// @param bus_id Bus address
-  /// @param interface_id Interface to control
-  /// @param value Control value
-  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
-  /// @param error_message Populated on failure
-  /// @return Result with success flag and optional response future
-  SendCommandResult sendControlCommand(
-    uint8_t bus_id,
-    uint8_t interface_id,
-    uint8_t subsystem_id,
-    double value,
-    bool expect_reply,
-    std::string & error_message);
+  /// @brief Enable or disable control of an endpoint.
+  /// @param expect_reply Return a future that resolves from the endpoint's enable response.
+  /// @throws std::invalid_argument if the device is not configured.
+  EndpointStateCommandResult send_endpoint_state_command(
+    const SygnalEndpoint & endpoint, bool enable, bool expect_reply);
 
-  /// @brief Send control command with value
-  /// @param interface Interface endpoint to control
-  /// @param value Control value
-  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
-  /// @param error_message Populated on failure
-  /// @return Result with success flag and optional response future
-  SendCommandResult sendControlCommand(
-    InterfaceEndpoint interface, double value, bool expect_reply, std::string & error_message);
-
-  /// @brief Send relay command
-  /// @param bus_id Bus address
-  /// @param subsystem_id Subsystem/relay to control
-  /// @param relay_state Enable or disable
-  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
-  /// @param error_message Populated on failure
-  /// @return Result with success flag and optional response future
-  SendCommandResult sendRelayCommand(
-    uint8_t bus_id, uint8_t subsystem_id, bool relay_state, bool expect_reply, std::string & error_message);
-
-  /// @brief Send relay command
-  /// @param interface Interface endpoint to control
-  /// @param relay_state Enable or disable
-  /// @param expect_reply If true, returns future for response; if false, fire-and-forget
-  /// @param error_message Populated on failure
-  /// @return Result with success flag and optional response future
-  SendCommandResult sendRelayCommand(
-    RelayEndpoint relay, bool relay_state, bool expect_reply, std::string & error_message);
-
-  /// @brief Send an HPO ControlEnable command.
-  /// @param bus_id Bus address of the target HPO. Must match one of the hpo_ids passed at construction.
-  /// @param message_id HPO MessageID (8-bit identifier of the specific signal/interface on the HPO).
-  /// @param enable true to grant HPO control of the signal, false to release back to human control.
-  /// @param expect_reply If true, returns a future for the ControlEnableResponse; fire-and-forget otherwise.
-  /// @param[out] error_message Populated on failure.
-  /// @return Result with success flag and optional response future.
-  SendHpoCommandResult sendHpoControlEnable(
-    uint8_t bus_id, uint8_t message_id, bool enable, bool expect_reply, std::string & error_message);
-
-  /// @brief Send an HPO ControlCommand with a float value.
-  /// @param bus_id Bus address of the target HPO. Must match one of the hpo_ids passed at construction.
-  /// @param message_id HPO MessageID (8-bit identifier of the specific signal/interface on the HPO).
-  /// @param value Control value (encoded per DBC SIG_VALTYPE float).
-  /// @param expect_reply If true, returns a future for the ControlCommandResponse; fire-and-forget otherwise.
-  /// @param[out] error_message Populated on failure.
-  /// @return Result with success flag and optional response future.
-  SendHpoCommandResult sendHpoControlCommand(
-    uint8_t bus_id, uint8_t message_id, double value, bool expect_reply, std::string & error_message);
-
-  /// @brief Read the cached interface bits from the named HPO's latest heartbeat.
-  /// @return std::nullopt if no HPO with this bus_address has been registered.
-  std::optional<std::array<bool, HPO_NUM_INTERFACES>> get_hpo_interface_states(uint8_t bus_address) const;
-
-  /// @brief Read the SystemState from the named HPO's latest heartbeat.
-  /// @return std::nullopt if no HPO with this bus_address has been registered.
-  std::optional<SygnalSystemState> get_hpo_system_state(uint8_t bus_address) const;
+  /// @brief Set an endpoint's value.
+  /// @param expect_reply Return a future that resolves from the endpoint's command response.
+  /// @throws std::invalid_argument if the device is not configured.
+  EndpointValueCommandResult send_endpoint_value_command(
+    const SygnalEndpoint & endpoint, double value, bool expect_reply);
 
 private:
-  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  std::vector<SygnalMcmInterface> mcms_;
-  std::vector<SygnalHpoInterface> hpos_;
-  SygnalControlInterface control_interface_;
+  /// @brief Helper to compute the BUS_ID + SUBSYSTEM_ID combination used as the lookup table key.
+  /// @return std::nullopt if bus_id or subsystem_id is out of range.
+  static std::optional<uint8_t> address_of(const SygnalControlDevice & device);
 
-  // Promise queues for each response type
-  std::queue<std::promise<SygnalControlCommandResponse>> enable_response_promises_;
-  std::queue<std::promise<SygnalControlCommandResponse>> control_response_promises_;
-  std::queue<std::promise<SygnalControlCommandResponse>> relay_response_promises_;
-  std::queue<std::promise<HpoControlResponse>> hpo_enable_response_promises_;
-  std::queue<std::promise<HpoControlResponse>> hpo_command_response_promises_;
+  /// @brief Helper to create human-readable description of the device.
+  static std::string describe(const SygnalControlDevice & device);
 
-  std::mutex promises_mutex_;
+  /// @brief Helper to lookup the device instance for the given device.
+  /// @throws std::invalid_argument if the lookup table has no entry for the device's ID.
+  SygnalDevice & device_at(const SygnalControlDevice & device) const;
+
+  static constexpr uint8_t BUS_ADDRESS_MASK = 0x7F;
+  static constexpr size_t NUM_ADDRESSES = UINT8_MAX + 1;
+
+  /// @brief Vector of all device instances managed by this interface.
+  ///        One per MCM, HPO, and other supported device types.
+  std::vector<std::unique_ptr<SygnalDevice>> devices_;
+
+  /// @brief Lookup table from ID (BUS_ID + SUBSYSTEM_ID) to device instance
+  ///        nullptr where none is configured.
+  std::array<SygnalDevice *, NUM_ADDRESSES> id_to_device_{};
 };
 
 }  // namespace polymath::sygnal
