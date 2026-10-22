@@ -23,12 +23,12 @@ namespace polymath::sygnal
 /// @brief Generate CRC8 checksum for 8-byte CAN data (checksum at data[7])
 /// @param data Data buffer to calculate the checksum for
 /// @return CRC8 checksum
-uint8_t generate_crc8(uint8_t * data);
+uint8_t generate_crc8(const uint8_t * data);
 
 /// @brief Verify CRC8 checksum of 8-byte CAN data (checksum at data[7])
 /// @param data Data buffer to check
 /// @return true if checksum matches, false otherwise
-bool check_crc8(uint8_t * data);
+bool check_crc8(const uint8_t * data);
 
 }  // namespace polymath::sygnal
 
