@@ -28,7 +28,8 @@ namespace polymath::sygnal
 enum class SygnalControlDeviceType : uint8_t
 {
   MCM,
-  HPO
+  HPO,
+  CB
 };
 
 /// @brief Types of Sygnal control endpoints. Separate from device types since MCM has both interfaces and relays.
@@ -36,7 +37,8 @@ enum class SygnalControlEndpointType : uint8_t
 {
   MCM_INTERFACE,
   MCM_RELAY,
-  HPO_INTERFACE
+  HPO_INTERFACE,
+  CB_INTERFACE
 };
 
 /// @brief Sygnal system state, as reported in Heartbeat (0x170) and MCM FaultState (0x20).
