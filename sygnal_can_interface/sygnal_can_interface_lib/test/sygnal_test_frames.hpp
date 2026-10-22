@@ -22,6 +22,7 @@
 #include "hpo_control/hpo_control.hpp"
 #include "hpo_heartbeat/hpo_heartbeat.hpp"
 #include "mcm_control/mcm_control.hpp"
+#include "mcm_fault/mcm_fault.hpp"
 #include "mcm_heartbeat/mcm_heartbeat.hpp"
 #include "mcm_relay/mcm_relay.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
@@ -91,6 +92,53 @@ inline can_frame mcm_relay_response(uint8_t bus_id, uint8_t subsystem_id, bool e
   msg.bus_address = bus_id;
   msg.subsystem_id = subsystem_id;
   msg.enable = enable;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame mcm_fault_state(
+  uint8_t bus_id, uint8_t subsystem_id, polymath::sygnal::SygnalSystemState state, uint8_t cause)
+{
+  mcm_fault::FaultState msg;
+  msg.bus_address = bus_id;
+  msg.subsystem_id = subsystem_id;
+  msg.fault_state = static_cast<uint8_t>(state);
+  msg.fault_cause = cause;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame mcm_fault_increment(uint8_t bus_id, uint8_t subsystem_id, uint8_t cause, uint16_t count)
+{
+  mcm_fault::FaultIncrement msg;
+  msg.bus_address = bus_id;
+  msg.subsystem_id = subsystem_id;
+  msg.fault_type = cause;
+  msg.fault_count = count;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame mcm_fault_list(uint8_t bus_id, uint8_t subsystem_id, uint8_t cause, uint16_t count)
+{
+  mcm_fault::FaultList msg;
+  msg.bus_address = bus_id;
+  msg.subsystem_id = subsystem_id;
+  msg.fault_type = cause;
+  msg.fault_count = count;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame mcm_fault_root_cause(
+  uint8_t bus_id, uint8_t subsystem_id, uint8_t fail_op1, uint8_t fail_op2, uint8_t fail_hard)
+{
+  mcm_fault::FaultRootCause msg;
+  msg.bus_address = bus_id;
+  msg.subsystem_id = subsystem_id;
+  msg.fail_op1_cause = fail_op1;
+  msg.fail_op2_cause = fail_op2;
+  msg.fail_hard_cause = fail_hard;
   msg.crc = 0;
   return to_frame(msg);
 }

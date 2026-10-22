@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <string>
 #include <string_view>
 
@@ -45,7 +46,7 @@ enum class SygnalControlEndpointType : uint8_t
   HPO_INTERFACE
 };
 
-/// @brief Sygnal system state, as reported in Heartbeat (0x170).
+/// @brief Sygnal system state, as reported in Heartbeat (0x170) and MCM FaultState (0x20).
 enum class SygnalSystemState : uint8_t
 {
   FAIL_HARD = 254,
@@ -54,6 +55,34 @@ enum class SygnalSystemState : uint8_t
   FAIL_OPERATIONAL_1 = 241,
   MCM_CONTROL = 1,
   HUMAN_CONTROL = 0
+};
+
+/// @brief MCM fault cause, as reported in FaultState, FaultIncrement, FaultList and FaultRootCause.
+enum class McmFaultCause : uint8_t
+{
+  NONE = 0x00,
+  EMERGENCY_STOP = 0x01,
+  EXTERNAL_FAULT = 0x02,
+  CAN_FAIL_OPERATIONAL_1 = 0x03,
+  CAN_FAIL_OPERATIONAL_2 = 0x04,
+  CAN_FAIL_HARD = 0x05,
+  INVALID_SUBSYSTEM_ID = 0x10,
+  INVALID_CONFIGURATION_CRC = 0x11,
+  PHYSICAL_INTERFACE_TRANSITION = 0x1B,
+  INVALID_INPUT_SIGNAL = 0x20,
+  INVALID_OUTPUT_SIGNAL = 0x21,
+  HEARTBEAT_TIMEOUT = 0x30,
+  HEARTBEAT_COUNT = 0x31,
+  CONTROL_TIMEOUT = 0x32,
+  CONTROL_COUNT = 0x33,
+  CONTROL_OUT_OF_BOUNDS = 0x34,
+  CLOSED_LOOP_TIMEOUT = 0x35,
+  CLOSED_LOOP_COUNT = 0x36,
+  CLOSED_LOOP_OUT_OF_BOUNDS = 0x37,
+  INVALID_CONFIGURATION_OPTION = 0x38,
+  SW_INDEX_OUT_OF_BOUNDS = 0x40,
+  SW_INVALID_STATE = 0x41,
+  SW_COPROCESSOR_OVERFLOW = 0x42,
 };
 
 /// @brief One device on the bus. subsystem_id applies to only MCMs; Other devices ignore it.
@@ -78,6 +107,20 @@ struct SygnalEndpoint
   int max_value;
   bool is_int;
   std::string_view name;
+};
+
+/// @brief Fault status of one MCM subsystem since its faults were last cleared.
+struct McmFaultStatus
+{
+  SygnalSystemState system_state{SygnalSystemState::FAIL_HARD};
+  /// Cause of the current system_state; NONE when not faulted.
+  McmFaultCause state_cause{McmFaultCause::NONE};
+  /// Cause that tripped each fault level; NONE if that level was never entered.
+  McmFaultCause fail_op1_cause{McmFaultCause::NONE};
+  McmFaultCause fail_op2_cause{McmFaultCause::NONE};
+  McmFaultCause fail_hard_cause{McmFaultCause::NONE};
+  /// Occurrences of each cause.
+  std::map<McmFaultCause, uint16_t> counts;
 };
 
 /// @brief Struct to help bundle a feedback value with its associated timestamp.

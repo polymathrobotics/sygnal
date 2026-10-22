@@ -157,4 +157,5 @@ TEST_CASE("HPO device rejects endpoints and values it does not have", "[hpo_devi
   CHECK_THROWS_AS(device.send_control_command(mcm_if, 1.0, false), std::invalid_argument);
   CHECK_THROWS_AS(device.get_interface_control_state(hpo_if(4)), std::invalid_argument);
   CHECK_THROWS_AS(device.get_control_command_value(mcm_if), std::invalid_argument);
+  CHECK_THROWS_AS(device.get_device_faults(), std::invalid_argument);
 }

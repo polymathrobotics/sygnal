@@ -36,6 +36,7 @@
 #include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
 
 using polymath::socketcan::CanFrame;
+using polymath::sygnal::McmFaultCause;
 using polymath::sygnal::SygnalControlDevice;
 using polymath::sygnal::SygnalControlDeviceType;
 using polymath::sygnal::SygnalControlEndpointType;
@@ -128,6 +129,18 @@ TEST_CASE("SygnalInterfaceSocketcan passes the frame's bus time to the getters",
 
   CHECK(bus_time == sygnal.get_device_system_state(MCM_SUBSYSTEM_0).timestamp);
   CHECK(std::chrono::system_clock::time_point{} == sygnal.get_device_system_state(MCM_SUBSYSTEM_1).timestamp);
+}
+
+TEST_CASE("SygnalInterfaceSocketcan serves faults only for MCMs", "[socketcan_routing]")
+{
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  REQUIRE(sygnal.parse(CanFrame(sygnal_test::mcm_fault_increment(1, 1, 0x32, 2))));
+
+  const auto counts = sygnal.get_device_faults(MCM_SUBSYSTEM_1).value.counts;
+  CHECK(2 == counts.at(McmFaultCause::CONTROL_TIMEOUT));  // NOLINT(readability/check)
+  CHECK(sygnal.get_device_faults(MCM_SUBSYSTEM_0).value.counts.empty());
+  CHECK_THROWS_AS(sygnal.get_device_faults(HPO), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.get_device_faults(UNCONFIGURED), std::invalid_argument);
 }
 
 TEST_CASE("SygnalInterfaceSocketcan rejects unconfigured devices", "[socketcan_routing]")
