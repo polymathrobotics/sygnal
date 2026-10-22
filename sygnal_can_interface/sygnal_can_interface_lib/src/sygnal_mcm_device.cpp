@@ -14,6 +14,7 @@
 
 #include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -21,11 +22,22 @@
 #include <utility>
 
 #include "mcm_control/mcm_control.hpp"
+#include "mcm_fault/mcm_fault.hpp"
 #include "mcm_heartbeat/mcm_heartbeat.hpp"
 #include "mcm_relay/mcm_relay.hpp"
 
 namespace polymath::sygnal
 {
+
+namespace
+{
+
+McmFaultCause to_cause(double wire_value)
+{
+  return static_cast<McmFaultCause>(static_cast<uint8_t>(wire_value));
+}
+
+}  // namespace
 
 SygnalMcmDevice::SygnalMcmDevice(
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
@@ -45,6 +57,21 @@ void SygnalMcmDevice::initializeCANHandlerCallbacks()
     const SygnalSystemState state = static_cast<SygnalSystemState>(msg.system_state);
 
     std::lock_guard<std::mutex> lock(state_mutex_);
+
+    // Determine if faults were cleared since the last heartbeat before updating the state.
+    const bool was_failed = SygnalSystemState::FAIL_OPERATIONAL_1 == system_state_.value ||
+                            SygnalSystemState::FAIL_OPERATIONAL_2 == system_state_.value ||
+                            SygnalSystemState::HUMAN_OVERRIDE == system_state_.value ||
+                            SygnalSystemState::FAIL_HARD == system_state_.value;
+    const bool cleared =
+      was_failed && (SygnalSystemState::HUMAN_CONTROL == state || SygnalSystemState::MCM_CONTROL == state);
+
+    // Per the Sygnal docs, fault message only send when there is an active fault.
+    // So if the MCM is in a clear state, reset the cached faults because we don't expect
+    // any more fault messages until a new fault occurs.
+    if (cleared) {
+      faults_ = {McmFaultStatus{}, msg.bus_time};
+    }
 
     // Update the system state with the new heartbeat information.
     system_state_ = {state, msg.bus_time};
@@ -106,6 +133,41 @@ void SygnalMcmDevice::initializeCANHandlerCallbacks()
     relay_value_ = {msg.enable, msg.bus_time};
     // Fulfill the pending promise for the relay command.
     relay_responses_.fulfill(0, relay_value_);
+  });
+
+  // Handle MCM Fault State messages.
+  can_handler_.set_handler<mcm_fault::FaultState>([this](const mcm_fault::FaultState & msg) {
+    // Update the system state and fault information with the message data.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    system_state_ = {static_cast<SygnalSystemState>(msg.fault_state), msg.bus_time};
+    faults_.value.state_cause = to_cause(msg.fault_cause);
+    faults_.timestamp = msg.bus_time;
+  });
+
+  // Handle MCM Fault Increment messages.
+  can_handler_.set_handler<mcm_fault::FaultIncrement>([this](const mcm_fault::FaultIncrement & msg) {
+    // Update the fault count for the specified fault type.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    faults_.value.counts[to_cause(msg.fault_type)] = static_cast<uint16_t>(msg.fault_count);
+    faults_.timestamp = msg.bus_time;
+  });
+
+  // Handle MCM Fault List messages.
+  can_handler_.set_handler<mcm_fault::FaultList>([this](const mcm_fault::FaultList & msg) {
+    // Update the fault count for the specified fault type from the fault list message.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    faults_.value.counts[to_cause(msg.fault_type)] = static_cast<uint16_t>(msg.fault_count);
+    faults_.timestamp = msg.bus_time;
+  });
+
+  // Handle MCM Fault Root Cause messages.
+  can_handler_.set_handler<mcm_fault::FaultRootCause>([this](const mcm_fault::FaultRootCause & msg) {
+    // Update the root cause information for the specified fault types.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    faults_.value.fail_op1_cause = to_cause(msg.fail_op1_cause);
+    faults_.value.fail_op2_cause = to_cause(msg.fail_op2_cause);
+    faults_.value.fail_hard_cause = to_cause(msg.fail_hard_cause);
+    faults_.timestamp = msg.bus_time;
   });
 }
 
@@ -283,6 +345,15 @@ ControlCommandResult SygnalMcmDevice::send_relay_command(double value, bool expe
     return {false, send_error.value(), std::nullopt};
   }
   return {true, "", std::move(future)};
+}
+
+Stamped<McmFaultStatus> SygnalMcmDevice::get_device_faults() const
+{
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  Stamped<McmFaultStatus> faults = faults_;
+  faults.value.system_state = system_state_.value;
+  faults.timestamp = std::max(faults_.timestamp, system_state_.timestamp);
+  return faults;
 }
 
 }  // namespace polymath::sygnal

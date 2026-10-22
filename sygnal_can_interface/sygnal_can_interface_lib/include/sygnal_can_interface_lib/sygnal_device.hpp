@@ -105,6 +105,10 @@ public:
   /// @throws std::invalid_argument if this device does not support the endpoint.
   virtual ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply);
 
+  /// @brief Fault status since the faults were last cleared.
+  /// @throws std::invalid_argument if this device does not report faults.
+  virtual Stamped<McmFaultStatus> get_device_faults() const;
+
 protected:
   /// @param socketcan_adapter Adapter that commands go out on.
   /// @param device Descriptor of this device.

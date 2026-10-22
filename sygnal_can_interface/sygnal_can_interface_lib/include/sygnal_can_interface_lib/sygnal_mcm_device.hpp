@@ -30,7 +30,7 @@ namespace polymath::sygnal
 constexpr uint8_t MCM_NUM_INTERFACES = 7;
 
 /// @brief One MCM subsystem: MCM_INTERFACE endpoints (interface ID 0-6) and one MCM_RELAY endpoint.
-///        Adds MCM-specific handling for interfaces and relays.
+///        Adds MCM-specific handling for interfaces, relays, and fault states.
 class SygnalMcmDevice : public SygnalDevice
 {
 public:
@@ -57,6 +57,9 @@ public:
   /// @brief Set an MCM_INTERFACE endpoint's value, or close the MCM_RELAY on a nonzero value and open it on zero.
   ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply) override;
 
+  /// @brief Fault status; timestamp is the latest of the fault messages and the heartbeat.
+  Stamped<McmFaultStatus> get_device_faults() const override;
+
 protected:
   /// @brief Pending relay replies, always on key 0; RelayCommandResponse carries no ID.
   ///        Kept separate from interface responses to avoid fulfilling the wrong promises.
@@ -81,6 +84,9 @@ private:
 
   /// @brief State of the MCM relay based on the last command response.
   Stamped<double> relay_value_{};
+
+  /// @brief Last fault status based on the latest fault message.
+  Stamped<McmFaultStatus> faults_{};
 };
 
 }  // namespace polymath::sygnal
