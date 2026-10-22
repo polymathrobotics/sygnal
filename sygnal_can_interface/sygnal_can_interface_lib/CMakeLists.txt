@@ -39,6 +39,7 @@ target_link_libraries(sygnal_types INTERFACE magic_enum::magic_enum)
 add_library(
   ${PROJECT_NAME} SHARED
   src/crc8.cpp
+  src/sygnal_cb_device.cpp
   src/sygnal_device.cpp
   src/sygnal_hpo_device.cpp
   src/sygnal_interface_socketcan.cpp
@@ -88,6 +89,7 @@ if(BUILD_TESTING)
 
   foreach(test_name
     response_queues
+    sygnal_cb_device
     sygnal_hpo_device
     sygnal_interface_socketcan_routing
     sygnal_io_device
