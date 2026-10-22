@@ -16,11 +16,8 @@
 
 #include <linux/can.h>
 
-#include <algorithm>
-#include <array>
 #include <chrono>
 #include <cstdint>
-#include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -38,22 +35,35 @@
 namespace polymath::sygnal
 {
 
-struct EndpointStateCommandResult
+/// @brief Result of sending a control enable command to a Sygnal endpoint.
+/// @details success: true if the command was sent successfully, false otherwise.
+///          error_message: Empty on success, reason for failure otherwise.
+///          response_future:
+///              If expect_reply was true, contains a future that resolves with the endpoint's enable response.
+///              If expect_reply was false, response_future will be std::nullopt.
+struct ControlEnableCommandResult
+{
+  bool success;
+  std::string error_message;
+  std::optional<std::future<Stamped<SygnalSystemState>>> response_future;  ///< Stamped with the response's bus time.
+};
+
+
+/// @brief Result of sending a control command to a Sygnal endpoint.
+/// @details success: true if the command was sent successfully, false otherwise.
+///          error_message: Empty on success, reason for failure otherwise.
+///          response_future:
+///              If expect_reply was true, contains a future that resolves with the endpoint's command response.
+///              If expect_reply was false, response_future will be std::nullopt.
+struct ControlCommandResult
 {
   bool success;
   std::string error_message;  ///< Empty on success.
-  std::optional<std::future<SygnalSystemState>> response_future;
+  std::optional<std::future<Stamped<double>>> response_future;  ///< Stamped with the response's bus time.
 };
 
-struct EndpointValueCommandResult
-{
-  bool success;
-  std::string error_message;  ///< Empty on success.
-  std::optional<std::future<double>> response_future;
-};
-
-/// @brief One Sygnal device subsystem: parses frames addressed to it and sends its commands.
-///        All public methods are thread-safe.
+/// @brief A class representing a Sygnal Device.
+///        Is meant to be subclassed for specific Sygnal device types.
 class SygnalDevice
 {
 public:
@@ -68,89 +78,75 @@ public:
     std::chrono::steady_clock::time_point receive_time = {},
     std::chrono::system_clock::time_point bus_time = {});
 
+  /// @brief The descriptor this device was configured with.
+  const SygnalControlDevice & device() const;
+
   /// @brief Get SystemState from this device's latest stashed heartbeat.
   ///        Returns FAIL_HARD until the first one.
-  SygnalSystemState get_system_state() const;
+  Stamped<SygnalSystemState> get_device_system_state() const;
 
-  /// @brief Get whether the endpoint is in MCM_CONTROL or HUMAN_CONTROL based on this device's latest stashed heartbeat.
-  ///        Returns HUMAN_CONTROL until the first stashed heartbeat is received.
+  /// @brief Control state of an endpoint from the latest heartbeat or enable response.
   /// @throws std::invalid_argument if this device has no such endpoint.
-  virtual SygnalSystemState get_endpoint_state(const SygnalEndpoint & endpoint) const = 0;
+  virtual Stamped<SygnalSystemState> get_interface_control_state(const SygnalEndpoint & endpoint) const;
 
-  /// @brief Value from the endpoint's latest command response;
-  ///        Returns 0 or false until the first command response is received.
+  /// @brief Value from the endpoint's latest command response; 0 until the first.
   /// @throws std::invalid_argument if this device has no such endpoint.
-  virtual double get_endpoint_value(const SygnalEndpoint & endpoint) const = 0;
+  virtual Stamped<double> get_control_command_value(const SygnalEndpoint & endpoint) const;
 
   /// @brief Enable or disable control of an endpoint.
   /// @param expect_reply Return a future that resolves from the endpoint's enable response.
-  virtual EndpointStateCommandResult send_endpoint_state_command(
-    const SygnalEndpoint & endpoint, bool enable, bool expect_reply) = 0;
+  /// @return success false with the reason if the send fails.
+  /// @throws std::invalid_argument if this device does not support the endpoint.
+  virtual ControlEnableCommandResult send_control_enable_command(
+    const SygnalEndpoint & endpoint, bool enable, bool expect_reply);
 
   /// @brief Set an endpoint's value.
   /// @param expect_reply Return a future that resolves from the endpoint's command response.
-  virtual EndpointValueCommandResult send_endpoint_value_command(
-    const SygnalEndpoint & endpoint, double value, bool expect_reply) = 0;
+  /// @return success false with the reason if the send fails.
+  /// @throws std::invalid_argument if this device does not support the endpoint.
+  virtual ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply);
 
-  /// @brief Future for the endpoint's next enable response. Call before sending the command.
-  std::future<SygnalSystemState> expect_endpoint_state_response(const SygnalEndpoint & endpoint);
-
-  /// @brief Future for the endpoint's next value response. Call before sending the command.
-  std::future<double> expect_endpoint_value_response(const SygnalEndpoint & endpoint);
-
-  /// @brief Withdraw the newest promise queued by expect_endpoint_state_response, for a command that failed to send.
-  ///        Assumes one sender at a time per endpoint.
-  void cancel_endpoint_state_response(const SygnalEndpoint & endpoint);
-
-  /// @brief Withdraw the newest promise queued by expect_endpoint_value_response, for a command that failed to send.
-  ///        Assumes one sender at a time per endpoint.
-  void cancel_endpoint_value_response(const SygnalEndpoint & endpoint);
+  /// @brief Fault status since the faults were last cleared.
+  /// @throws std::invalid_argument if this device does not report faults.
+  virtual Stamped<McmFaultStatus> get_device_faults() const;
 
 protected:
   /// @param socketcan_adapter Adapter that commands go out on.
-  explicit SygnalDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter);
+  /// @param device Descriptor of this device.
+  SygnalDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, SygnalControlDevice device);
 
-  /// @brief Pack msg into a frame, writing its CRC over the msg.crc placeholder.
+  /// @brief Pack msg into a frame. A message with a crc signal gets the CRC8 of bytes 0-6 written to it;
+  ///        callers leave crc unset.
   template <typename T>
-  static socketcan::CanFrame to_frame(const T & msg)
+  static socketcan::CanFrame to_frame_with_crc(T msg)
   {
-    const can_frame packed = msg;
-    std::array<unsigned char, CAN_MAX_DLC> data;
-    std::copy(packed.data, packed.data + CAN_MAX_DLC, data.begin());
-    data[CAN_MAX_DLC - 1] = generate_crc8(data.data());
-
-    socketcan::CanFrame frame;
-    frame.set_can_id(T::Id);
-    frame.set_len(T::DataLength);
-    frame.set_data(data);
-    return frame;
+    if constexpr (requires { msg.crc; }) {
+      msg.crc = 0;
+      can_frame packed = msg;
+      msg.crc = generate_crc8(packed.data);
+    }
+    return socketcan::CanFrame(static_cast<can_frame>(msg));
   }
-
-  /// @brief Register the callback for message type T. Call from subclass constructors only.
-  template <typename T>
-  void set_handler(std::function<void(const T &)> callback)
-  {
-    handler_.set_handler<T>(std::move(callback));
-  }
-
-  void fulfill_endpoint_state_response(SygnalControlEndpointType type, uint8_t endpoint_id, SygnalSystemState state);
-  void fulfill_endpoint_value_response(SygnalControlEndpointType type, uint8_t endpoint_id, double value);
 
   const std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
 
-  /// Guards system_state_, the response queues and subclass state.
-  /// Subclass handlers must not hold it while calling fulfill_* or get_system_state().
-  mutable std::mutex mutex_;
+  /// @brief handlers that handle() dispatches to. Register them in subclass constructors only.
+  dbc_gen_cpp::CANHandler can_handler_;
 
-  /// Written by subclass message handlers on the reception thread.
-  SygnalSystemState system_state_{SygnalSystemState::FAIL_HARD};
+  /// @brief Guards system_state_ and subclass state.
+  mutable std::mutex state_mutex_;
+
+  /// @brief Written by subclass message handlers on the reception thread.
+  Stamped<SygnalSystemState> system_state_{SygnalSystemState::FAIL_HARD, {}};
+
+  /// @brief Pending replies, keyed by the endpoint ID in the response frame.
+  ///        Push before sending a command that expects a reply, withdraw_newest if the send fails,
+  ///        and fulfill from the reply's handler.
+  ResponseQueues<uint8_t, Stamped<SygnalSystemState>> control_enable_responses_;
+  ResponseQueues<uint8_t, Stamped<double>> control_command_responses_;
 
 private:
-  using ResponseKey = std::pair<SygnalControlEndpointType, uint8_t>;
-
-  dbc_gen_cpp::CANHandler handler_;
-  ResponseQueues<ResponseKey, SygnalSystemState> state_responses_;
-  ResponseQueues<ResponseKey, double> value_responses_;
+  const SygnalControlDevice device_;
 };
 
 }  // namespace polymath::sygnal

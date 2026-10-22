@@ -16,6 +16,9 @@
 
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "sygnal_can_interface_lib/crc8.hpp"
@@ -23,8 +26,9 @@
 namespace polymath::sygnal
 {
 
-SygnalDevice::SygnalDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter)
+SygnalDevice::SygnalDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, SygnalControlDevice device)
 : socketcan_adapter_(std::move(socketcan_adapter))
+, device_(device)
 {}
 
 bool SygnalDevice::handle(
@@ -32,54 +36,50 @@ bool SygnalDevice::handle(
   std::chrono::steady_clock::time_point receive_time,
   std::chrono::system_clock::time_point bus_time)
 {
-  can_frame copy = frame;
-  if (CAN_MAX_DLC != copy.len || !check_crc8(copy.data)) {
+  // Reject frames that are not 8 bytes since every sygnal message puts the CRC in the 8th byte.
+  // Then check the CRC of the frame.
+  if (CAN_MAX_DLC != frame.len || !check_crc8(frame.data)) {
     return false;
   }
-  return handler_.handle(frame, receive_time, bus_time);
+
+  // Pass the frame to can handler.
+  return can_handler_.handle(frame, receive_time, bus_time);
 }
 
-SygnalSystemState SygnalDevice::get_system_state() const
+const SygnalControlDevice & SygnalDevice::device() const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
+  return device_;
+}
+
+Stamped<SygnalSystemState> SygnalDevice::get_device_system_state() const
+{
+  std::lock_guard<std::mutex> lock(state_mutex_);
   return system_state_;
 }
 
-std::future<SygnalSystemState> SygnalDevice::expect_endpoint_state_response(const SygnalEndpoint & endpoint)
+Stamped<SygnalSystemState> SygnalDevice::get_interface_control_state(const SygnalEndpoint & endpoint) const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return state_responses_.push({endpoint.type, endpoint.endpoint_id});
+  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Interface Control State feedback.");
 }
 
-std::future<double> SygnalDevice::expect_endpoint_value_response(const SygnalEndpoint & endpoint)
+Stamped<double> SygnalDevice::get_control_command_value(const SygnalEndpoint & endpoint) const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return value_responses_.push({endpoint.type, endpoint.endpoint_id});
+  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Control Command Value feedback.");
 }
 
-void SygnalDevice::cancel_endpoint_state_response(const SygnalEndpoint & endpoint)
+ControlEnableCommandResult SygnalDevice::send_control_enable_command(const SygnalEndpoint & endpoint, bool, bool)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
-  state_responses_.withdraw_newest({endpoint.type, endpoint.endpoint_id});
+  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Control Enable commands.");
 }
 
-void SygnalDevice::cancel_endpoint_value_response(const SygnalEndpoint & endpoint)
+ControlCommandResult SygnalDevice::send_control_command(const SygnalEndpoint & endpoint, double, bool)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
-  value_responses_.withdraw_newest({endpoint.type, endpoint.endpoint_id});
+  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Control commands.");
 }
 
-void SygnalDevice::fulfill_endpoint_state_response(
-  SygnalControlEndpointType type, uint8_t endpoint_id, SygnalSystemState state)
+Stamped<McmFaultStatus> SygnalDevice::get_device_faults() const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
-  state_responses_.fulfill({type, endpoint_id}, state);
-}
-
-void SygnalDevice::fulfill_endpoint_value_response(SygnalControlEndpointType type, uint8_t endpoint_id, double value)
-{
-  std::lock_guard<std::mutex> lock(mutex_);
-  value_responses_.fulfill({type, endpoint_id}, value);
+  throw std::invalid_argument("Sygnal device type " + std::string(magic_enum::enum_name(device_.type)) + " does not support Fault feedback.");
 }
 
 }  // namespace polymath::sygnal
