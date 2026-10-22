@@ -91,27 +91,36 @@ Stamped<SygnalSystemState> SygnalDevice::get_device_system_state() const
 
 Stamped<SygnalSystemState> SygnalDevice::get_interface_control_state(const SygnalEndpoint & endpoint) const
 {
-  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Interface Control State feedback.");
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Interface Control State feedback.");
 }
 
 Stamped<double> SygnalDevice::get_control_command_value(const SygnalEndpoint & endpoint) const
 {
-  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Control Command Value feedback.");
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Control Command Value feedback.");
 }
 
 ControlEnableCommandResult SygnalDevice::send_control_enable_command(const SygnalEndpoint & endpoint, bool, bool)
 {
-  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Control Enable commands.");
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Control Enable commands.");
 }
 
 ControlCommandResult SygnalDevice::send_control_command(const SygnalEndpoint & endpoint, double, bool)
 {
-  throw std::invalid_argument("Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) + " does not support Control commands.");
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Control commands.");
 }
 
 Stamped<McmFaultStatus> SygnalDevice::get_device_faults() const
 {
-  throw std::invalid_argument("Sygnal device type " + std::string(magic_enum::enum_name(device_.type)) + " does not support Fault feedback.");
+  throw std::invalid_argument(
+    "Sygnal device type " + std::string(magic_enum::enum_name(device_.type)) + " does not support Fault feedback.");
 }
 
 std::vector<Stamped<SygnalError>> SygnalDevice::get_new_device_errors()

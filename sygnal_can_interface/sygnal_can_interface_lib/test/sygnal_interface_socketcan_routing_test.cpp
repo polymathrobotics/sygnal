@@ -183,7 +183,8 @@ TEST_CASE("SygnalInterfaceSocketcan rejects unconfigured devices", "[socketcan_r
   CHECK_THROWS_AS(sygnal.send_control_command(endpoint, 1.0, true), std::invalid_argument);
 }
 
-TEST_CASE("SygnalInterfaceSocketcan rejects a descriptor whose type differs from the configured device", "[socketcan_routing]")
+TEST_CASE(
+  "SygnalInterfaceSocketcan rejects a descriptor whose type differs from the configured device", "[socketcan_routing]")
 {
   SygnalInterfaceSocketcan sygnal = make_interface();
   const SygnalControlDevice mcm_at_hpo_address{SygnalControlDeviceType::MCM, 3, 0, "wrong_type"};
@@ -194,8 +195,7 @@ TEST_CASE("SygnalInterfaceSocketcan rejects a descriptor whose type differs from
 TEST_CASE("SygnalInterfaceSocketcan returns new errors from the addressed device only", "[socketcan_routing]")
 {
   SygnalInterfaceSocketcan sygnal = make_interface();
-  REQUIRE(sygnal.parse(
-    CanFrame(sygnal_test::error_status<mcm_error::ErrorStatus>(1, 1, SygnalErrorType::KEY, 0x7F))));
+  REQUIRE(sygnal.parse(CanFrame(sygnal_test::error_status<mcm_error::ErrorStatus>(1, 1, SygnalErrorType::KEY, 0x7F))));
 
   CHECK(sygnal.get_new_device_errors(MCM_SUBSYSTEM_0).empty());
   CHECK(sygnal.get_new_device_errors(HPO).empty());

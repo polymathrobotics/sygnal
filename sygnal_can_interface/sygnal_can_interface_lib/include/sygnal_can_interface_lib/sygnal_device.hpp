@@ -52,7 +52,6 @@ struct ControlEnableCommandResult
   std::optional<std::future<Stamped<SygnalSystemState>>> response_future;  ///< Stamped with the response's bus time.
 };
 
-
 /// @brief Result of sending a control command to a Sygnal endpoint.
 /// @details success: true if the command was sent successfully, false otherwise.
 ///          error_message: Empty on success, reason for failure otherwise.

@@ -52,9 +52,9 @@ std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 class TestIoDevice : public SygnalIoDevice
 {
 public:
-  using SygnalIoDevice::SygnalIoDevice;
   using SygnalDevice::control_command_responses_;
   using SygnalDevice::control_enable_responses_;
+  using SygnalIoDevice::SygnalIoDevice;
 };
 
 constexpr uint8_t BUS = 6;

@@ -504,7 +504,8 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
           interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
         }
 
-        interface_diag.message = "Interface " + std::to_string(i) + " state: " + std::string(magic_enum::enum_name(state));
+        interface_diag.message =
+          "Interface " + std::to_string(i) + " state: " + std::string(magic_enum::enum_name(state));
 
         diagnostic_msgs::msg::KeyValue interface_kv;
         interface_kv.key = "state";

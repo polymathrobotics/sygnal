@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
 
 #include <memory>
@@ -186,8 +185,7 @@ SygnalDevice & SygnalInterfaceSocketcan::device_at(const SygnalControlDevice & d
 
   // Throw if the device type does not match the expected type.
   if (found->device().type != device.type) {
-    throw std::invalid_argument(
-      describe(device) + " is not configured; that address is " + describe(found->device()));
+    throw std::invalid_argument(describe(device) + " is not configured; that address is " + describe(found->device()));
   }
 
   // Return the found device instance.

@@ -62,14 +62,14 @@ void SygnalIoDevice::initializeCANHandlerCallbacks()
 
     // Update the system and interface states with the new heartbeat information.
     system_state_ = {static_cast<SygnalSystemState>(msg.system_state), msg.bus_time};
-    interface_states_ = {{
-      {static_cast<SygnalSystemState>(msg.interface0_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface1_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface2_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface3_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface4_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface5_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface6_state), msg.bus_time}}};
+    interface_states_ = {
+      {{static_cast<SygnalSystemState>(msg.interface0_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface1_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface2_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface3_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface4_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface5_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface6_state), msg.bus_time}}};
 
     /// TODO: (Ryan) Handle msg.overall_interface_state (1 MCM Control, 0 Human Control): expose it through a getter,
     /// or drop it if system_state always agrees with it.

@@ -46,11 +46,11 @@ void SygnalHpoDevice::initializeCANHandlerCallbacks()
 
     // Update the system and interface states with the new heartbeat information.
     system_state_ = {static_cast<SygnalSystemState>(msg.system_state), msg.bus_time};
-    interface_states_ = {{
-      {static_cast<SygnalSystemState>(msg.interface0_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface1_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface2_state), msg.bus_time},
-      {static_cast<SygnalSystemState>(msg.interface3_state), msg.bus_time}}};
+    interface_states_ = {
+      {{static_cast<SygnalSystemState>(msg.interface0_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface1_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface2_state), msg.bus_time},
+       {static_cast<SygnalSystemState>(msg.interface3_state), msg.bus_time}}};
 
     // Update the interface values with the pin state from the heartbeat: 0 HiZ, 1 Pull_Down, 2 Pull_Up.
     values_[0] = {msg.interface0_value, msg.bus_time};
@@ -77,18 +77,19 @@ void SygnalHpoDevice::initializeCANHandlerCallbacks()
   });
 
   // Handle HPO Control Command Response messages.
-  can_handler_.set_handler<hpo_control::ControlCommandResponse>([this](const hpo_control::ControlCommandResponse & msg) {
-    // Parse the message ID from the message.
-    const uint8_t id = static_cast<uint8_t>(msg.message_id);
+  can_handler_.set_handler<hpo_control::ControlCommandResponse>(
+    [this](const hpo_control::ControlCommandResponse & msg) {
+      // Parse the message ID from the message.
+      const uint8_t id = static_cast<uint8_t>(msg.message_id);
 
-    std::lock_guard<std::mutex> lock(state_mutex_);
+      std::lock_guard<std::mutex> lock(state_mutex_);
 
-    // Update the value for this message ID.
-    values_[id] = {msg.value, msg.bus_time};
+      // Update the value for this message ID.
+      values_[id] = {msg.value, msg.bus_time};
 
-    // Fulfill the pending promise for this message ID with the command value.
-    control_command_responses_.fulfill(id, values_[id]);
-  });
+      // Fulfill the pending promise for this message ID with the command value.
+      control_command_responses_.fulfill(id, values_[id]);
+    });
 }
 
 Stamped<SygnalSystemState> SygnalHpoDevice::get_interface_control_state(const SygnalEndpoint & endpoint) const

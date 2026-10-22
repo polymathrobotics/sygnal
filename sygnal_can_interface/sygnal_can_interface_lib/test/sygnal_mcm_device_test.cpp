@@ -30,8 +30,8 @@
 
 #include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
 
-using polymath::sygnal::McmFaultCause;
 using polymath::sygnal::MAX_STORED_ERRORS;
+using polymath::sygnal::McmFaultCause;
 using polymath::sygnal::SygnalControlDevice;
 using polymath::sygnal::SygnalControlDeviceType;
 using polymath::sygnal::SygnalControlEndpointType;
@@ -54,10 +54,10 @@ std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 class TestMcmDevice : public SygnalMcmDevice
 {
 public:
-  using SygnalMcmDevice::SygnalMcmDevice;
   using SygnalDevice::control_command_responses_;
   using SygnalDevice::control_enable_responses_;
   using SygnalMcmDevice::relay_responses_;
+  using SygnalMcmDevice::SygnalMcmDevice;
 };
 
 constexpr uint8_t BUS = 1;

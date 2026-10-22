@@ -56,7 +56,6 @@ void SygnalMcmDevice::initializeCANHandlerCallbacks()
     // Grab the system state from the heartbeat message.
     const SygnalSystemState state = static_cast<SygnalSystemState>(msg.system_state);
 
-
     std::lock_guard<std::mutex> lock(state_mutex_);
 
     // Determine if faults were cleared since the last heartbeat before updating the state.
@@ -66,7 +65,6 @@ void SygnalMcmDevice::initializeCANHandlerCallbacks()
                             SygnalSystemState::FAIL_HARD == system_state_.value;
     const bool cleared =
       was_failed && (SygnalSystemState::HUMAN_CONTROL == state || SygnalSystemState::MCM_CONTROL == state);
-
 
     // Per the Sygnal docs, fault message only send when there is an active fault.
     // So if the MCM is in a clear state, reset the cached faults because we don't expect
@@ -107,24 +105,26 @@ void SygnalMcmDevice::initializeCANHandlerCallbacks()
     }
 
     // Fulfill the pending promise for this interface ID with the enable state.
-    control_enable_responses_.fulfill(id, {enabled ? SygnalSystemState::MCM_CONTROL : SygnalSystemState::HUMAN_CONTROL, msg.bus_time});
+    control_enable_responses_.fulfill(
+      id, {enabled ? SygnalSystemState::MCM_CONTROL : SygnalSystemState::HUMAN_CONTROL, msg.bus_time});
   });
 
   // Handle MCM Control Command Response messages.
-  can_handler_.set_handler<mcm_control::ControlCommandResponse>([this](const mcm_control::ControlCommandResponse & msg) {
-    // Parse the interface ID from the message.
-    const uint8_t id = static_cast<uint8_t>(msg.interface_id);
+  can_handler_.set_handler<mcm_control::ControlCommandResponse>(
+    [this](const mcm_control::ControlCommandResponse & msg) {
+      // Parse the interface ID from the message.
+      const uint8_t id = static_cast<uint8_t>(msg.interface_id);
 
-    std::lock_guard<std::mutex> lock(state_mutex_);
+      std::lock_guard<std::mutex> lock(state_mutex_);
 
-    // Update the interface value if the ID is valid.
-    if (MCM_NUM_INTERFACES > id) {
-      interface_values_[id] = {msg.value, msg.bus_time};
-    }
+      // Update the interface value if the ID is valid.
+      if (MCM_NUM_INTERFACES > id) {
+        interface_values_[id] = {msg.value, msg.bus_time};
+      }
 
-    // Fulfill the pending promise for this interface ID with the command value.
-    control_command_responses_.fulfill(id, {msg.value, msg.bus_time});
-  });
+      // Fulfill the pending promise for this interface ID with the command value.
+      control_command_responses_.fulfill(id, {msg.value, msg.bus_time});
+    });
 
   // Handle MCM Relay Command Response messages.
   can_handler_.set_handler<mcm_relay::RelayCommandResponse>([this](const mcm_relay::RelayCommandResponse & msg) {

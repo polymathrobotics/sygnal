@@ -52,9 +52,9 @@ std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 class TestHpoDevice : public SygnalHpoDevice
 {
 public:
-  using SygnalHpoDevice::SygnalHpoDevice;
   using SygnalDevice::control_command_responses_;
   using SygnalDevice::control_enable_responses_;
+  using SygnalHpoDevice::SygnalHpoDevice;
 };
 
 constexpr uint8_t BUS = 3;
@@ -166,7 +166,9 @@ TEST_CASE("HPO get_new_device_errors returns its errors and clears them", "[hpo_
   TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
 
   REQUIRE(device.handle(
-    sygnal_test::error_status<hpo_error::ErrorStatus>(BUS, 0, SygnalErrorType::INTERFACE_ID, 0x160), {}, RESPONSE_TIME));
+    sygnal_test::error_status<hpo_error::ErrorStatus>(BUS, 0, SygnalErrorType::INTERFACE_ID, 0x160),
+    {},
+    RESPONSE_TIME));
 
   const auto errors = device.get_new_device_errors();
   REQUIRE(1 == errors.size());  // NOLINT(readability/check)

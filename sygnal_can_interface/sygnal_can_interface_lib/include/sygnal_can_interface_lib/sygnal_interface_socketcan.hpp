@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #pragma once
 
 #include <array>
@@ -80,8 +79,7 @@ public:
   /// @param expect_reply Return a future that resolves from the endpoint's command response.
   /// @return success false with the reason if the send fails; response_future is empty unless expect_reply.
   /// @throws std::invalid_argument if the device is unknown or does not support the endpoint.
-  ControlCommandResult send_control_command(
-    const SygnalEndpoint & endpoint, double value, bool expect_reply = true);
+  ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply = true);
 
 private:
   /// @throws std::invalid_argument if no device of device.type is configured at its address.

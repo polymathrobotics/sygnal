@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "magic_enum.hpp"
+
 namespace polymath::sygnal
 {
 
