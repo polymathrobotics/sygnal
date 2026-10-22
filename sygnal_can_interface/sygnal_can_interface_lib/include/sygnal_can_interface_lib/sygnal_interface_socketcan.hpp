@@ -22,9 +22,8 @@
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/response_queues.hpp"
-#include "sygnal_can_interface_lib/sygnal_command_interface.hpp"
-#include "sygnal_can_interface_lib/sygnal_hpo_interface.hpp"
-#include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
+#include "sygnal_can_interface_lib/sygnal_hpo_device.hpp"
+#include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
@@ -152,9 +151,8 @@ public:
 
 private:
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  std::vector<SygnalMcmInterface> mcms_;
-  std::vector<SygnalHpoInterface> hpos_;
-  SygnalControlInterface control_interface_;
+  std::vector<SygnalMcmDevice> mcms_;
+  std::vector<SygnalHpoDevice> hpos_;
 
   /// @brief Pending MCM responses, keyed by response type.
   ResponseQueues<SygnalControlCommandResponseType, SygnalControlCommandResponse> mcm_responses_;
