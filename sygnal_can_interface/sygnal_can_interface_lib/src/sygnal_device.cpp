@@ -14,17 +14,36 @@
 
 #include "sygnal_can_interface_lib/sygnal_device.hpp"
 
+#include <memory>
+#include <utility>
+
 namespace polymath::sygnal
 {
 
-SygnalDevice::SygnalDevice(uint8_t bus_address)
-: bus_address_(bus_address)
+SygnalDevice::SygnalDevice(
+  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+  uint8_t bus_address,
+  std::chrono::steady_clock::duration command_timeout)
+: socketcan_adapter_(std::move(socketcan_adapter))
+, command_timeout_(command_timeout)
+, bus_address_(bus_address)
 {}
 
-bool SygnalDevice::is_valid_frame(const socketcan::CanFrame & frame)
+bool SygnalDevice::handle(const can_frame & frame)
 {
-  const can_frame raw = frame.get_frame();
-  return CAN_MAX_DLC == raw.len && check_crc8(raw.data);
+  // Reject frames that are not 8 bytes since every sygnal message puts the CRC in the 8th byte.
+  // Then check the CRC of the frame.
+  if (CAN_MAX_DLC != frame.len || !check_crc8(frame.data)) {
+    return false;
+  }
+
+  // Pass the frame to can handler.
+  return can_handler_.handle(frame);
+}
+
+uint8_t SygnalDevice::get_bus_address() const
+{
+  return bus_address_;
 }
 
 }  // namespace polymath::sygnal

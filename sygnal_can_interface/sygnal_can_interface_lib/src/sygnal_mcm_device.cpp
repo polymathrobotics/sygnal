@@ -14,8 +14,12 @@
 
 #include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 
-#include <chrono>
+#include <future>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include "mcm_control/mcm_control.hpp"
 #include "mcm_heartbeat/mcm_heartbeat.hpp"
@@ -24,154 +28,189 @@
 namespace polymath::sygnal
 {
 
-SygnalMcmDevice::SygnalMcmDevice()
-: SygnalMcmDevice(0, 0)
-{}
-
-SygnalMcmDevice::SygnalMcmDevice(const uint8_t bus_address, const uint8_t subsystem_id)
-: SygnalDevice(bus_address)
+SygnalMcmDevice::SygnalMcmDevice(
+  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+  uint8_t bus_address,
+  uint8_t subsystem_id,
+  std::chrono::steady_clock::duration command_timeout)
+: SygnalDevice(std::move(socketcan_adapter), bus_address, command_timeout)
+, control_enable_responses_(command_timeout_)
+, control_command_responses_(command_timeout_)
+, relay_responses_(command_timeout_)
 , subsystem_id_(subsystem_id)
-, sygnal_mcm_state_(SygnalSystemState::FAIL_HARD)
 {
-  sygnal_interface_states_.fill(SygnalSystemState::FAIL_HARD);
+  // Set initial states for the MCM interfaces.
+  interface_states_.fill(SygnalSystemState::FAIL_HARD);
+
+  initializeCANHandlerCallbacks();
 }
 
-bool SygnalMcmDevice::parseMcmHeartbeatFrame(const socketcan::CanFrame & frame)
+void SygnalMcmDevice::initializeCANHandlerCallbacks()
 {
-  if (mcm_heartbeat::Heartbeat::Id != frame.get_id() || !is_valid_frame(frame)) {
-    return false;
-  }
+  // Handle MCM Heartbeat messages.
+  can_handler_.set_handler<mcm_heartbeat::Heartbeat>([this](const mcm_heartbeat::Heartbeat & msg) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
 
-  const mcm_heartbeat::Heartbeat msg(frame.get_frame());
+    // Update the system and interface states with the new heartbeat information.
+    mcm_state_ = static_cast<SygnalSystemState>(msg.system_state);
+    interface_states_ = {
+      static_cast<SygnalSystemState>(msg.interface0_state),
+      static_cast<SygnalSystemState>(msg.interface1_state),
+      static_cast<SygnalSystemState>(msg.interface2_state),
+      static_cast<SygnalSystemState>(msg.interface3_state),
+      static_cast<SygnalSystemState>(msg.interface4_state)};
+  });
 
-  // Only parse if this frame is for our subsystem
-  if (subsystem_id_ != static_cast<uint8_t>(msg.subsystem_id)) {
-    return false;
-  }
+  // Handle MCM Control Enable Response messages.
+  can_handler_.set_handler<mcm_control::ControlEnableResponse>([this](const mcm_control::ControlEnableResponse & msg) {
+    // Fulfill the pending promise for this interface ID with the enable response.
+    const uint8_t id = static_cast<uint8_t>(msg.interface_id);
+    control_enable_responses_.fulfill(
+      id, {SygnalControlCommandResponseType::ENABLE, id, get_bus_address(), subsystem_id_, msg.enable});
+  });
 
-  if (get_bus_address() != static_cast<uint8_t>(msg.bus_address)) {
-    return false;
-  }
+  // Handle MCM Control Command Response messages.
+  can_handler_.set_handler<mcm_control::ControlCommandResponse>(
+    [this](const mcm_control::ControlCommandResponse & msg) {
+      // Fulfill the pending promise for this interface ID with the command value.
+      const uint8_t id = static_cast<uint8_t>(msg.interface_id);
+      control_command_responses_.fulfill(
+        id, {SygnalControlCommandResponseType::CONTROL, id, get_bus_address(), subsystem_id_, msg.value});
+    });
 
-  last_heartbeat_timestamp_ = std::chrono::system_clock::now();
-
-  // Set the MCM state
-  sygnal_mcm_state_ = static_cast<SygnalSystemState>(msg.system_state);
-
-  // Get interface states
-  sygnal_interface_states_[0] = static_cast<SygnalSystemState>(msg.interface0_state);
-  sygnal_interface_states_[1] = static_cast<SygnalSystemState>(msg.interface1_state);
-  sygnal_interface_states_[2] = static_cast<SygnalSystemState>(msg.interface2_state);
-  sygnal_interface_states_[3] = static_cast<SygnalSystemState>(msg.interface3_state);
-  sygnal_interface_states_[4] = static_cast<SygnalSystemState>(msg.interface4_state);
-
-  return true;
+  // Handle MCM Relay Command Response messages.
+  can_handler_.set_handler<mcm_relay::RelayCommandResponse>([this](const mcm_relay::RelayCommandResponse & msg) {
+    // Fulfill the pending promise for the relay command.
+    relay_responses_.fulfill(
+      0, {SygnalControlCommandResponseType::RELAY, subsystem_id_, get_bus_address(), subsystem_id_, msg.enable});
+  });
 }
 
-std::optional<socketcan::CanFrame> SygnalMcmDevice::createControlStateCommandFrame(
-  const uint8_t bus_id,
-  const uint8_t interface_id,
-  const uint8_t subsystem_id,
-  const SygnalControlState control_state,
-  std::string & error_message)
+uint8_t SygnalMcmDevice::get_subsystem_id() const
 {
+  return subsystem_id_;
+}
+
+std::array<SygnalSystemState, 5> SygnalMcmDevice::get_interface_states() const
+{
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  return interface_states_;
+}
+
+SygnalSystemState SygnalMcmDevice::get_mcm_state() const
+{
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  return mcm_state_;
+}
+
+SendCommandResult SygnalMcmDevice::send_control_state_command(
+  uint8_t interface_id, SygnalControlState control_state, bool expect_reply, std::string & error_message)
+{
+  // Fail if the interface ID is out of range.
   if (interface_id >= MAX_SYGNAL_INTERFACES) {
-    error_message = error_message + "Interface ID exceeds maximum allowed interfaces. \n";
-    return std::nullopt;
+    error_message += "Interface ID exceeds maximum allowed interfaces. \n";
+    return {false, std::nullopt};
   }
 
-  if (subsystem_id >= MAX_SYGNAL_SUBSYSTEMS) {
-    error_message = error_message + "Subsystem ID exceeds maximum allowed subsystems. \n";
-    return std::nullopt;
-  }
-
+  // Construct the control enable message.
   mcm_control::ControlEnable msg;
-  msg.bus_address = bus_id;
-  msg.sub_system_id = subsystem_id;
+  msg.bus_address = get_bus_address();
+  msg.sub_system_id = subsystem_id_;
   msg.interface_id = interface_id;
   msg.enable = static_cast<uint8_t>(control_state);
-  return to_frame_with_crc(msg);
+  const socketcan::CanFrame frame = to_frame_with_crc(msg);
+
+  // Push a future for the expected reply if needed.
+  std::optional<std::future<SygnalControlCommandResponse>> future;
+  if (expect_reply) {
+    future = control_enable_responses_.push(interface_id);
+  }
+
+  // Send the control enable message.
+  const std::optional<std::string> send_error = socketcan_adapter_->send(frame);
+
+  // Withdraw the future if sending the message failed.
+  if (send_error.has_value()) {
+    if (future) {
+      control_enable_responses_.withdraw_newest(interface_id);
+    }
+    error_message += "Failed to send control state command: " + send_error.value() + "\n";
+    return {false, std::nullopt};
+  }
+
+  // Return success if the message was sent successfully.
+  return {true, std::move(future)};
 }
 
-std::optional<socketcan::CanFrame> SygnalMcmDevice::createControlCommandFrame(
-  const uint8_t bus_id,
-  const uint8_t interface_id,
-  const uint8_t subsystem_id,
-  const double value,
-  std::string & error_message)
+SendCommandResult SygnalMcmDevice::send_control_command(
+  uint8_t interface_id, double value, bool expect_reply, std::string & error_message)
 {
+  // Fail if the interface ID is out of range.
   if (interface_id >= MAX_SYGNAL_INTERFACES) {
-    error_message = error_message + "Interface ID exceeds maximum allowed interfaces. \n";
-    return std::nullopt;
+    error_message += "Interface ID exceeds maximum allowed interfaces. \n";
+    return {false, std::nullopt};
   }
 
-  if (subsystem_id >= MAX_SYGNAL_SUBSYSTEMS) {
-    error_message = error_message + "Subsystem ID exceeds maximum allowed subsystems. \n";
-    return std::nullopt;
-  }
-
+  // Construct the control command message.
   mcm_control::ControlCommand msg;
-  msg.bus_address = bus_id;
-  msg.sub_system_id = subsystem_id;
+  msg.bus_address = get_bus_address();
+  msg.sub_system_id = subsystem_id_;
   msg.interface_id = interface_id;
   msg.count8 = 0;
   msg.value = value;
-  return to_frame_with_crc(msg);
+  const socketcan::CanFrame frame = to_frame_with_crc(msg);
+
+  // Push a future for the expected reply if needed.
+  std::optional<std::future<SygnalControlCommandResponse>> future;
+  if (expect_reply) {
+    future = control_command_responses_.push(interface_id);
+  }
+
+  // Send the control command message.
+  const std::optional<std::string> send_error = socketcan_adapter_->send(frame);
+
+  // Withdraw the future if sending the message failed.
+  if (send_error.has_value()) {
+    if (future) {
+      control_command_responses_.withdraw_newest(interface_id);
+    }
+    error_message += "Failed to send control command: " + send_error.value() + "\n";
+    return {false, std::nullopt};
+  }
+
+  // Return success if the message was sent successfully.
+  return {true, std::move(future)};
 }
 
-std::optional<socketcan::CanFrame> SygnalMcmDevice::createRelayCommandFrame(
-  const uint8_t bus_id, const uint8_t subsystem_id, const bool relay_state, std::string &)
+SendCommandResult SygnalMcmDevice::send_relay_command(bool relay_state, bool expect_reply, std::string & error_message)
 {
+  // Construct the relay command message.
   mcm_relay::RelayCommand msg;
-  msg.bus_address = bus_id;
-  msg.subsystem_id = subsystem_id;
+  msg.bus_address = get_bus_address();
+  msg.subsystem_id = subsystem_id_;
   msg.enable = relay_state ? 1 : 0;
-  return to_frame_with_crc(msg);
-}
+  const socketcan::CanFrame frame = to_frame_with_crc(msg);
 
-std::optional<SygnalControlCommandResponse> SygnalMcmDevice::parseCommandResponseFrame(
-  const socketcan::CanFrame & frame)
-{
-  if (!is_valid_frame(frame)) {
-    return std::nullopt;
+  // Push a future for the expected reply if needed.
+  std::optional<std::future<SygnalControlCommandResponse>> future;
+  if (expect_reply) {
+    future = relay_responses_.push(0);
   }
 
-  SygnalControlCommandResponse response;
+  // Send the relay command message.
+  const std::optional<std::string> send_error = socketcan_adapter_->send(frame);
 
-  switch (frame.get_id()) {
-    case mcm_control::ControlEnableResponse::Id: {
-      const mcm_control::ControlEnableResponse msg(frame.get_frame());
-      response.response_type = SygnalControlCommandResponseType::ENABLE;
-      response.bus_id = static_cast<uint8_t>(msg.bus_address);
-      response.subsystem_id = static_cast<uint8_t>(msg.sub_system_id);
-      response.interface_id = static_cast<uint8_t>(msg.interface_id);
-      response.value = msg.enable;
-      return response;
+  // Withdraw the future if sending the message failed.
+  if (send_error.has_value()) {
+    if (future) {
+      relay_responses_.withdraw_newest(0);
     }
-
-    case mcm_control::ControlCommandResponse::Id: {
-      const mcm_control::ControlCommandResponse msg(frame.get_frame());
-      response.response_type = SygnalControlCommandResponseType::CONTROL;
-      response.bus_id = static_cast<uint8_t>(msg.bus_address);
-      response.subsystem_id = static_cast<uint8_t>(msg.sub_system_id);
-      response.interface_id = static_cast<uint8_t>(msg.interface_id);
-      response.value = msg.value;
-      return response;
-    }
-
-    case mcm_relay::RelayCommandResponse::Id: {
-      const mcm_relay::RelayCommandResponse msg(frame.get_frame());
-      response.response_type = SygnalControlCommandResponseType::RELAY;
-      response.bus_id = static_cast<uint8_t>(msg.bus_address);
-      response.subsystem_id = static_cast<uint8_t>(msg.subsystem_id);
-      response.interface_id = static_cast<uint8_t>(msg.subsystem_id);
-      response.value = msg.enable;
-      return response;
-    }
-
-    default:
-      return std::nullopt;
+    error_message += "Failed to send relay command: " + send_error.value() + "\n";
+    return {false, std::nullopt};
   }
+
+  // Return success if the message was sent successfully.
+  return {true, std::move(future)};
 }
 
 }  // namespace polymath::sygnal

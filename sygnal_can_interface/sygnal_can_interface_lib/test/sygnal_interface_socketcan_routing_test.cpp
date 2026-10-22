@@ -37,10 +37,9 @@
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
-#include "sygnal_dbc/hpo_control.h"
 #include "sygnal_dbc/hpo_heartbeat.h"
-#include "sygnal_dbc/mcm_control.h"
 #include "sygnal_dbc/mcm_heartbeat.h"
+#include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
 
 namespace
 {
@@ -81,22 +80,6 @@ polymath::socketcan::CanFrame buildHpoHeartbeat(uint8_t bus_address)
   msg.crc = polymath::sygnal::generate_crc8(buffer);
   hpo_heartbeat_heartbeat_pack(buffer, &msg, sizeof(buffer));
   return makeFrame(HPO_HEARTBEAT_HEARTBEAT_FRAME_ID, buffer, HPO_HEARTBEAT_HEARTBEAT_LENGTH);
-}
-
-polymath::socketcan::CanFrame buildHpoControlEnableResponse(uint8_t bus_address, uint8_t message_id, bool enable)
-{
-  hpo_control_control_enable_response_t msg;
-  hpo_control_control_enable_response_init(&msg);
-  msg.bus_address = bus_address;
-  msg.message_id = message_id;
-  msg.enable = enable ? 1 : 0;
-  msg.crc = 0;
-
-  uint8_t buffer[CAN_MAX_DLC];
-  hpo_control_control_enable_response_pack(buffer, &msg, sizeof(buffer));
-  msg.crc = polymath::sygnal::generate_crc8(buffer);
-  hpo_control_control_enable_response_pack(buffer, &msg, sizeof(buffer));
-  return makeFrame(HPO_CONTROL_CONTROL_ENABLE_RESPONSE_FRAME_ID, buffer, HPO_CONTROL_CONTROL_ENABLE_RESPONSE_LENGTH);
 }
 
 polymath::socketcan::CanFrame buildMcmHeartbeat(uint8_t bus_address, uint8_t subsystem_id, uint8_t system_state)
@@ -201,45 +184,72 @@ TEST_CASE("parse() routes MCM heartbeat to MCM state and leaves HPO untouched", 
   }
 }
 
-TEST_CASE(
-  "parse() routes HPO ControlEnableResponse without disturbing MCM promise queues", "[sygnal_socketcan_routing]")
+TEST_CASE("parse() routes MCM frames by bus address and subsystem", "[sygnal_socketcan_routing]")
 {
-  // This test guards against the central invariant of the tactical mitigation: an HPO control response
-  // arrives on a CAN ID (0x61) that the MCM control-response parser also accepts. The HPO parser MUST claim
-  // it first so the MCM-side parser never sees it. We verify by issuing an HPO ControlEnable (which arms the
-  // HPO enable promise queue), then feeding back an HPO ControlEnableResponse via parse(), and asserting the
-  // HPO future resolves — implying the MCM-side parser did not consume the frame.
+  auto adapter = makeUnopenedAdapter();
+  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}, {MCM_BUS, 1}};
+
+  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
+
+  REQUIRE(sygnal.parse(polymath::socketcan::CanFrame(
+    sygnal_test::mcm_heartbeat(MCM_BUS, 1, polymath::sygnal::SygnalSystemState::MCM_CONTROL))));
+
+  CHECK(polymath::sygnal::SygnalSystemState::FAIL_HARD == sygnal.get_sygnal_mcm_state(MCM_BUS, 0).value());
+  CHECK(polymath::sygnal::SygnalSystemState::MCM_CONTROL == sygnal.get_sygnal_mcm_state(MCM_BUS, 1).value());
+}
+
+TEST_CASE("parse() routes HPO frames regardless of bit 7", "[sygnal_socketcan_routing]")
+{
   auto adapter = makeUnopenedAdapter();
   std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
   std::vector<polymath::sygnal::HpoId> hpos{{HPO_BUS}};
 
   polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms, hpos);
 
-  // Arm the HPO enable promise queue directly by sending an HPO ControlEnable. The actual socketcan_send
-  // will fail (we never opened the socket), but the promise gets pushed before the send call, so we can
-  // still observe the future. Wrap in a scope and discard the send result.
+  can_frame frame = sygnal_test::hpo_heartbeat(HPO_BUS, polymath::sygnal::SygnalSystemState::HUMAN_CONTROL, {true});
+  frame.data[0] |= 0x80;
+  frame.data[CAN_MAX_DLC - 1] = polymath::sygnal::generate_crc8(frame.data);
+
+  REQUIRE(sygnal.parse(polymath::socketcan::CanFrame(frame)));
+  CHECK((*sygnal.get_hpo_interface_states(HPO_BUS))[0]);
+}
+
+TEST_CASE("parse() ignores frames from an unconfigured address", "[sygnal_socketcan_routing]")
+{
+  auto adapter = makeUnopenedAdapter();
+  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
+
+  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
+
+  CHECK_FALSE(sygnal.parse(
+    polymath::socketcan::CanFrame(sygnal_test::mcm_heartbeat(9, 0, polymath::sygnal::SygnalSystemState::MCM_CONTROL))));
+  CHECK(polymath::sygnal::SygnalSystemState::FAIL_HARD == sygnal.get_sygnal_mcm_state(MCM_BUS, 0).value());
+}
+
+TEST_CASE("Constructor throws on duplicate or out-of-range addresses", "[sygnal_socketcan_routing]")
+{
+  auto adapter = makeUnopenedAdapter();
+  using Mcms = std::vector<polymath::sygnal::McmId>;
+  using Hpos = std::vector<polymath::sygnal::HpoId>;
+
+  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{{1, 0}, {1, 0}}), std::invalid_argument);
+  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{{128, 0}}), std::invalid_argument);
+  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{{1, 2}}), std::invalid_argument);
+  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{}, Hpos{{3}, {3}}), std::invalid_argument);
+}
+
+TEST_CASE("sendControlCommand to an unregistered MCM fails cleanly", "[sygnal_socketcan_routing]")
+{
+  auto adapter = makeUnopenedAdapter();
+  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
+
+  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
+
   std::string err;
-  std::optional<std::future<polymath::sygnal::HpoControlResponse>> fut_opt;
-  {
-    auto result =
-      sygnal.sendHpoControlEnable(HPO_BUS, /*message_id=*/0x42, /*enable=*/true, /*expect_reply=*/true, err);
-    // The send itself fails because no socket is open; that's fine for this routing test — the promise was
-    // already enqueued before the send attempt, so the future is still valid.
-    fut_opt = std::move(result.response_future);
-  }
-  REQUIRE(fut_opt.has_value());
-
-  // Now deliver a matching response via parse().
-  auto frame = buildHpoControlEnableResponse(HPO_BUS, /*message_id=*/0x42, /*enable=*/true);
-  REQUIRE(sygnal.parse(frame));
-
-  // The HPO future must be ready immediately.
-  REQUIRE(fut_opt->wait_for(std::chrono::seconds(0)) == std::future_status::ready);
-  auto response = fut_opt->get();
-  REQUIRE(response.is_enable_response);
-  REQUIRE(response.bus_address == HPO_BUS);
-  REQUIRE(response.message_id == 0x42);
-  REQUIRE(response.enable);
+  auto result = sygnal.sendControlCommand(MCM_BUS, 0, /*subsystem_id=*/1, 0.5, true, err);
+  REQUIRE_FALSE(result.success);
+  REQUIRE_FALSE(result.response_future.has_value());
+  REQUIRE_FALSE(err.empty());
 }
 
 TEST_CASE("sendHpoControlEnable to an unregistered bus address fails cleanly", "[sygnal_socketcan_routing]")

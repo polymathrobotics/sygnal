@@ -16,10 +16,11 @@
 
 #include <array>
 #include <chrono>
-#include <optional>
+#include <cstdint>
+#include <memory>
 #include <string>
 
-#include "socketcan_adapter/can_frame.hpp"
+#include "sygnal_can_interface_lib/response_queues.hpp"
 #include "sygnal_can_interface_lib/sygnal_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_types.hpp"
 
@@ -32,77 +33,62 @@ constexpr uint8_t SECONDARY_MCM_BUS_ADDRESS = 2;
 constexpr uint32_t MAX_SYGNAL_INTERFACES = 6;
 constexpr uint32_t MAX_SYGNAL_SUBSYSTEMS = 2;
 
-/// @brief One MCM subsystem: heartbeat state, plus the MCM control and relay frames.
+/// @brief One MCM subsystem: interface endpoints (interface ID 0-5) and one relay.
 class SygnalMcmDevice : public SygnalDevice
 {
 public:
-  SygnalMcmDevice();
-  explicit SygnalMcmDevice(const uint8_t bus_address, const uint8_t subsystem_id);
+  /// @param socketcan_adapter Adapter that commands go out on.
+  /// @param bus_address Bus address of the MCM.
+  /// @param subsystem_id Subsystem of the MCM, 0 or 1.
+  /// @param command_timeout How long a command waits for its response before its promise is dropped.
+  SygnalMcmDevice(
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+    uint8_t bus_address,
+    uint8_t subsystem_id,
+    std::chrono::steady_clock::duration command_timeout);
 
-  std::array<SygnalSystemState, 5> get_interface_states() const
-  {
-    return sygnal_interface_states_;
-  }
+  uint8_t get_subsystem_id() const;
 
-  uint8_t get_subsystem_id() const
-  {
-    return subsystem_id_;
-  }
+  /// @brief Interface states from the latest heartbeat; FAIL_HARD until the first.
+  std::array<SygnalSystemState, 5> get_interface_states() const;
 
-  SygnalSystemState get_mcm_state() const
-  {
-    return sygnal_mcm_state_;
-  }
+  /// @brief System state from the latest heartbeat; FAIL_HARD until the first.
+  SygnalSystemState get_mcm_state() const;
 
-  std::chrono::system_clock::time_point get_last_heartbeat_timestamp() const
-  {
-    return last_heartbeat_timestamp_;
-  }
+  /// @brief Enable or disable control of an interface.
+  /// @param expect_reply Return a future that resolves from the interface's enable response.
+  /// @param[out] error_message Populated on failure.
+  SendCommandResult send_control_state_command(
+    uint8_t interface_id, SygnalControlState control_state, bool expect_reply, std::string & error_message);
 
-  bool parseMcmHeartbeatFrame(const socketcan::CanFrame & frame);
+  /// @brief Set an interface's value.
+  /// @param expect_reply Return a future that resolves from the interface's command response.
+  /// @param[out] error_message Populated on failure.
+  SendCommandResult send_control_command(
+    uint8_t interface_id, double value, bool expect_reply, std::string & error_message);
 
-  /// @brief Set the control state (enable/disable MCM control)
-  /// @param interface_id Sygnal Interface to enable/disable
-  /// @param control_state Sygnal Control State (Human or MCM control)
-  /// @param[out] error_message Error message in case of failure
-  /// @return can frame if succesful
-  static std::optional<socketcan::CanFrame> createControlStateCommandFrame(
-    const uint8_t bus_id,
-    const uint8_t interface_id,
-    const uint8_t subsystem_id,
-    const SygnalControlState control_state,
-    std::string & error_message);
+  /// @brief Close the relay when relay_state is true, open it otherwise.
+  /// @param expect_reply Return a future that resolves from the relay command response.
+  /// @param[out] error_message Populated on failure.
+  SendCommandResult send_relay_command(bool relay_state, bool expect_reply, std::string & error_message);
 
-  /// @brief Generate a control command frame to send to the vehicle
-  /// @param interface_id Sygnal Interface ID to send command to
-  /// @param value Value to set interface control command to
-  /// @param error_message Error in case of failure
-  /// @return can frame if succesful
-  static std::optional<socketcan::CanFrame> createControlCommandFrame(
-    const uint8_t bus_id,
-    const uint8_t interface_id,
-    const uint8_t subsystem_id,
-    const double value,
-    std::string & error_message);
+protected:
+  /// @brief Pending replies, keyed by interface ID. Push before sending, withdraw_newest if the send fails,
+  ///        and fulfill from the reply's handler.
+  ResponseQueues<uint8_t, SygnalControlCommandResponse> control_enable_responses_;
+  ResponseQueues<uint8_t, SygnalControlCommandResponse> control_command_responses_;
 
-  /// @brief Set the relay state for engine control or gears
-  /// @param subsystem_id Sygnal Subsystem Relay to enable/disable
-  /// @param relay_state Sygnal Relay state (Enable or Disable)
-  /// @param[out] error_message Error message in case of failure
-  /// @return can frame if succesful
-  static std::optional<socketcan::CanFrame> createRelayCommandFrame(
-    const uint8_t bus_id, const uint8_t subsystem_id, const bool relay_state, std::string & error_message);
-
-  /// @brief Parse a command response frame if it is covered by this interface
-  /// @param frame Raw cran frame to check and parse
-  /// @return Optional, if the frame is a valid response, return the response
-  static std::optional<SygnalControlCommandResponse> parseCommandResponseFrame(const socketcan::CanFrame & frame);
+  /// @brief Pending relay replies, always on key 0; RelayCommandResponse carries no ID.
+  ResponseQueues<uint8_t, SygnalControlCommandResponse> relay_responses_;
 
 private:
-  uint8_t subsystem_id_;
-  SygnalSystemState sygnal_mcm_state_;
-  std::array<SygnalSystemState, 5> sygnal_interface_states_;
-  std::chrono::system_clock::time_point last_heartbeat_timestamp_;
+  /// @brief Register callbacks for handling incoming CAN messages.
+  ///        This defines the logic for handling all MCM CAN messages.
+  void initializeCANHandlerCallbacks();
+
+  const uint8_t subsystem_id_;
+  SygnalSystemState mcm_state_{SygnalSystemState::FAIL_HARD};
+  std::array<SygnalSystemState, 5> interface_states_;
 };
 
 }  // namespace polymath::sygnal

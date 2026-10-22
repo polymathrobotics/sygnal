@@ -15,19 +15,23 @@
 #ifndef SYGNAL_CAN_INTERFACE_LIB__SYGNAL_INTERFACE_SOCKETCAN_HPP_
 #define SYGNAL_CAN_INTERFACE_LIB__SYGNAL_INTERFACE_SOCKETCAN_HPP_
 
+#include <array>
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
-#include "sygnal_can_interface_lib/response_queues.hpp"
+#include "sygnal_can_interface_lib/sygnal_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_hpo_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
+
+constexpr std::chrono::seconds DEFAULT_COMMAND_TIMEOUT{1};
 
 /// @brief Combined Sygnal MCM and Control interface with SocketCAN communication
 /// Provides thread-safe async communication with promise/future pattern for responses
@@ -38,17 +42,19 @@ public:
   /// @param socketcan_adapter Shared pointer to socketcan adapter for CAN communication
   /// @param mcm_ids Flat list of MCM endpoints to manage, each identified by bus and subsystem ID
   /// @param hpo_ids Flat list of HPO endpoints to manage, each identified by bus ID. Empty by
-  ///                default; an empty list disables all HPO behavior. The constructor throws
-  ///                std::invalid_argument if any HPO bus_id collides with an MCM bus_id, since
-  ///                disjoint bus addresses are required to route CAN-ID-overloaded frames correctly
-  ///                (see parse() comments).
+  ///                default; an empty list disables all HPO behavior.
+  /// @param command_timeout How long a command waits for its response before its promise is dropped.
+  ///        Callers waiting on a response future should time out no sooner than this.
+  /// @throws std::invalid_argument on a bus_id above 127, a subsystem_id above 1, or two devices at one address.
+  ///         An HPO takes both subsystem addresses of its bus.
   SygnalInterfaceSocketcan(
     std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
     const std::vector<McmId> & mcm_ids,
-    const std::vector<HpoId> & hpo_ids = {});
+    const std::vector<HpoId> & hpo_ids = {},
+    std::chrono::steady_clock::duration command_timeout = DEFAULT_COMMAND_TIMEOUT);
 
-  /// @brief Parse incoming CAN frame for MCM heartbeat and command responses
-  /// @param frame CAN frame to parse
+  /// @brief Route a received frame to the device it addresses.
+  /// @return true if a configured device consumed the frame.
   bool parse(const socketcan::CanFrame & frame);
 
   /// @brief Get interface states array from MCM 0
@@ -150,15 +156,17 @@ public:
   std::optional<std::array<bool, HPO_NUM_INTERFACES>> get_hpo_interface_states(uint8_t bus_address) const;
 
 private:
-  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
-  std::vector<SygnalMcmDevice> mcms_;
-  std::vector<SygnalHpoDevice> hpos_;
+  /// @return nullptr if no MCM is configured at this bus and subsystem.
+  SygnalMcmDevice * find_mcm(uint8_t bus_address, uint8_t subsystem_id) const;
 
-  /// @brief Pending MCM responses, keyed by response type.
-  ResponseQueues<SygnalControlCommandResponseType, SygnalControlCommandResponse> mcm_responses_;
+  /// @return nullptr if no HPO is configured at this bus.
+  SygnalHpoDevice * find_hpo(uint8_t bus_address) const;
 
-  /// @brief Pending HPO responses, keyed by is_enable_response.
-  ResponseQueues<bool, HpoControlResponse> hpo_responses_;
+  /// @brief All devices passed in to the constructor.
+  std::vector<std::unique_ptr<SygnalDevice>> devices_;
+
+  /// @brief A lookup table for devices by byte 0 of their frames: bus ID, with the subsystem ID in bit 7.
+  std::array<SygnalDevice *, UINT8_MAX + 1> id_to_device_{};
 };
 
 }  // namespace polymath::sygnal

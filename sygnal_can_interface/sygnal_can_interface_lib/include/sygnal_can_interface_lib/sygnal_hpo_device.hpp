@@ -16,83 +16,61 @@
 
 #include <array>
 #include <chrono>
-#include <optional>
+#include <cstdint>
+#include <memory>
 #include <string>
 
-#include "socketcan_adapter/can_frame.hpp"
+#include "sygnal_can_interface_lib/response_queues.hpp"
 #include "sygnal_can_interface_lib/sygnal_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
 
-// HPO hardware exposes 4 interfaces (0-3). The heartbeat reports a 1-bit control-state per
-// interface (Interface{N}State) plus a 2-bit pin-pull value (Interface{N}Value:
-// HiZ/Pull_Down/Pull_Up); the pull values are not yet surfaced (TODO: vehicleFeedback).
+/// @brief Max number of interfaces an HPO reports in its heartbeat.
 constexpr uint8_t HPO_NUM_INTERFACES = 4;
 
-/// @brief Self-contained HPO board representation.
-///
-/// Owns the per-interface control-state bits (one per HPO interface, 0-3) and produces /
-/// consumes the CAN frames the HPO understands. Frames are routed to the right
-/// instance by bus address: every parse helper rejects frames that do not match
-/// this device's bus address. Command frames are populated with the bus address
-/// automatically so callers cannot mismatch addresses.
-///
-/// Unlike the MCM, the HPO does not hold a Sygnal state machine. Each per-interface
-/// heartbeat signal is a 1-bit boolean (true = HPO in control, false = released). The
-/// MCM's SystemState byte is not tracked here.
+/// @brief One HPO board, where each endpoint is an HPO message ID (0-255).
+///        Interface state is only reported for message IDs 0-3.
+///        Receives frames with either subsystem bit value.
 class SygnalHpoDevice : public SygnalDevice
 {
 public:
-  SygnalHpoDevice();
-  explicit SygnalHpoDevice(uint8_t bus_address);
+  /// @param socketcan_adapter Adapter that commands go out on.
+  /// @param bus_address Bus address of the HPO.
+  /// @param command_timeout How long a command waits for its response before its promise is dropped.
+  SygnalHpoDevice(
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+    uint8_t bus_address,
+    std::chrono::steady_clock::duration command_timeout);
 
-  /// @brief Try to parse a CAN frame as an HPO heartbeat addressed to this device.
-  /// @param frame Raw CAN frame.
-  /// @return true if the frame matched and internal state was updated.
-  bool parseHeartbeatFrame(const socketcan::CanFrame & frame);
+  /// @brief Interface bits from the latest heartbeat (true = HPO in control); false until the first.
+  std::array<bool, HPO_NUM_INTERFACES> get_interface_states() const;
 
-  /// @brief Try to parse a CAN frame as a ControlEnableResponse or ControlCommandResponse
-  ///        addressed to this device.
-  /// @param frame Raw CAN frame.
-  /// @return Populated HpoControlResponse on success, std::nullopt otherwise.
-  std::optional<HpoControlResponse> parseControlResponse(const socketcan::CanFrame & frame);
-
-  /// @brief Try to parse a CAN frame as an ErrorStatus addressed to this device.
-  /// @param frame Raw CAN frame.
-  /// @return Populated HpoErrorStatus on success, std::nullopt otherwise.
-  std::optional<HpoErrorStatus> parseErrorFrame(const socketcan::CanFrame & frame);
-
-  /// @brief Build a ControlEnable frame for this device.
-  /// @param message_id 8-bit HPO MessageID.
-  /// @param enable true to grant HPO control, false to release.
+  /// @brief Enable or disable control of a message ID.
+  /// @param expect_reply Return a future that resolves from the message's enable response.
   /// @param[out] error_message Populated on failure.
-  /// @return Packed CAN frame on success.
-  std::optional<socketcan::CanFrame> createControlEnableFrame(
-    uint8_t message_id, bool enable, std::string & error_message);
+  SendHpoCommandResult send_control_enable(
+    uint8_t message_id, bool enable, bool expect_reply, std::string & error_message);
 
-  /// @brief Build a ControlCommand frame for this device.
-  /// @param message_id 8-bit HPO MessageID.
-  /// @param value Command value (encoded as float per the DBC).
+  /// @brief Set a message ID's value.
+  /// @param expect_reply Return a future that resolves from the message's command response.
   /// @param[out] error_message Populated on failure.
-  /// @return Packed CAN frame on success.
-  std::optional<socketcan::CanFrame> createControlCommandFrame(
-    uint8_t message_id, double value, std::string & error_message);
+  SendHpoCommandResult send_control_command(
+    uint8_t message_id, double value, bool expect_reply, std::string & error_message);
 
-  std::array<bool, HPO_NUM_INTERFACES> get_interface_states() const
-  {
-    return hpo_interface_states_;
-  }
-
-  std::chrono::system_clock::time_point get_last_heartbeat_timestamp() const
-  {
-    return last_heartbeat_timestamp_;
-  }
+protected:
+  /// @brief Pending replies, keyed by message ID. Push before sending, withdraw_newest if the send fails,
+  ///        and fulfill from the reply's handler.
+  ResponseQueues<uint8_t, HpoControlResponse> control_enable_responses_;
+  ResponseQueues<uint8_t, HpoControlResponse> control_command_responses_;
 
 private:
-  std::array<bool, HPO_NUM_INTERFACES> hpo_interface_states_;
-  std::chrono::system_clock::time_point last_heartbeat_timestamp_;
+  /// @brief Register callbacks for handling incoming CAN messages.
+  ///        This defines the logic for handling all HPO CAN messages.
+  void initializeCANHandlerCallbacks();
+
+  std::array<bool, HPO_NUM_INTERFACES> interface_states_{};
 };
 
 }  // namespace polymath::sygnal
