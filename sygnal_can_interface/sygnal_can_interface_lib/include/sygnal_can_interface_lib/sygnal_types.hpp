@@ -35,7 +35,8 @@ namespace polymath::sygnal
 enum class SygnalControlDeviceType : uint8_t
 {
   MCM,
-  HPO
+  HPO,
+  IO
 };
 
 /// @brief Types of Sygnal control endpoints. Separate from device types since MCM has both interfaces and relays.
@@ -43,7 +44,8 @@ enum class SygnalControlEndpointType : uint8_t
 {
   MCM_INTERFACE,
   MCM_RELAY,
-  HPO_INTERFACE
+  HPO_INTERFACE,
+  IO_INTERFACE
 };
 
 /// @brief Sygnal system state, as reported in Heartbeat (0x170) and MCM FaultState (0x20).
@@ -129,7 +131,7 @@ struct SygnalControlDevice
 };
 
 /// @brief One controllable endpoint on a device.
-///        endpoint_id is generic for InterfaceID on MCMs, or for MessageID on HPOs.
+///        endpoint_id is generic for InterfaceID on MCMs and IOs, or for MessageID on HPOs.
 ///        Values are float32 on the wire; an MCM relay takes and reports 1.0 or 0.0.
 struct SygnalEndpoint
 {

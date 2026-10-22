@@ -51,6 +51,7 @@ namespace
 const SygnalControlDevice MCM_SUBSYSTEM_0{SygnalControlDeviceType::MCM, 1, 0, "mcm_0"};
 const SygnalControlDevice MCM_SUBSYSTEM_1{SygnalControlDeviceType::MCM, 1, 1, "mcm_1"};
 const SygnalControlDevice HPO{SygnalControlDeviceType::HPO, 3, 0, "hpo"};
+const SygnalControlDevice IO{SygnalControlDeviceType::IO, 6, 0, "io"};
 const SygnalControlDevice UNCONFIGURED{SygnalControlDeviceType::MCM, 9, 0, "missing"};
 
 std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
@@ -60,7 +61,7 @@ std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 
 SygnalInterfaceSocketcan make_interface()
 {
-  return SygnalInterfaceSocketcan(adapter(), {MCM_SUBSYSTEM_0, MCM_SUBSYSTEM_1, HPO});
+  return SygnalInterfaceSocketcan(adapter(), {MCM_SUBSYSTEM_0, MCM_SUBSYSTEM_1, HPO, IO});
 }
 
 }  // namespace
@@ -117,6 +118,19 @@ TEST_CASE("SygnalInterfaceSocketcan routes HPO frames regardless of bit 7", "[so
 
   REQUIRE(sygnal.parse(CanFrame(frame)));
   CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_interface_control_state(hpo_if).value);
+}
+
+TEST_CASE("SygnalInterfaceSocketcan routes IO frames regardless of bit 7", "[socketcan_routing]")
+{
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const SygnalEndpoint io_if{SygnalControlEndpointType::IO_INTERFACE, IO, 2, 0, 1, false, "io"};
+
+  can_frame frame = sygnal_test::io_enable_response(6, 2, true);
+  frame.data[0] |= 0x80;
+  frame.data[CAN_MAX_DLC - 1] = polymath::sygnal::generate_crc8(frame.data);
+
+  REQUIRE(sygnal.parse(CanFrame(frame)));
+  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_interface_control_state(io_if).value);
 }
 
 TEST_CASE("SygnalInterfaceSocketcan passes the frame's bus time to the getters", "[socketcan_routing]")
