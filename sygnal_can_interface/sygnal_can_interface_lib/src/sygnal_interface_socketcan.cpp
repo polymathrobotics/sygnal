@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "sygnal_can_interface_lib/sygnal_hpo_device.hpp"
+#include "sygnal_can_interface_lib/sygnal_io_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 
 namespace polymath::sygnal
@@ -79,6 +80,11 @@ SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(
         // Non-MCM devices ignore the subsystem bit, so they take the slots for both subsystem IDs.
         // That way, arbitration can index the lookup table with byte 0 from the CAN message and
         // still find the device, regardless of the subsystem bit.
+        addresses.push_back(static_cast<uint8_t>(*address ^ SUBSYSTEM_BIT));
+        break;
+      case SygnalControlDeviceType::IO:
+        instance = std::make_unique<SygnalIoDevice>(socketcan_adapter, device, command_timeout);
+        // Same as HPO: take the slots for both subsystem IDs.
         addresses.push_back(static_cast<uint8_t>(*address ^ SUBSYSTEM_BIT));
         break;
     }
