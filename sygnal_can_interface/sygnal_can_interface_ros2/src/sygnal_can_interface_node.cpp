@@ -477,11 +477,11 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
       mcm_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
     }
 
-    mcm_diag.message = mcm_name + " state: " + sygnalSystemStateToString(mcm_state);
+    mcm_diag.message = mcm_name + " state: " + std::string(magic_enum::enum_name(mcm_state));
 
     diagnostic_msgs::msg::KeyValue kv;
     kv.key = "state";
-    kv.value = sygnalSystemStateToString(mcm_state);
+    kv.value = std::string(magic_enum::enum_name(mcm_state));
     mcm_diag.values.push_back(kv);
 
     array_msg.status.push_back(mcm_diag);
@@ -504,11 +504,11 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
           interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
         }
 
-        interface_diag.message = "Interface " + std::to_string(i) + " state: " + sygnalSystemStateToString(state);
+        interface_diag.message = "Interface " + std::to_string(i) + " state: " + std::string(magic_enum::enum_name(state));
 
         diagnostic_msgs::msg::KeyValue interface_kv;
         interface_kv.key = "state";
-        interface_kv.value = sygnalSystemStateToString(state);
+        interface_kv.value = std::string(magic_enum::enum_name(state));
         interface_diag.values.push_back(interface_kv);
 
         array_msg.status.push_back(interface_diag);

@@ -16,6 +16,7 @@
 // constructor invariants and the parse() routing rules between HPO and MCM. End-to-end vcan tests live in
 // sygnal_interface_socketcan_test.cpp.
 
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -40,16 +41,17 @@ using polymath::sygnal::SygnalControlDevice;
 using polymath::sygnal::SygnalControlDeviceType;
 using polymath::sygnal::SygnalControlEndpointType;
 using polymath::sygnal::SygnalEndpoint;
+using polymath::sygnal::SygnalErrorType;
 using polymath::sygnal::SygnalInterfaceSocketcan;
 using polymath::sygnal::SygnalSystemState;
 
 namespace
 {
 
-const SygnalControlDevice MCM_SUBSYSTEM_0{SygnalControlDeviceType::MCM, 1, 0};
-const SygnalControlDevice MCM_SUBSYSTEM_1{SygnalControlDeviceType::MCM, 1, 1};
-const SygnalControlDevice HPO{SygnalControlDeviceType::HPO, 3, 0};
-const SygnalControlDevice UNCONFIGURED{SygnalControlDeviceType::MCM, 9, 0};
+const SygnalControlDevice MCM_SUBSYSTEM_0{SygnalControlDeviceType::MCM, 1, 0, "mcm_0"};
+const SygnalControlDevice MCM_SUBSYSTEM_1{SygnalControlDeviceType::MCM, 1, 1, "mcm_1"};
+const SygnalControlDevice HPO{SygnalControlDeviceType::HPO, 3, 0, "hpo"};
+const SygnalControlDevice UNCONFIGURED{SygnalControlDeviceType::MCM, 9, 0, "missing"};
 
 std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 {
@@ -74,7 +76,6 @@ TEST_CASE("SygnalInterfaceSocketcan rejects invalid device lists", "[socketcan_r
   CHECK_THROWS_AS(construct(Devices{HPO, {SygnalControlDeviceType::HPO, 3, 1}}), std::invalid_argument);
   CHECK_THROWS_AS(construct(Devices{{SygnalControlDeviceType::HPO, 1, 0}, MCM_SUBSYSTEM_1}), std::invalid_argument);
   CHECK_THROWS_AS(construct(Devices{MCM_SUBSYSTEM_1, {SygnalControlDeviceType::HPO, 1, 0}}), std::invalid_argument);
-  CHECK_THROWS_AS(construct(Devices{{SygnalControlDeviceType::CB, 5, 0}}), std::invalid_argument);
   CHECK_NOTHROW(construct(Devices{MCM_SUBSYSTEM_0, MCM_SUBSYSTEM_1, HPO}));
 }
 
@@ -83,12 +84,12 @@ TEST_CASE("SygnalInterfaceSocketcan routes frames by bus address and subsystem",
   SygnalInterfaceSocketcan sygnal = make_interface();
 
   REQUIRE(sygnal.parse(CanFrame(sygnal_test::mcm_heartbeat(1, 1, SygnalSystemState::MCM_CONTROL))));
-  CHECK(SygnalSystemState::FAIL_HARD == sygnal.get_device_system_state(MCM_SUBSYSTEM_0));
-  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_device_system_state(MCM_SUBSYSTEM_1));
-  CHECK(SygnalSystemState::FAIL_HARD == sygnal.get_device_system_state(HPO));
+  CHECK(SygnalSystemState::FAIL_HARD == sygnal.get_device_system_state(MCM_SUBSYSTEM_0).value);
+  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_device_system_state(MCM_SUBSYSTEM_1).value);
+  CHECK(SygnalSystemState::FAIL_HARD == sygnal.get_device_system_state(HPO).value);
 
   REQUIRE(sygnal.parse(CanFrame(sygnal_test::hpo_heartbeat(3, SygnalSystemState::HUMAN_CONTROL))));
-  CHECK(SygnalSystemState::HUMAN_CONTROL == sygnal.get_device_system_state(HPO));
+  CHECK(SygnalSystemState::HUMAN_CONTROL == sygnal.get_device_system_state(HPO).value);
 
   CHECK_FALSE(sygnal.parse(CanFrame(sygnal_test::mcm_heartbeat(9, 0, SygnalSystemState::MCM_CONTROL))));
 }
@@ -96,26 +97,39 @@ TEST_CASE("SygnalInterfaceSocketcan routes frames by bus address and subsystem",
 TEST_CASE("SygnalInterfaceSocketcan routes endpoint reads to the endpoint's device", "[socketcan_routing]")
 {
   SygnalInterfaceSocketcan sygnal = make_interface();
-  const SygnalEndpoint hpo_if{SygnalControlEndpointType::HPO_IF, HPO, 2, 0, 1, false, "hpo"};
-  const SygnalEndpoint mcm_if{SygnalControlEndpointType::MCM_IF, MCM_SUBSYSTEM_0, 2, 0, 1, false, "mcm"};
+  const SygnalEndpoint hpo_if{SygnalControlEndpointType::HPO_INTERFACE, HPO, 2, 0, 1, false, "hpo"};
+  const SygnalEndpoint mcm_if{SygnalControlEndpointType::MCM_INTERFACE, MCM_SUBSYSTEM_0, 2, 0, 1, false, "mcm"};
 
   REQUIRE(sygnal.parse(CanFrame(sygnal_test::hpo_enable_response(3, 2, true))));
 
-  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_endpoint_system_state(hpo_if));
-  CHECK(SygnalSystemState::HUMAN_CONTROL == sygnal.get_endpoint_system_state(mcm_if));
+  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_interface_control_state(hpo_if).value);
+  CHECK(SygnalSystemState::HUMAN_CONTROL == sygnal.get_interface_control_state(mcm_if).value);
 }
 
 TEST_CASE("SygnalInterfaceSocketcan routes HPO frames regardless of bit 7", "[socketcan_routing]")
 {
   SygnalInterfaceSocketcan sygnal = make_interface();
-  const SygnalEndpoint hpo_if{SygnalControlEndpointType::HPO_IF, HPO, 1, 0, 1, false, "hpo"};
+  const SygnalEndpoint hpo_if{SygnalControlEndpointType::HPO_INTERFACE, HPO, 1, 0, 1, false, "hpo"};
 
   can_frame frame = sygnal_test::hpo_enable_response(3, 1, true);
   frame.data[0] |= 0x80;
   frame.data[CAN_MAX_DLC - 1] = polymath::sygnal::generate_crc8(frame.data);
 
   REQUIRE(sygnal.parse(CanFrame(frame)));
-  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_endpoint_system_state(hpo_if));
+  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_interface_control_state(hpo_if).value);
+}
+
+TEST_CASE("SygnalInterfaceSocketcan passes the frame's bus time to the getters", "[socketcan_routing]")
+{
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const std::chrono::system_clock::time_point bus_time{std::chrono::milliseconds(1234)};
+
+  CanFrame frame(sygnal_test::mcm_heartbeat(1, 0, SygnalSystemState::HUMAN_CONTROL));
+  frame.set_bus_timestamp(bus_time);
+  REQUIRE(sygnal.parse(frame));
+
+  CHECK(bus_time == sygnal.get_device_system_state(MCM_SUBSYSTEM_0).timestamp);
+  CHECK(std::chrono::system_clock::time_point{} == sygnal.get_device_system_state(MCM_SUBSYSTEM_1).timestamp);
 }
 
 TEST_CASE("SygnalInterfaceSocketcan serves faults only for MCMs", "[socketcan_routing]")
@@ -123,9 +137,9 @@ TEST_CASE("SygnalInterfaceSocketcan serves faults only for MCMs", "[socketcan_ro
   SygnalInterfaceSocketcan sygnal = make_interface();
   REQUIRE(sygnal.parse(CanFrame(sygnal_test::mcm_fault_increment(1, 1, 0x32, 2))));
 
-  const auto counts = sygnal.get_device_faults(MCM_SUBSYSTEM_1).counts;
+  const auto counts = sygnal.get_device_faults(MCM_SUBSYSTEM_1).value.counts;
   CHECK(2 == counts.at(McmFaultCause::CONTROL_TIMEOUT));  // NOLINT(readability/check)
-  CHECK(sygnal.get_device_faults(MCM_SUBSYSTEM_0).counts.empty());
+  CHECK(sygnal.get_device_faults(MCM_SUBSYSTEM_0).value.counts.empty());
   CHECK_THROWS_AS(sygnal.get_device_faults(HPO), std::invalid_argument);
   CHECK_THROWS_AS(sygnal.get_device_faults(UNCONFIGURED), std::invalid_argument);
 }
@@ -133,10 +147,32 @@ TEST_CASE("SygnalInterfaceSocketcan serves faults only for MCMs", "[socketcan_ro
 TEST_CASE("SygnalInterfaceSocketcan rejects unconfigured devices", "[socketcan_routing]")
 {
   SygnalInterfaceSocketcan sygnal = make_interface();
-  const SygnalEndpoint endpoint{SygnalControlEndpointType::MCM_IF, UNCONFIGURED, 0, 0, 1, false, "missing"};
+  const SygnalEndpoint endpoint{SygnalControlEndpointType::MCM_INTERFACE, UNCONFIGURED, 0, 0, 1, false, "missing"};
 
   CHECK_THROWS_AS(sygnal.get_device_system_state(UNCONFIGURED), std::invalid_argument);
-  CHECK_THROWS_AS(sygnal.get_endpoint_value(endpoint), std::invalid_argument);
-  CHECK_THROWS_AS(sygnal.send_endpoint_state_command(endpoint, true, true), std::invalid_argument);
-  CHECK_THROWS_AS(sygnal.send_endpoint_value_command(endpoint, 1.0, true), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.get_control_command_value(endpoint), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.send_control_enable_command(endpoint, true, true), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.send_control_command(endpoint, 1.0, true), std::invalid_argument);
+}
+
+TEST_CASE("SygnalInterfaceSocketcan rejects a descriptor whose type differs from the configured device", "[socketcan_routing]")
+{
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const SygnalControlDevice mcm_at_hpo_address{SygnalControlDeviceType::MCM, 3, 0, "wrong_type"};
+
+  CHECK_THROWS_AS(sygnal.get_device_system_state(mcm_at_hpo_address), std::invalid_argument);
+}
+
+TEST_CASE("SygnalInterfaceSocketcan returns new errors from the addressed device only", "[socketcan_routing]")
+{
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  REQUIRE(sygnal.parse(
+    CanFrame(sygnal_test::error_status<mcm_error::ErrorStatus>(1, 1, SygnalErrorType::KEY, 0x7F))));
+
+  CHECK(sygnal.get_new_device_errors(MCM_SUBSYSTEM_0).empty());
+  CHECK(sygnal.get_new_device_errors(HPO).empty());
+  const auto errors = sygnal.get_new_device_errors(MCM_SUBSYSTEM_1);
+  REQUIRE(1 == errors.size());  // NOLINT(readability/check)
+  CHECK(SygnalErrorType::KEY == errors[0].value.type);
+  CHECK_THROWS_AS(sygnal.get_new_device_errors(UNCONFIGURED), std::invalid_argument);
 }

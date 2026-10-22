@@ -20,8 +20,10 @@
 #include <cstdint>
 
 #include "hpo_control/hpo_control.hpp"
+#include "hpo_error/hpo_error.hpp"
 #include "hpo_heartbeat/hpo_heartbeat.hpp"
 #include "mcm_control/mcm_control.hpp"
+#include "mcm_error/mcm_error.hpp"
 #include "mcm_fault/mcm_fault.hpp"
 #include "mcm_heartbeat/mcm_heartbeat.hpp"
 #include "mcm_relay/mcm_relay.hpp"
@@ -108,6 +110,27 @@ inline can_frame mcm_fault_state(
   return to_frame(msg);
 }
 
+/// @brief ErrorStatus for either device type; T is mcm_error::ErrorStatus or hpo_error::ErrorStatus.
+template <typename T>
+can_frame error_status(
+  uint8_t bus_id,
+  uint8_t subsystem_id,
+  polymath::sygnal::SygnalErrorType type,
+  uint16_t can_id,
+  uint8_t section_id = 0,
+  uint8_t interface_id = 0)
+{
+  T msg;
+  msg.bus_address = bus_id;
+  msg.subsystem_id = subsystem_id;
+  msg.config_section_id = section_id;
+  msg.config_interface_id = interface_id;
+  msg.error_type = static_cast<uint8_t>(type);
+  msg.error_canid = can_id;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
 inline can_frame mcm_fault_increment(uint8_t bus_id, uint8_t subsystem_id, uint8_t cause, uint16_t count)
 {
   mcm_fault::FaultIncrement msg;
@@ -144,7 +167,10 @@ inline can_frame mcm_fault_root_cause(
 }
 
 inline can_frame hpo_heartbeat(
-  uint8_t bus_id, polymath::sygnal::SygnalSystemState state, const std::array<bool, 4> & interfaces_enabled = {})
+  uint8_t bus_id,
+  polymath::sygnal::SygnalSystemState state,
+  const std::array<bool, 4> & interfaces_enabled = {},
+  const std::array<uint8_t, 4> & interface_values = {})
 {
   hpo_heartbeat::Heartbeat msg;
   msg.bus_address = bus_id;
@@ -154,10 +180,10 @@ inline can_frame hpo_heartbeat(
   msg.interface1_state = interfaces_enabled[1];
   msg.interface2_state = interfaces_enabled[2];
   msg.interface3_state = interfaces_enabled[3];
-  msg.interface0_value = 0;
-  msg.interface1_value = 0;
-  msg.interface2_value = 0;
-  msg.interface3_value = 0;
+  msg.interface0_value = interface_values[0];
+  msg.interface1_value = interface_values[1];
+  msg.interface2_value = interface_values[2];
+  msg.interface3_value = interface_values[3];
   msg.count16 = 0;
   msg.crc = 0;
   return to_frame(msg);

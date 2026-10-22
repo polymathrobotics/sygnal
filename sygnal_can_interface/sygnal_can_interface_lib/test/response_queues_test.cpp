@@ -32,6 +32,9 @@ using polymath::sygnal::ResponseQueues;
 namespace
 {
 
+constexpr std::chrono::seconds TIMEOUT{1};
+constexpr std::chrono::steady_clock::time_point START{};
+
 template <typename T>
 bool is_ready(const std::future<T> & future)
 {
@@ -42,7 +45,7 @@ bool is_ready(const std::future<T> & future)
 
 TEST_CASE("ResponseQueues fulfills the oldest promise on a key first", "[response_queues]")
 {
-  ResponseQueues<int, int> queues;
+  ResponseQueues<int, int> queues(TIMEOUT);
   auto first = queues.push(1);
   auto second = queues.push(1);
 
@@ -57,7 +60,7 @@ TEST_CASE("ResponseQueues fulfills the oldest promise on a key first", "[respons
 
 TEST_CASE("ResponseQueues keeps keys independent", "[response_queues]")
 {
-  ResponseQueues<int, int> queues;
+  ResponseQueues<int, int> queues(TIMEOUT);
   auto on_one = queues.push(1);
   auto on_two = queues.push(2);
 
@@ -69,7 +72,7 @@ TEST_CASE("ResponseQueues keeps keys independent", "[response_queues]")
 
 TEST_CASE("ResponseQueues ignores a response with nothing pending", "[response_queues]")
 {
-  ResponseQueues<int, int> queues;
+  ResponseQueues<int, int> queues(TIMEOUT);
   queues.fulfill(1, 5);
 
   auto future = queues.push(1);
@@ -78,7 +81,7 @@ TEST_CASE("ResponseQueues ignores a response with nothing pending", "[response_q
 
 TEST_CASE("ResponseQueues withdraws the newest promise on a key", "[response_queues]")
 {
-  ResponseQueues<int, int> queues;
+  ResponseQueues<int, int> queues(TIMEOUT);
   auto first = queues.push(1);
   auto second = queues.push(1);
 
@@ -92,7 +95,7 @@ TEST_CASE("ResponseQueues withdraws the newest promise on a key", "[response_que
 
 TEST_CASE("ResponseQueues drops the oldest promise when full", "[response_queues]")
 {
-  ResponseQueues<int, int> queues;
+  ResponseQueues<int, int> queues(TIMEOUT);
   std::vector<std::future<int>> futures;
   for (size_t i = 0; i <= MAX_PROMISE_QUEUE_LENGTH; ++i) {
     futures.push_back(queues.push(1));
@@ -101,4 +104,36 @@ TEST_CASE("ResponseQueues drops the oldest promise when full", "[response_queues
   CHECK_THROWS_AS(futures.front().get(), std::future_error);
   queues.fulfill(1, 7);
   CHECK(7 == futures[1].get());  // NOLINT(readability/check)
+}
+
+TEST_CASE("ResponseQueues fulfill skips expired promises", "[response_queues]")
+{
+  ResponseQueues<int, int> queues(TIMEOUT);
+  auto expired = queues.push(1, START);
+  auto live = queues.push(1, START + TIMEOUT);
+
+  queues.fulfill(1, 5, START + TIMEOUT + std::chrono::milliseconds(1));
+  CHECK_THROWS_AS(expired.get(), std::future_error);
+  REQUIRE(is_ready(live));
+  CHECK(5 == live.get());  // NOLINT(readability/check)
+}
+
+TEST_CASE("ResponseQueues fulfill keeps a promise until its deadline", "[response_queues]")
+{
+  ResponseQueues<int, int> queues(TIMEOUT);
+  auto future = queues.push(1, START);
+
+  queues.fulfill(1, 5, START + TIMEOUT);
+  REQUIRE(is_ready(future));
+  CHECK(5 == future.get());  // NOLINT(readability/check)
+}
+
+TEST_CASE("ResponseQueues push drops expired promises", "[response_queues]")
+{
+  ResponseQueues<int, int> queues(TIMEOUT);
+  auto expired = queues.push(1, START);
+  auto live = queues.push(1, START + 2 * TIMEOUT);
+
+  CHECK_THROWS_AS(expired.get(), std::future_error);
+  CHECK_FALSE(is_ready(live));
 }

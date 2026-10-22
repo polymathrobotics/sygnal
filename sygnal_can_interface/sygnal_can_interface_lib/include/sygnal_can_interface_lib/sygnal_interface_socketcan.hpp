@@ -60,8 +60,14 @@ public:
   Stamped<double> get_control_command_value(const SygnalEndpoint & endpoint) const;
 
   /// @brief Fault status of the device.
+  /// @details MCMs only send this when there is an active fault. Struct is empty otherwise.
   /// @throws std::invalid_argument if the device is unknown or does not report faults.
   Stamped<McmFaultStatus> get_device_faults(const SygnalControlDevice & device) const;
+
+  /// @brief Errors the device reported since the last call, oldest first, each stamped with its bus time.
+  ///        Clears the device's stored errors.
+  /// @throws std::invalid_argument if the device is unknown.
+  std::vector<Stamped<SygnalError>> get_new_device_errors(const SygnalControlDevice & device);
 
   /// @brief Enable or disable control of an endpoint.
   /// @param expect_reply Return a future that resolves from the response message.

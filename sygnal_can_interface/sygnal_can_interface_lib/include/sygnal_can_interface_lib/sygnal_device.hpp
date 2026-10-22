@@ -24,6 +24,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "dbc_gen_cpp/can_handler.hpp"
 #include "socketcan_adapter/can_frame.hpp"
@@ -34,6 +35,9 @@
 
 namespace polymath::sygnal
 {
+
+/// @brief Max number of errors a device keeps between get_new_device_errors() calls; the oldest is dropped beyond this.
+constexpr size_t MAX_STORED_ERRORS = 1000;
 
 /// @brief Result of sending a control enable command to a Sygnal endpoint.
 /// @details success: true if the command was sent successfully, false otherwise.
@@ -110,6 +114,10 @@ public:
   /// @throws std::invalid_argument if this device does not report faults.
   virtual Stamped<McmFaultStatus> get_device_faults() const;
 
+  /// @brief Errors reported since the last call, oldest first, each stamped with its bus time.
+  ///        Clears the stored errors.
+  std::vector<Stamped<SygnalError>> get_new_device_errors();
+
 protected:
   /// @param socketcan_adapter Adapter that commands go out on.
   /// @param device Descriptor of this device.
@@ -134,10 +142,10 @@ protected:
 
   const std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter_;
 
-  /// @brief handlers that handle() dispatches to. Register them in subclass constructors only.
+  /// @brief handlers that handle() dispatches to. Register device-specific handlers in subclass constructors only.
   dbc_gen_cpp::CANHandler can_handler_;
 
-  /// @brief Guards system_state_ and subclass state.
+  /// @brief Guards system_state_, errors_ and subclass state.
   mutable std::mutex state_mutex_;
 
   /// @brief Written by subclass message handlers on the reception thread.
@@ -153,7 +161,14 @@ protected:
   ResponseQueues<uint8_t, Stamped<double>> control_command_responses_;
 
 private:
+  /// @brief Register callbacks for CAN messages common to all Sygnal devices.
+  ///        Handlers for messages every Sygnal device sends belong here; device-specific handlers do not.
+  void initializeGenericCANHandlerCallbacks();
+
   const SygnalControlDevice device_;
+
+  /// @brief Errors not yet returned by get_new_device_errors(), oldest first.
+  std::vector<Stamped<SygnalError>> errors_;
 };
 
 }  // namespace polymath::sygnal
