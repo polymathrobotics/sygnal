@@ -24,6 +24,8 @@
 #include "hpo_control/hpo_control.hpp"
 #include "hpo_error/hpo_error.hpp"
 #include "hpo_heartbeat/hpo_heartbeat.hpp"
+#include "io_control/io_control.hpp"
+#include "io_heartbeat/io_heartbeat.hpp"
 #include "mcm_control/mcm_control.hpp"
 #include "mcm_error/mcm_error.hpp"
 #include "mcm_fault/mcm_fault.hpp"
@@ -238,6 +240,47 @@ inline can_frame cb_command_response(uint8_t bus_id, uint8_t message_id, double 
   cb_control::ControlCommandResponse msg;
   msg.bus_address = bus_id;
   msg.message_id = message_id;
+  msg.count8 = 0;
+  msg.value = value;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame io_heartbeat(
+  uint8_t bus_id, polymath::sygnal::SygnalSystemState state, const std::array<bool, 7> & interfaces_enabled = {})
+{
+  io_heartbeat::Heartbeat msg;
+  msg.bus_address = bus_id;
+  msg.subsystem_id = 0;
+  msg.system_state = static_cast<uint8_t>(state);
+  msg.interface0_state = interfaces_enabled[0];
+  msg.interface1_state = interfaces_enabled[1];
+  msg.interface2_state = interfaces_enabled[2];
+  msg.interface3_state = interfaces_enabled[3];
+  msg.interface4_state = interfaces_enabled[4];
+  msg.interface5_state = interfaces_enabled[5];
+  msg.interface6_state = interfaces_enabled[6];
+  msg.overall_interface_state = 0;
+  msg.count16 = 0;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame io_enable_response(uint8_t bus_id, uint8_t interface_id, bool enable)
+{
+  io_control::ControlEnableResponse msg;
+  msg.bus_address = bus_id;
+  msg.interface_id = interface_id;
+  msg.enable = enable;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame io_command_response(uint8_t bus_id, uint8_t interface_id, double value)
+{
+  io_control::ControlCommandResponse msg;
+  msg.bus_address = bus_id;
+  msg.interface_id = interface_id;
   msg.count8 = 0;
   msg.value = value;
   msg.crc = 0;

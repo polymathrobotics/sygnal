@@ -88,6 +88,9 @@ void SygnalMcmDevice::initializeCANHandlerCallbacks()
     for (size_t i = 0; i < MCM_NUM_INTERFACES; ++i) {
       interface_enabled_[i] = {enabled[i], msg.bus_time};
     }
+
+    /// TODO: (Ryan) Handle msg.overall_interface_state (1 MCM Control, 0 Human Control): expose it through a getter,
+    /// or drop it if system_state always agrees with it.
   });
 
   // Handle MCM Control Enable Response messages.

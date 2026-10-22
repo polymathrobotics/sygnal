@@ -43,6 +43,7 @@ add_library(
   src/sygnal_device.cpp
   src/sygnal_hpo_device.cpp
   src/sygnal_interface_socketcan.cpp
+  src/sygnal_io_device.cpp
   src/sygnal_mcm_device.cpp
 )
 
@@ -91,6 +92,7 @@ if(BUILD_TESTING)
     sygnal_cb_device
     sygnal_hpo_device
     sygnal_interface_socketcan_routing
+    sygnal_io_device
     sygnal_mcm_device
   )
     add_executable(${test_name}_tests test/${test_name}_test.cpp)

@@ -24,6 +24,7 @@
 
 #include "sygnal_can_interface_lib/sygnal_cb_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_hpo_device.hpp"
+#include "sygnal_can_interface_lib/sygnal_io_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 
 namespace polymath::sygnal
@@ -85,6 +86,11 @@ SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(
         break;
       case SygnalControlDeviceType::CB:
         instance = std::make_unique<SygnalCbDevice>(socketcan_adapter, device, command_timeout);
+        // Same as HPO: take the slots for both subsystem IDs.
+        addresses.push_back(static_cast<uint8_t>(*address ^ SUBSYSTEM_BIT));
+        break;
+      case SygnalControlDeviceType::IO:
+        instance = std::make_unique<SygnalIoDevice>(socketcan_adapter, device, command_timeout);
         // Same as HPO: take the slots for both subsystem IDs.
         addresses.push_back(static_cast<uint8_t>(*address ^ SUBSYSTEM_BIT));
         break;
