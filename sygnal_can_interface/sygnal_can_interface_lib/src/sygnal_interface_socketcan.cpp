@@ -81,13 +81,7 @@ bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
     if (!hpo_response.has_value()) {
       continue;
     }
-    std::lock_guard<std::mutex> lock(promises_mutex_);
-    auto & queue = hpo_response->is_enable_response ? hpo_enable_response_promises_ : hpo_command_response_promises_;
-    if (!queue.empty()) {
-      auto promise = std::move(queue.front());
-      queue.pop();
-      promise.set_value(*hpo_response);
-    }
+    hpo_responses_.fulfill(hpo_response->is_enable_response, *hpo_response);
     return true;
   }
 
@@ -113,35 +107,8 @@ bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
     return false;
   }
 
-  // Fulfill the appropriate promise based on response type
-  std::lock_guard<std::mutex> lock(promises_mutex_);
-
-  switch (response->response_type) {
-    case SygnalControlCommandResponseType::ENABLE: {
-      if (!enable_response_promises_.empty()) {
-        auto promise = std::move(enable_response_promises_.front());
-        enable_response_promises_.pop();
-        promise.set_value(*response);
-      }
-      break;
-    }
-    case SygnalControlCommandResponseType::CONTROL: {
-      if (!control_response_promises_.empty()) {
-        auto promise = std::move(control_response_promises_.front());
-        control_response_promises_.pop();
-        promise.set_value(*response);
-      }
-      break;
-    }
-    case SygnalControlCommandResponseType::RELAY: {
-      if (!relay_response_promises_.empty()) {
-        auto promise = std::move(relay_response_promises_.front());
-        relay_response_promises_.pop();
-        promise.set_value(*response);
-      }
-      break;
-    }
-  }
+  // Fulfill the oldest promise for this response type.
+  mcm_responses_.fulfill(response->response_type, *response);
 
   return true;
 }
@@ -187,14 +154,7 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
 
   std::optional<std::future<SygnalControlCommandResponse>> future_opt;
   if (expect_reply) {
-    std::promise<SygnalControlCommandResponse> promise;
-    future_opt = promise.get_future();
-    std::lock_guard<std::mutex> lock(promises_mutex_);
-    if (enable_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
-      // Really old promises are dropped silently for now. We should warn in the future
-      enable_response_promises_.pop();
-    }
-    enable_response_promises_.push(std::move(promise));
+    future_opt = mcm_responses_.push(SygnalControlCommandResponseType::ENABLE);
   }
 
   auto err = socketcan_adapter_->send(*frame_opt);
@@ -231,14 +191,7 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
 
   std::optional<std::future<SygnalControlCommandResponse>> future_opt;
   if (expect_reply) {
-    std::promise<SygnalControlCommandResponse> promise;
-    future_opt = promise.get_future();
-    std::lock_guard<std::mutex> lock(promises_mutex_);
-    if (control_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
-      // Really old promises are dropped silently for now. We should warn in the future
-      control_response_promises_.pop();
-    }
-    control_response_promises_.push(std::move(promise));
+    future_opt = mcm_responses_.push(SygnalControlCommandResponseType::CONTROL);
   }
 
   auto err = socketcan_adapter_->send(*frame_opt);
@@ -268,14 +221,7 @@ SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
 
   std::optional<std::future<SygnalControlCommandResponse>> future_opt;
   if (expect_reply) {
-    std::promise<SygnalControlCommandResponse> promise;
-    future_opt = promise.get_future();
-    std::lock_guard<std::mutex> lock(promises_mutex_);
-    if (relay_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
-      // Really old promises are dropped silently for now. We should warn in the future
-      relay_response_promises_.pop();
-    }
-    relay_response_promises_.push(std::move(promise));
+    future_opt = mcm_responses_.push(SygnalControlCommandResponseType::RELAY);
   }
 
   auto err = socketcan_adapter_->send(*frame_opt);
@@ -310,13 +256,7 @@ SendHpoCommandResult SygnalInterfaceSocketcan::sendHpoControlEnable(
 
   std::optional<std::future<HpoControlResponse>> future_opt;
   if (expect_reply) {
-    std::promise<HpoControlResponse> promise;
-    future_opt = promise.get_future();
-    std::lock_guard<std::mutex> lock(promises_mutex_);
-    if (hpo_enable_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
-      hpo_enable_response_promises_.pop();
-    }
-    hpo_enable_response_promises_.push(std::move(promise));
+    future_opt = hpo_responses_.push(true);
   }
 
   auto err = socketcan_adapter_->send(*frame_opt);
@@ -347,13 +287,7 @@ SendHpoCommandResult SygnalInterfaceSocketcan::sendHpoControlCommand(
 
   std::optional<std::future<HpoControlResponse>> future_opt;
   if (expect_reply) {
-    std::promise<HpoControlResponse> promise;
-    future_opt = promise.get_future();
-    std::lock_guard<std::mutex> lock(promises_mutex_);
-    if (hpo_command_response_promises_.size() >= MAX_PROMISE_QUEUE_LENGTH) {
-      hpo_command_response_promises_.pop();
-    }
-    hpo_command_response_promises_.push(std::move(promise));
+    future_opt = hpo_responses_.push(false);
   }
 
   auto err = socketcan_adapter_->send(*frame_opt);

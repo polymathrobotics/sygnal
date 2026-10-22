@@ -125,6 +125,22 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   )
 
+  add_executable(response_queues_tests
+    test/response_queues_test.cpp
+  )
+  target_link_libraries(response_queues_tests
+    PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain
+  )
+  ament_add_test(
+    response_queues_tests
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND "$<TARGET_FILE:response_queues_tests>"
+      -r junit -s
+      -o test_results/${PROJECT_NAME}/response_queues_tests_output.xml
+    ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+  )
+
   add_executable(sygnal_interface_socketcan_routing_tests
     test/sygnal_interface_socketcan_routing_test.cpp
   )
