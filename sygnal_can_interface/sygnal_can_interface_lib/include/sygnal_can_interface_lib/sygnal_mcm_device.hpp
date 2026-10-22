@@ -30,7 +30,7 @@ namespace polymath::sygnal
 constexpr uint8_t MCM_NUM_INTERFACES = 7;
 
 /// @brief One MCM subsystem: MCM_INTERFACE endpoints (interface ID 0-6) and one MCM_RELAY endpoint.
-///        Adds MCM-specific handling for interfaces, relays, and fault states.
+///        Adds MCM-specific handling for interfaces, relays, fault states, and errors.
 class SygnalMcmDevice : public SygnalDevice
 {
 public:

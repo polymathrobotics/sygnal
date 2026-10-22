@@ -85,6 +85,39 @@ enum class McmFaultCause : uint8_t
   SW_COPROCESSOR_OVERFLOW = 0x42,
 };
 
+/// @brief Error type, as reported in ErrorStatus (0x30).
+/// @details OVERRIDE is in the Sygnal docs, not the DBC.
+enum class SygnalErrorType : uint8_t
+{
+  NO_ERROR = 0,
+  CRC = 1,
+  SECTION_ID = 2,
+  INTERFACE_ID = 3,
+  PARAMETER_ID = 4,
+  PERMISSIONS = 5,
+  STATE = 6,
+  FEEDBACK_TYPE = 7,
+  COUNT = 8,
+  KEY = 9,
+  PASSWORD = 10,
+  COMMAND = 11,
+  OVERRIDE = 12,
+  OTHER = 255,
+};
+
+/// @brief One ErrorStatus report: the device could not process a frame it received.
+/// @details type: Kind of error.
+///          can_id: CAN ID of the frame the device could not process.
+///          config_section_id: Configuration section of a configuration error; IDs differ per device type.
+///          config_interface_id: Interface of a configuration error.
+struct SygnalError
+{
+  SygnalErrorType type{SygnalErrorType::NO_ERROR};
+  uint16_t can_id{0};
+  uint8_t config_section_id{0};
+  uint8_t config_interface_id{0};
+};
+
 /// @brief One device on the bus. subsystem_id applies to only MCMs; Other devices ignore it.
 ///        name label is used in errors and diagnostics only;
 struct SygnalControlDevice
@@ -147,6 +180,14 @@ inline std::string describe(const SygnalControlDevice & device)
 ///        instead of the default -128..128.
 template <>
 struct magic_enum::customize::enum_range<polymath::sygnal::SygnalSystemState>
+{
+  static constexpr int min = 0;
+  static constexpr int max = 255;
+};
+
+/// @brief Same for SygnalErrorType, whose OTHER is 255.
+template <>
+struct magic_enum::customize::enum_range<polymath::sygnal::SygnalErrorType>
 {
   static constexpr int min = 0;
   static constexpr int max = 255;

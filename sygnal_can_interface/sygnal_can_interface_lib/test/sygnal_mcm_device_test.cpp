@@ -30,12 +30,14 @@
 
 #include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
 
+using polymath::sygnal::MAX_STORED_ERRORS;
 using polymath::sygnal::McmFaultCause;
 using polymath::sygnal::SygnalControlDevice;
 using polymath::sygnal::SygnalControlDeviceType;
 using polymath::sygnal::SygnalControlEndpointType;
 using polymath::sygnal::SygnalDevice;
 using polymath::sygnal::SygnalEndpoint;
+using polymath::sygnal::SygnalErrorType;
 using polymath::sygnal::SygnalMcmDevice;
 using polymath::sygnal::SygnalSystemState;
 
@@ -271,4 +273,40 @@ TEST_CASE("MCM device rejects endpoints and values it does not have", "[mcm_devi
   CHECK_THROWS_AS(device.get_interface_control_state(mcm_if(7)), std::invalid_argument);
   CHECK_THROWS_AS(device.get_control_command_value(mcm_if(7)), std::invalid_argument);
   CHECK_THROWS_AS(device.get_control_command_value(hpo_if), std::invalid_argument);
+}
+
+TEST_CASE("MCM get_new_device_errors returns errors since the last call oldest first", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), MCM, COMMAND_TIMEOUT);
+  using ErrorStatus = mcm_error::ErrorStatus;
+
+  REQUIRE(device.handle(sygnal_test::error_status<ErrorStatus>(BUS, SUBSYSTEM, SygnalErrorType::CRC, 0x160)));
+  REQUIRE(device.handle(
+    sygnal_test::error_status<ErrorStatus>(BUS, SUBSYSTEM, SygnalErrorType::STATE, 0x400, 6, 2), {}, RESPONSE_TIME));
+
+  const auto errors = device.get_new_device_errors();
+  REQUIRE(2 == errors.size());  // NOLINT(readability/check)
+  CHECK(SygnalErrorType::CRC == errors[0].value.type);
+  CHECK(0x160 == errors[0].value.can_id);  // NOLINT(readability/check)
+  CHECK(SygnalErrorType::STATE == errors[1].value.type);
+  CHECK(0x400 == errors[1].value.can_id);  // NOLINT(readability/check)
+  CHECK(6 == errors[1].value.config_section_id);  // NOLINT(readability/check)
+  CHECK(2 == errors[1].value.config_interface_id);  // NOLINT(readability/check)
+  CHECK(RESPONSE_TIME == errors[1].timestamp);
+
+  CHECK(device.get_new_device_errors().empty());
+}
+
+TEST_CASE("MCM keeps only the newest errors between calls", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), MCM, COMMAND_TIMEOUT);
+  for (size_t i = 0; i <= MAX_STORED_ERRORS; ++i) {
+    REQUIRE(device.handle(sygnal_test::error_status<mcm_error::ErrorStatus>(
+      BUS, SUBSYSTEM, SygnalErrorType::COUNT, static_cast<uint16_t>(i))));
+  }
+
+  const auto errors = device.get_new_device_errors();
+  REQUIRE(MAX_STORED_ERRORS == errors.size());
+  CHECK(1 == errors.front().value.can_id);  // NOLINT(readability/check)
+  CHECK(MAX_STORED_ERRORS == errors.back().value.can_id);
 }
