@@ -20,46 +20,13 @@
 
 #include "socketcan_adapter/can_frame.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
+#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
 
 constexpr uint8_t DEFAULT_MCM_BUS_ADDRESS = 1;
 constexpr uint8_t SECONDARY_MCM_BUS_ADDRESS = 2;
-
-/// @brief Enum representing the overall state of the system
-enum class SygnalSystemState : uint8_t
-{
-  FAIL_HARD = 254,
-  HUMAN_OVERRIDE = 253,
-  FAIL_OPERATIONAL_2 = 242,
-  FAIL_OPERATIONAL_1 = 241,
-  MCM_CONTROL = 1,
-  HUMAN_CONTROL = 0
-};
-
-/// @brief Get the string of the Sygnal System State
-/// @param state input SygnalSystemState
-/// @return string of the state value
-inline std::string sygnalSystemStateToString(SygnalSystemState state)
-{
-  switch (state) {
-    case SygnalSystemState::FAIL_HARD:
-      return "FAIL_HARD";
-    case SygnalSystemState::HUMAN_OVERRIDE:
-      return "HUMAN_OVERRIDE";
-    case SygnalSystemState::FAIL_OPERATIONAL_2:
-      return "FAIL_OPERATIONAL_2";
-    case SygnalSystemState::FAIL_OPERATIONAL_1:
-      return "FAIL_OPERATIONAL_1";
-    case SygnalSystemState::MCM_CONTROL:
-      return "MCM_CONTROL";
-    case SygnalSystemState::HUMAN_CONTROL:
-      return "HUMAN_CONTROL";
-    default:
-      return "UNKNOWN_STATE";
-  }
-}
 
 class SygnalMcmInterface
 {

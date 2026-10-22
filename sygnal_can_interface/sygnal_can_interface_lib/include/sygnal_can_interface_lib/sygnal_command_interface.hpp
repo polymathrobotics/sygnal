@@ -20,43 +20,13 @@
 
 #include "socketcan_adapter/can_frame.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
+#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
 
-/// @brief Enum representing whether the system is under MCM or human control
-enum class SygnalControlState : uint8_t
-{
-  MCM_CONTROL = 1,
-  HUMAN_CONTROL = 0
-};
-
-/// @brief Enum representing whether the relay is enabled or disabled
-enum class SygnalRelayState : uint8_t
-{
-  ENABLE = 1,
-  DISABLE = 0
-};
-
-enum class SygnalControlCommandResponseType : uint8_t
-{
-  ENABLE = 0,
-  CONTROL = 1,
-  RELAY = 2
-};
-
 constexpr uint32_t MAX_SYGNAL_INTERFACES = 6;
 constexpr uint32_t MAX_SYGNAL_SUBSYSTEMS = 2;
-
-struct SygnalControlCommandResponse
-{
-  SygnalControlCommandResponseType response_type;
-  uint8_t interface_id;
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-  // Value can represent different things based on response type
-  double value;
-};
 
 class SygnalControlInterface
 {

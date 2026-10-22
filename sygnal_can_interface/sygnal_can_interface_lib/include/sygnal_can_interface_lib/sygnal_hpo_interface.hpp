@@ -21,6 +21,7 @@
 #include <string>
 
 #include "socketcan_adapter/can_frame.hpp"
+#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
@@ -29,30 +30,6 @@ namespace polymath::sygnal
 // interface (Interface{N}State) plus a 2-bit pin-pull value (Interface{N}Value:
 // HiZ/Pull_Down/Pull_Up); the pull values are not yet surfaced (TODO: vehicleFeedback).
 constexpr uint8_t HPO_NUM_INTERFACES = 4;
-
-/// @brief Parsed HPO ControlEnableResponse / ControlCommandResponse.
-///        is_enable_response disambiguates which payload is meaningful:
-///        when true, the `enable` field carries the response; when false,
-///        the `value` field carries the float command response.
-struct HpoControlResponse
-{
-  uint8_t bus_address;
-  uint8_t message_id;
-  double value;
-  bool enable;
-  bool is_enable_response;
-};
-
-/// @brief Parsed HPO ErrorStatus frame fields.
-struct HpoErrorStatus
-{
-  uint8_t bus_address;
-  uint8_t subsystem_id;
-  uint8_t error_type;
-  uint16_t error_can_id;
-  uint8_t config_section_id;
-  uint8_t config_interface_id;
-};
 
 /// @brief Self-contained HPO board representation.
 ///

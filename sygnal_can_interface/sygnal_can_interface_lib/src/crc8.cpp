@@ -19,7 +19,7 @@
 namespace polymath::sygnal
 {
 
-uint8_t generate_crc8(uint8_t * data)
+uint8_t generate_crc8(const uint8_t * data)
 {
   uint8_t crc = 0x00;
   // Assumes 8-byte data with checksum at data[7]
@@ -36,7 +36,7 @@ uint8_t generate_crc8(uint8_t * data)
   return crc;
 }
 
-bool check_crc8(uint8_t * data)
+bool check_crc8(const uint8_t * data)
 {
   return data[7] == generate_crc8(data);
 }

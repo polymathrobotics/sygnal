@@ -15,73 +15,20 @@
 #ifndef SYGNAL_CAN_INTERFACE_LIB__SYGNAL_INTERFACE_SOCKETCAN_HPP_
 #define SYGNAL_CAN_INTERFACE_LIB__SYGNAL_INTERFACE_SOCKETCAN_HPP_
 
-#include <future>
 #include <memory>
-#include <mutex>
 #include <optional>
-#include <queue>
 #include <string>
 #include <vector>
 
 #include "socketcan_adapter/socketcan_adapter.hpp"
+#include "sygnal_can_interface_lib/response_queues.hpp"
 #include "sygnal_can_interface_lib/sygnal_command_interface.hpp"
 #include "sygnal_can_interface_lib/sygnal_hpo_interface.hpp"
 #include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
+#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
-
-/// @brief Result of a send command operation
-struct SendCommandResult
-{
-  bool success;
-  std::optional<std::future<SygnalControlCommandResponse>> response_future;
-};
-
-/// @brief Identifies one MCM endpoint by its CAN bus and subsystem ID.
-struct McmId
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-};
-
-/// @brief Identifies one HPO endpoint by its CAN bus address.
-struct HpoId
-{
-  uint8_t bus_id;
-};
-
-/// @brief Result of an HPO send operation. Mirrors SendCommandResult but is typed for HpoControlResponse
-///        because the HPO response carries a `message_id` instead of MCM's interface_id/subsystem_id.
-struct SendHpoCommandResult
-{
-  bool success;
-  std::optional<std::future<HpoControlResponse>> response_future;
-};
-
-/// @brief Represents a single control interface in Sygnal's System.
-///        Interfaces can either take floats(default) or ints as inputs.
-struct InterfaceEndpoint
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-  uint8_t interface_id;
-  int min_value;
-  int max_value;
-  bool is_int;
-  std::string_view name;
-};
-
-/// @brief Represents a single relay in Sygnal's System.
-struct RelayEndpoint
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-  uint8_t relay_id;
-  std::string_view name;
-};
-
-constexpr uint32_t MAX_PROMISE_QUEUE_LENGTH = 100;
 
 /// @brief Combined Sygnal MCM and Control interface with SocketCAN communication
 /// Provides thread-safe async communication with promise/future pattern for responses
@@ -209,14 +156,11 @@ private:
   std::vector<SygnalHpoInterface> hpos_;
   SygnalControlInterface control_interface_;
 
-  // Promise queues for each response type
-  std::queue<std::promise<SygnalControlCommandResponse>> enable_response_promises_;
-  std::queue<std::promise<SygnalControlCommandResponse>> control_response_promises_;
-  std::queue<std::promise<SygnalControlCommandResponse>> relay_response_promises_;
-  std::queue<std::promise<HpoControlResponse>> hpo_enable_response_promises_;
-  std::queue<std::promise<HpoControlResponse>> hpo_command_response_promises_;
+  /// @brief Pending MCM responses, keyed by response type.
+  ResponseQueues<SygnalControlCommandResponseType, SygnalControlCommandResponse> mcm_responses_;
 
-  std::mutex promises_mutex_;
+  /// @brief Pending HPO responses, keyed by is_enable_response.
+  ResponseQueues<bool, HpoControlResponse> hpo_responses_;
 };
 
 }  // namespace polymath::sygnal
