@@ -1,3 +1,3 @@
 # Sygnal Can Interface Lib
 
-C++ library for interfacing with Sygnal's CAN control boards: MCM and HPO.
+C++ library for interfacing with Sygnal's CAN control boards: MCM, HPO and IO.
