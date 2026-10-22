@@ -14,6 +14,7 @@
 
 #include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -31,50 +32,52 @@ namespace polymath::sygnal
 namespace
 {
 
-bool is_fail_state(SygnalSystemState state)
-{
-  return SygnalSystemState::FAIL_OPERATIONAL_1 == state || SygnalSystemState::FAIL_OPERATIONAL_2 == state ||
-         SygnalSystemState::FAIL_HARD == state;
-}
-
-SygnalSystemState control_state(bool enabled)
-{
-  return enabled ? SygnalSystemState::MCM_CONTROL : SygnalSystemState::HUMAN_CONTROL;
-}
-
 McmFaultCause to_cause(double wire_value)
 {
   return static_cast<McmFaultCause>(static_cast<uint8_t>(wire_value));
 }
 
-bool is_interface(const SygnalEndpoint & endpoint)
-{
-  return SygnalControlEndpointType::MCM_IF == endpoint.type && MCM_NUM_INTERFACES > endpoint.endpoint_id;
-}
-
-std::invalid_argument unknown_endpoint(const SygnalEndpoint & endpoint)
-{
-  return std::invalid_argument(
-    "MCM has no endpoint of type " + std::to_string(static_cast<int>(endpoint.type)) + " with id " +
-    std::to_string(endpoint.endpoint_id));
-}
-
 }  // namespace
 
 SygnalMcmDevice::SygnalMcmDevice(
-  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, uint8_t bus_id, uint8_t subsystem_id)
-: SygnalDevice(std::move(socketcan_adapter))
-, bus_id_(bus_id)
-, subsystem_id_(subsystem_id)
+  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+  const SygnalControlDevice & device,
+  std::chrono::steady_clock::duration command_timeout)
+: SygnalDevice(std::move(socketcan_adapter), device, command_timeout)
+, relay_responses_(command_timeout_)
 {
-  set_handler<mcm_heartbeat::Heartbeat>([this](const mcm_heartbeat::Heartbeat & msg) {
+  initializeCANHandlerCallbacks();
+}
+
+void SygnalMcmDevice::initializeCANHandlerCallbacks()
+{
+  // Handle MCM Heartbeat messages.
+  can_handler_.set_handler<mcm_heartbeat::Heartbeat>([this](const mcm_heartbeat::Heartbeat & msg) {
+    // Grab the system state from the heartbeat message.
     const SygnalSystemState state = static_cast<SygnalSystemState>(msg.system_state);
 
-    std::lock_guard<std::mutex> lock(mutex_);
-    const bool cleared = is_fail_state(system_state_) &&
-                         (SygnalSystemState::HUMAN_CONTROL == state || SygnalSystemState::MCM_CONTROL == state);
-    system_state_ = state;
-    interface_enabled_ = {
+
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    // Determine if faults were cleared since the last heartbeat before updating the state.
+    const bool was_failed = SygnalSystemState::FAIL_OPERATIONAL_1 == system_state_.value ||
+                            SygnalSystemState::FAIL_OPERATIONAL_2 == system_state_.value ||
+                            SygnalSystemState::HUMAN_OVERRIDE == system_state_.value ||
+                            SygnalSystemState::FAIL_HARD == system_state_.value;
+    const bool cleared =
+      was_failed && (SygnalSystemState::HUMAN_CONTROL == state || SygnalSystemState::MCM_CONTROL == state);
+
+
+    // Per the Sygnal docs, fault message only send when there is an active fault.
+    // So if the MCM is in a clear state, reset the cached faults because we don't expect
+    // any more fault messages until a new fault occurs.
+    if (cleared) {
+      faults_ = {McmFaultStatus{}, msg.bus_time};
+    }
+
+    // Update the system state with the new heartbeat information.
+    system_state_ = {state, msg.bus_time};
+    const std::array<bool, MCM_NUM_INTERFACES> enabled{
       0 != msg.interface0_state,
       0 != msg.interface1_state,
       0 != msg.interface2_state,
@@ -82,157 +85,271 @@ SygnalMcmDevice::SygnalMcmDevice(
       0 != msg.interface4_state,
       0 != msg.interface5_state,
       0 != msg.interface6_state};
-    if (cleared) {
-      faults_ = McmFaultStatus{};
+    for (size_t i = 0; i < MCM_NUM_INTERFACES; ++i) {
+      interface_enabled_[i] = {enabled[i], msg.bus_time};
     }
   });
 
-  set_handler<mcm_control::ControlEnableResponse>([this](const mcm_control::ControlEnableResponse & msg) {
+  // Handle MCM Control Enable Response messages.
+  can_handler_.set_handler<mcm_control::ControlEnableResponse>([this](const mcm_control::ControlEnableResponse & msg) {
+    // Parse the interface ID and enable state from the message.
     const uint8_t id = static_cast<uint8_t>(msg.interface_id);
     const bool enabled = 0 != msg.enable;
+
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    // Update the interface enabled state if the ID is valid.
     if (MCM_NUM_INTERFACES > id) {
-      std::lock_guard<std::mutex> lock(mutex_);
-      interface_enabled_[id] = enabled;
+      interface_enabled_[id] = {enabled, msg.bus_time};
     }
-    fulfill_endpoint_state_response(SygnalControlEndpointType::MCM_IF, id, control_state(enabled));
+
+    // Fulfill the pending promise for this interface ID with the enable state.
+    control_enable_responses_.fulfill(id, {enabled ? SygnalSystemState::MCM_CONTROL : SygnalSystemState::HUMAN_CONTROL, msg.bus_time});
   });
 
-  set_handler<mcm_control::ControlCommandResponse>([this](const mcm_control::ControlCommandResponse & msg) {
+  // Handle MCM Control Command Response messages.
+  can_handler_.set_handler<mcm_control::ControlCommandResponse>([this](const mcm_control::ControlCommandResponse & msg) {
+    // Parse the interface ID from the message.
     const uint8_t id = static_cast<uint8_t>(msg.interface_id);
+
+    std::lock_guard<std::mutex> lock(state_mutex_);
+
+    // Update the interface value if the ID is valid.
     if (MCM_NUM_INTERFACES > id) {
-      std::lock_guard<std::mutex> lock(mutex_);
-      interface_values_[id] = msg.value;
+      interface_values_[id] = {msg.value, msg.bus_time};
     }
-    fulfill_endpoint_value_response(SygnalControlEndpointType::MCM_IF, id, msg.value);
+
+    // Fulfill the pending promise for this interface ID with the command value.
+    control_command_responses_.fulfill(id, {msg.value, msg.bus_time});
   });
 
-  set_handler<mcm_relay::RelayCommandResponse>([this](const mcm_relay::RelayCommandResponse & msg) {
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      relay_value_ = msg.enable;
-    }
-    fulfill_endpoint_value_response(SygnalControlEndpointType::MCM_RELAY, 0, msg.enable);
+  // Handle MCM Relay Command Response messages.
+  can_handler_.set_handler<mcm_relay::RelayCommandResponse>([this](const mcm_relay::RelayCommandResponse & msg) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    // Update the relay value with the message data.
+    relay_value_ = {msg.enable, msg.bus_time};
+    // Fulfill the pending promise for the relay command.
+    relay_responses_.fulfill(0, relay_value_);
   });
 
-  set_handler<mcm_fault::FaultState>([this](const mcm_fault::FaultState & msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    system_state_ = static_cast<SygnalSystemState>(msg.fault_state);
-    faults_.state_cause = to_cause(msg.fault_cause);
+  // Handle MCM Fault State messages.
+  can_handler_.set_handler<mcm_fault::FaultState>([this](const mcm_fault::FaultState & msg) {
+    // Update the system state and fault information with the message data.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    system_state_ = {static_cast<SygnalSystemState>(msg.fault_state), msg.bus_time};
+    faults_.value.state_cause = to_cause(msg.fault_cause);
+    faults_.timestamp = msg.bus_time;
   });
 
-  set_handler<mcm_fault::FaultIncrement>([this](const mcm_fault::FaultIncrement & msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    faults_.counts[to_cause(msg.fault_type)] = static_cast<uint16_t>(msg.fault_count);
+  // Handle MCM Fault Increment messages.
+  can_handler_.set_handler<mcm_fault::FaultIncrement>([this](const mcm_fault::FaultIncrement & msg) {
+    // Update the fault count for the specified fault type.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    faults_.value.counts[to_cause(msg.fault_type)] = static_cast<uint16_t>(msg.fault_count);
+    faults_.timestamp = msg.bus_time;
   });
 
-  set_handler<mcm_fault::FaultList>([this](const mcm_fault::FaultList & msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    faults_.counts[to_cause(msg.fault_type)] = static_cast<uint16_t>(msg.fault_count);
+  // Handle MCM Fault List messages.
+  can_handler_.set_handler<mcm_fault::FaultList>([this](const mcm_fault::FaultList & msg) {
+    // Update the fault count for the specified fault type from the fault list message.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    faults_.value.counts[to_cause(msg.fault_type)] = static_cast<uint16_t>(msg.fault_count);
+    faults_.timestamp = msg.bus_time;
   });
 
-  set_handler<mcm_fault::FaultRootCause>([this](const mcm_fault::FaultRootCause & msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    faults_.fail_op1_cause = to_cause(msg.fail_op1_cause);
-    faults_.fail_op2_cause = to_cause(msg.fail_op2_cause);
-    faults_.fail_hard_cause = to_cause(msg.fail_hard_cause);
+  // Handle MCM Fault Root Cause messages.
+  can_handler_.set_handler<mcm_fault::FaultRootCause>([this](const mcm_fault::FaultRootCause & msg) {
+    // Update the root cause information for the specified fault types.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    faults_.value.fail_op1_cause = to_cause(msg.fail_op1_cause);
+    faults_.value.fail_op2_cause = to_cause(msg.fail_op2_cause);
+    faults_.value.fail_hard_cause = to_cause(msg.fail_hard_cause);
+    faults_.timestamp = msg.bus_time;
   });
 }
 
-SygnalSystemState SygnalMcmDevice::get_endpoint_state(const SygnalEndpoint & endpoint) const
+Stamped<SygnalSystemState> SygnalMcmDevice::get_interface_control_state(const SygnalEndpoint & endpoint) const
 {
-  if (!is_interface(endpoint)) {
-    throw unknown_endpoint(endpoint);
+  // Check if the endpoint type is MCM_INTERFACE; otherwise, delegate to the base class for error handling.
+  if (SygnalControlEndpointType::MCM_INTERFACE != endpoint.type) {
+    return SygnalDevice::get_interface_control_state(endpoint);
   }
-  std::lock_guard<std::mutex> lock(mutex_);
-  return control_state(interface_enabled_[endpoint.endpoint_id]);
+
+  // throw if the interface ID is out of range
+  if (MCM_NUM_INTERFACES <= endpoint.endpoint_id) {
+    throw std::invalid_argument(
+      "Sygnal Endpoint " + std::string(endpoint.name) + " has interface ID " + std::to_string(endpoint.endpoint_id) +
+      "; MCM interface IDs are 0-6.");
+  }
+
+  // Return the interface control state for the specified interface ID.
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  const Stamped<bool> & enabled = interface_enabled_[endpoint.endpoint_id];
+  return {enabled.value ? SygnalSystemState::MCM_CONTROL : SygnalSystemState::HUMAN_CONTROL, enabled.timestamp};
 }
 
-double SygnalMcmDevice::get_endpoint_value(const SygnalEndpoint & endpoint) const
+Stamped<double> SygnalMcmDevice::get_control_command_value(const SygnalEndpoint & endpoint) const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
+  if (SygnalControlEndpointType::MCM_INTERFACE == endpoint.type) {
+    // Throw if the interface ID is out of range.
+    if (MCM_NUM_INTERFACES <= endpoint.endpoint_id) {
+      throw std::invalid_argument(
+        "Sygnal Endpoint " + std::string(endpoint.name) + " has interface ID " + std::to_string(endpoint.endpoint_id) +
+        "; MCM interface IDs are 0-6.");
+    }
+
+    // Return the control command value for the specified interface ID.
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return interface_values_[endpoint.endpoint_id];
+  }
+
+  // Just return the single relay value for MCM_RELAY endpoints.
   if (SygnalControlEndpointType::MCM_RELAY == endpoint.type) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
     return relay_value_;
   }
-  if (!is_interface(endpoint)) {
-    throw unknown_endpoint(endpoint);
-  }
-  return interface_values_[endpoint.endpoint_id];
+
+  // If neither MCM_RELAY nor MCM_INTERFACE, delegate to the base class for error handling.
+  return SygnalDevice::get_control_command_value(endpoint);
 }
 
-EndpointStateCommandResult SygnalMcmDevice::send_endpoint_state_command(
+ControlEnableCommandResult SygnalMcmDevice::send_control_enable_command(
   const SygnalEndpoint & endpoint, bool enable, bool expect_reply)
 {
-  if (!is_interface(endpoint)) {
-    return {false, "MCM enable commands take an MCM_IF endpoint with interface ID below 7.", std::nullopt};
+  // If the endpoint is not an MCM_INTERFACE, delegate to the base class for error handling.
+  if (SygnalControlEndpointType::MCM_INTERFACE != endpoint.type) {
+    return SygnalDevice::send_control_enable_command(endpoint, enable, expect_reply);
   }
+
+  // Throw if the interface ID is out of range.
+  if (MCM_NUM_INTERFACES <= endpoint.endpoint_id) {
+    throw std::invalid_argument(
+      "Sygnal Endpoint " + std::string(endpoint.name) + " has interface ID " + std::to_string(endpoint.endpoint_id) +
+      "; MCM interface IDs are 0-6.");
+  }
+
+  // Construct the control enable message.
   mcm_control::ControlEnable msg;
-  msg.bus_address = bus_id_;
-  msg.sub_system_id = subsystem_id_;
+  msg.bus_address = device().bus_id;
+  msg.sub_system_id = device().subsystem_id;
   msg.interface_id = endpoint.endpoint_id;
   msg.enable = enable ? 1 : 0;
-  msg.crc = 0;
-  const socketcan::CanFrame frame = to_frame(msg);
+  const socketcan::CanFrame frame = to_frame_with_crc(msg);
 
-  std::optional<std::future<SygnalSystemState>> future;
+  // Push a future for the expected reply if needed.
+  std::optional<std::future<Stamped<SygnalSystemState>>> future;
   if (expect_reply) {
-    future = expect_endpoint_state_response(endpoint);
+    future = control_enable_responses_.push(endpoint.endpoint_id);
   }
-  if (const auto send_error = socketcan_adapter_->send(frame)) {
+
+  // Send the control enable message.
+  const std::optional<std::string> send_error = socketcan_adapter_->send(frame);
+
+  // Withdraw the future if sending the message failed.
+  if (send_error.has_value()) {
     if (future) {
-      cancel_endpoint_state_response(endpoint);
+      control_enable_responses_.withdraw_newest(endpoint.endpoint_id);
     }
-    return {false, *send_error, std::nullopt};
+    return {false, send_error.value(), std::nullopt};
   }
+
+  // Return success if the message was sent successfully.
   return {true, "", std::move(future)};
 }
 
-EndpointValueCommandResult SygnalMcmDevice::send_endpoint_value_command(
+ControlCommandResult SygnalMcmDevice::send_control_command(
   const SygnalEndpoint & endpoint, double value, bool expect_reply)
 {
-  socketcan::CanFrame frame;
-  if (SygnalControlEndpointType::MCM_RELAY == endpoint.type) {
-    mcm_relay::RelayCommand msg;
-    msg.bus_address = bus_id_;
-    msg.subsystem_id = subsystem_id_;
-    msg.enable = 0.0 != value ? 1 : 0;
-    msg.crc = 0;
-    frame = to_frame(msg);
-  } else if (is_interface(endpoint)) {
-    mcm_control::ControlCommand msg;
-    msg.bus_address = bus_id_;
-    msg.sub_system_id = subsystem_id_;
-    msg.interface_id = endpoint.endpoint_id;
-    /// TODO: (Ryan) Increment Count8 per command once the MCM's count check is enabled.
-    msg.count8 = 0;
-    msg.value = value;
-    msg.crc = 0;
-    frame = to_frame(msg);
-  } else {
-    return {false, "MCM value commands take an MCM_IF endpoint with interface ID below 7, or MCM_RELAY.", std::nullopt};
+  // Delegate to the appropriate command handler based on the endpoint type (MCM_INTERFACE or MCM_RELAY)
+  switch (endpoint.type) {
+    case SygnalControlEndpointType::MCM_INTERFACE:
+      return send_interface_command(endpoint, value, expect_reply);
+    case SygnalControlEndpointType::MCM_RELAY:
+      return send_relay_command(value, expect_reply);
+    default:
+      return SygnalDevice::send_control_command(endpoint, value, expect_reply);
   }
-  // RelayCommandResponse carries no relay ID, so relay responses are fulfilled on endpoint ID 0.
-  SygnalEndpoint response_endpoint = endpoint;
-  if (SygnalControlEndpointType::MCM_RELAY == endpoint.type) {
-    response_endpoint.endpoint_id = 0;
+}
+
+ControlCommandResult SygnalMcmDevice::send_interface_command(
+  const SygnalEndpoint & endpoint, double value, bool expect_reply)
+{
+  // If type is not MCM_INTERFACE, delegate to the base class for error handling.
+  if (endpoint.type != SygnalControlEndpointType::MCM_INTERFACE) {
+    return SygnalDevice::send_control_command(endpoint, value, expect_reply);
   }
-  std::optional<std::future<double>> future;
+
+  // Throw if the interface ID is out of range.
+  if (MCM_NUM_INTERFACES <= endpoint.endpoint_id) {
+    throw std::invalid_argument(
+      "Sygnal Endpoint " + std::string(endpoint.name) + " has interface ID " + std::to_string(endpoint.endpoint_id) +
+      "; MCM interface IDs are 0-6.");
+  }
+
+  // Construct the control command message.
+  mcm_control::ControlCommand msg;
+  msg.bus_address = device().bus_id;
+  msg.sub_system_id = device().subsystem_id;
+  msg.interface_id = endpoint.endpoint_id;
+  /// TODO: (Ryan) Increment Count8 per command once the MCM's count check is enabled.
+  msg.count8 = 0;
+  msg.value = value;
+  const socketcan::CanFrame frame = to_frame_with_crc(msg);
+
+  // Push a future for the expected reply if needed.
+  std::optional<std::future<Stamped<double>>> future;
   if (expect_reply) {
-    future = expect_endpoint_value_response(response_endpoint);
+    future = control_command_responses_.push(endpoint.endpoint_id);
   }
-  if (const auto send_error = socketcan_adapter_->send(frame)) {
+
+  // Send the control command message
+  const std::optional<std::string> send_error = socketcan_adapter_->send(frame);
+
+  // Withdraw the future if sending the message failed.
+  if (send_error.has_value()) {
     if (future) {
-      cancel_endpoint_value_response(response_endpoint);
+      control_command_responses_.withdraw_newest(endpoint.endpoint_id);
     }
-    return {false, *send_error, std::nullopt};
+    return {false, send_error.value(), std::nullopt};
+  }
+
+  // Return success if the message was sent successfully.
+  return {true, "", std::move(future)};
+}
+
+ControlCommandResult SygnalMcmDevice::send_relay_command(double value, bool expect_reply)
+{
+  // Construct the relay command message.
+  mcm_relay::RelayCommand msg;
+  msg.bus_address = device().bus_id;
+  msg.subsystem_id = device().subsystem_id;
+  msg.enable = 0.0 != value ? 1 : 0;
+  const socketcan::CanFrame frame = to_frame_with_crc(msg);
+
+  // Push a future for the expected reply if needed.
+  // RelayCommandResponse carries no ID, so every relay response fulfills key 0.
+  std::optional<std::future<Stamped<double>>> future;
+  if (expect_reply) {
+    future = relay_responses_.push(0);
+  }
+
+  // send() returns an error message when the send fails, and std::nullopt when it succeeds.
+  const std::optional<std::string> send_error = socketcan_adapter_->send(frame);
+  if (send_error.has_value()) {
+    if (future) {
+      relay_responses_.withdraw_newest(0);
+    }
+    return {false, send_error.value(), std::nullopt};
   }
   return {true, "", std::move(future)};
 }
 
-McmFaultStatus SygnalMcmDevice::get_faults() const
+Stamped<McmFaultStatus> SygnalMcmDevice::get_device_faults() const
 {
-  std::lock_guard<std::mutex> lock(mutex_);
-  McmFaultStatus faults = faults_;
-  faults.system_state = system_state_;
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  Stamped<McmFaultStatus> faults = faults_;
+  faults.value.system_state = system_state_.value;
+  faults.timestamp = std::max(faults_.timestamp, system_state_.timestamp);
   return faults;
 }
 

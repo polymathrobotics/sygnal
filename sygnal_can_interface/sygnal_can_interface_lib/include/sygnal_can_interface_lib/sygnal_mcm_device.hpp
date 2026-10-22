@@ -16,7 +16,6 @@
 
 #include <array>
 #include <cstdint>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -27,76 +26,67 @@
 namespace polymath::sygnal
 {
 
-/// @brief Virtual interfaces an MCM subsystem reports in its heartbeat.
+/// @brief Max number of Interfaces an MCM subsystem can have.
 constexpr uint8_t MCM_NUM_INTERFACES = 7;
 
-/// @brief MCM fault cause, as reported in FaultState, FaultIncrement, FaultList and FaultRootCause.
-enum class McmFaultCause : uint8_t
-{
-  NONE = 0x00,
-  EMERGENCY_STOP = 0x01,
-  EXTERNAL_FAULT = 0x02,
-  CAN_FAIL_OPERATIONAL_1 = 0x03,
-  CAN_FAIL_OPERATIONAL_2 = 0x04,
-  CAN_FAIL_HARD = 0x05,
-  INVALID_SUBSYSTEM_ID = 0x10,
-  INVALID_CONFIGURATION_CRC = 0x11,
-  PHYSICAL_INTERFACE_TRANSITION = 0x1B,
-  INVALID_INPUT_SIGNAL = 0x20,
-  INVALID_OUTPUT_SIGNAL = 0x21,
-  HEARTBEAT_TIMEOUT = 0x30,
-  HEARTBEAT_COUNT = 0x31,
-  CONTROL_TIMEOUT = 0x32,
-  CONTROL_COUNT = 0x33,
-  CONTROL_OUT_OF_BOUNDS = 0x34,
-  CLOSED_LOOP_TIMEOUT = 0x35,
-  CLOSED_LOOP_COUNT = 0x36,
-  CLOSED_LOOP_OUT_OF_BOUNDS = 0x37,
-  INVALID_CONFIGURATION_OPTION = 0x38,
-  SW_INDEX_OUT_OF_BOUNDS = 0x40,
-  SW_INVALID_STATE = 0x41,
-  SW_COPROCESSOR_OVERFLOW = 0x42,
-};
-
-/// @brief Fault status of one MCM subsystem since its faults were last cleared.
-struct McmFaultStatus
-{
-  SygnalSystemState system_state{SygnalSystemState::FAIL_HARD};
-  /// Cause of the current system_state; NONE when not faulted.
-  McmFaultCause state_cause{McmFaultCause::NONE};
-  /// Cause that tripped each fault level; NONE if that level was never entered.
-  McmFaultCause fail_op1_cause{McmFaultCause::NONE};
-  McmFaultCause fail_op2_cause{McmFaultCause::NONE};
-  McmFaultCause fail_hard_cause{McmFaultCause::NONE};
-  /// Occurrences of each cause.
-  std::map<McmFaultCause, uint16_t> counts;
-};
-
-/// @brief One MCM subsystem: MCM_IF endpoints (interface ID 0-6) and one MCM_RELAY endpoint.
-///        Fault status resets when a heartbeat moves the subsystem from a fail state to human or MCM control.
+/// @brief One MCM subsystem: MCM_INTERFACE endpoints (interface ID 0-6) and one MCM_RELAY endpoint.
+///        Adds MCM-specific handling for interfaces, relays, fault states, and errors.
 class SygnalMcmDevice : public SygnalDevice
 {
 public:
   /// @param socketcan_adapter Adapter that commands go out on.
-  SygnalMcmDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, uint8_t bus_id, uint8_t subsystem_id);
+  /// @param device MCM descriptor: bus_id and subsystem_id.
+  /// @param command_timeout How long a command waits for its response before its promise is dropped.
+  SygnalMcmDevice(
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+    const SygnalControlDevice & device,
+    std::chrono::steady_clock::duration command_timeout);
 
-  SygnalSystemState get_endpoint_state(const SygnalEndpoint & endpoint) const override;
-  double get_endpoint_value(const SygnalEndpoint & endpoint) const override;
-  EndpointStateCommandResult send_endpoint_state_command(
+  /// @brief MCM_CONTROL or HUMAN_CONTROL for an MCM_INTERFACE endpoint, from the latest heartbeat or enable response.
+  /// @throws std::invalid_argument for type != MCM_INTERFACE, or an interface ID of 7 or above.
+  Stamped<SygnalSystemState> get_interface_control_state(const SygnalEndpoint & endpoint) const override;
+
+  /// @brief Latest command response value of an MCM_INTERFACE endpoint, or the relay state of MCM_RELAY; 0 until the first.
+  /// @throws std::invalid_argument for type != MCM_INTERFACE or MCM_RELAY, or an interface ID of 7 or above.
+  Stamped<double> get_control_command_value(const SygnalEndpoint & endpoint) const override;
+
+  /// @brief Enable or disable control of an MCM_INTERFACE endpoint.
+  ControlEnableCommandResult send_control_enable_command(
     const SygnalEndpoint & endpoint, bool enable, bool expect_reply) override;
-  EndpointValueCommandResult send_endpoint_value_command(
-    const SygnalEndpoint & endpoint, double value, bool expect_reply) override;
 
-  McmFaultStatus get_faults() const;
+  /// @brief Set an MCM_INTERFACE endpoint's value, or close the MCM_RELAY on a nonzero value and open it on zero.
+  ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply) override;
+
+  /// @brief Fault status; timestamp is the latest of the fault messages and the heartbeat.
+  Stamped<McmFaultStatus> get_device_faults() const override;
+
+protected:
+  /// @brief Pending relay replies, always on key 0; RelayCommandResponse carries no ID.
+  ///        Kept separate from interface responses to avoid fulfilling the wrong promises.
+  ResponseQueues<uint8_t, Stamped<double>> relay_responses_;
 
 private:
-  uint8_t bus_id_;
-  uint8_t subsystem_id_;
+  /// @brief Register callbacks for handling incoming CAN messages.
+  ///        This defines the logic for handling all MCM CAN messages.
+  void initializeCANHandlerCallbacks();
 
-  std::array<bool, MCM_NUM_INTERFACES> interface_enabled_{};
-  std::array<double, MCM_NUM_INTERFACES> interface_values_{};
-  double relay_value_{0.0};
-  McmFaultStatus faults_;
+  /// @brief Helper to send a command to an MCM interface endpoint.
+  ControlCommandResult send_interface_command(const SygnalEndpoint & endpoint, double value, bool expect_reply);
+
+  /// @brief Helper to send a command to the MCM relay endpoint.
+  ControlCommandResult send_relay_command(double value, bool expect_reply);
+
+  /// @brief State of the MCM interfaces and relay based on the last heartbeat or command response.
+  std::array<Stamped<bool>, MCM_NUM_INTERFACES> interface_enabled_{};
+
+  /// @brief State of the MCM interface values based on the last command response.
+  std::array<Stamped<double>, MCM_NUM_INTERFACES> interface_values_{};
+
+  /// @brief State of the MCM relay based on the last command response.
+  Stamped<double> relay_value_{};
+
+  /// @brief Last fault status based on the latest fault message.
+  Stamped<McmFaultStatus> faults_{};
 };
 
 }  // namespace polymath::sygnal
