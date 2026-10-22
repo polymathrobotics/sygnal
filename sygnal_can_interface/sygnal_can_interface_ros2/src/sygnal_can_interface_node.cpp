@@ -31,8 +31,7 @@
   #error "magic_enum headers not found. Please install magic_enum."
 #endif
 
-#include "sygnal_can_interface_lib/sygnal_command_interface.hpp"
-#include "sygnal_can_interface_lib/sygnal_mcm_interface.hpp"
+#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace
 {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "sygnal_can_interface_lib/sygnal_hpo_interface.hpp"
+#include "sygnal_can_interface_lib/sygnal_hpo_device.hpp"
 
 #include <array>
 #include <cmath>
@@ -36,7 +36,7 @@
 using polymath::sygnal::HPO_NUM_INTERFACES;
 using polymath::sygnal::HpoControlResponse;
 using polymath::sygnal::HpoErrorStatus;
-using polymath::sygnal::SygnalHpoInterface;
+using polymath::sygnal::SygnalHpoDevice;
 
 namespace
 {
@@ -140,27 +140,27 @@ polymath::socketcan::CanFrame buildHpoErrorStatus(
 
 }  // namespace
 
-TEST_CASE("SygnalHpoInterface default constructor zeroes interface bits", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice default constructor zeroes interface bits", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo;
+  SygnalHpoDevice hpo;
   REQUIRE(hpo.get_bus_address() == 0);
   for (bool state : hpo.get_interface_states()) {
     REQUIRE_FALSE(state);
   }
 }
 
-TEST_CASE("SygnalHpoInterface explicit constructor sets bus address", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice explicit constructor sets bus address", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   REQUIRE(hpo.get_bus_address() == TEST_BUS_ADDRESS);
   for (bool state : hpo.get_interface_states()) {
     REQUIRE_FALSE(state);
   }
 }
 
-TEST_CASE("SygnalHpoInterface parses heartbeat with all interfaces under HPO control", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice parses heartbeat with all interfaces under HPO control", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
   auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
 
@@ -170,9 +170,9 @@ TEST_CASE("SygnalHpoInterface parses heartbeat with all interfaces under HPO con
   }
 }
 
-TEST_CASE("SygnalHpoInterface parses heartbeat with mixed interface bits", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice parses heartbeat with mixed interface bits", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   std::array<bool, HPO_NUM_INTERFACES> interfaces{true, false, true, false};
   auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
 
@@ -183,9 +183,9 @@ TEST_CASE("SygnalHpoInterface parses heartbeat with mixed interface bits", "[syg
   }
 }
 
-TEST_CASE("SygnalHpoInterface rejects heartbeat with wrong frame ID", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects heartbeat with wrong frame ID", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
   auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
   frame.set_can_id(0x999);
@@ -193,9 +193,9 @@ TEST_CASE("SygnalHpoInterface rejects heartbeat with wrong frame ID", "[sygnal_h
   REQUIRE_FALSE(hpo.parseHeartbeatFrame(frame));
 }
 
-TEST_CASE("SygnalHpoInterface rejects heartbeat with bad CRC", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects heartbeat with bad CRC", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
   auto frame = buildHpoHeartbeat(TEST_BUS_ADDRESS, interfaces);
 
@@ -207,18 +207,18 @@ TEST_CASE("SygnalHpoInterface rejects heartbeat with bad CRC", "[sygnal_hpo_inte
   REQUIRE_FALSE(hpo.parseHeartbeatFrame(frame));
 }
 
-TEST_CASE("SygnalHpoInterface rejects heartbeat addressed to a different bus", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects heartbeat addressed to a different bus", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   std::array<bool, HPO_NUM_INTERFACES> interfaces{true, true, true, true};
   auto frame = buildHpoHeartbeat(OTHER_BUS_ADDRESS, interfaces);
 
   REQUIRE_FALSE(hpo.parseHeartbeatFrame(frame));
 }
 
-TEST_CASE("SygnalHpoInterface creates a ControlEnable frame addressed to itself", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice creates a ControlEnable frame addressed to itself", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   std::string error_message;
 
   auto frame_opt = hpo.createControlEnableFrame(0x42, true, error_message);
@@ -243,9 +243,9 @@ TEST_CASE("SygnalHpoInterface creates a ControlEnable frame addressed to itself"
   REQUIRE(unpacked.enable == 1);
 }
 
-TEST_CASE("SygnalHpoInterface creates a ControlCommand frame addressed to itself", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice creates a ControlCommand frame addressed to itself", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   std::string error_message;
 
   auto frame_opt = hpo.createControlCommandFrame(0x07, 0.5, error_message);
@@ -272,9 +272,9 @@ TEST_CASE("SygnalHpoInterface creates a ControlCommand frame addressed to itself
   REQUIRE(std::fabs(decoded_value - 0.5) < 1e-6);
 }
 
-TEST_CASE("SygnalHpoInterface parses ControlEnableResponse", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice parses ControlEnableResponse", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoControlEnableResponse(TEST_BUS_ADDRESS, 0x42, true);
 
   auto response = hpo.parseControlResponse(frame);
@@ -285,9 +285,9 @@ TEST_CASE("SygnalHpoInterface parses ControlEnableResponse", "[sygnal_hpo_interf
   REQUIRE(response->enable);
 }
 
-TEST_CASE("SygnalHpoInterface parses ControlCommandResponse", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice parses ControlCommandResponse", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoControlCommandResponse(TEST_BUS_ADDRESS, 0x07, 0.75);
 
   auto response = hpo.parseControlResponse(frame);
@@ -298,26 +298,26 @@ TEST_CASE("SygnalHpoInterface parses ControlCommandResponse", "[sygnal_hpo_inter
   REQUIRE(std::fabs(response->value - 0.75) < 1e-6);
 }
 
-TEST_CASE("SygnalHpoInterface rejects control response for a different bus", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects control response for a different bus", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoControlEnableResponse(OTHER_BUS_ADDRESS, 0x42, true);
 
   REQUIRE_FALSE(hpo.parseControlResponse(frame).has_value());
 }
 
-TEST_CASE("SygnalHpoInterface rejects control response with unrelated frame ID", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects control response with unrelated frame ID", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoControlEnableResponse(TEST_BUS_ADDRESS, 0x42, true);
   frame.set_can_id(0x999);
 
   REQUIRE_FALSE(hpo.parseControlResponse(frame).has_value());
 }
 
-TEST_CASE("SygnalHpoInterface rejects control response with bad CRC", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects control response with bad CRC", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoControlCommandResponse(TEST_BUS_ADDRESS, 0x07, 0.5);
   auto bytes = frame.get_data();
   bytes[7] ^= 0xFF;
@@ -326,9 +326,9 @@ TEST_CASE("SygnalHpoInterface rejects control response with bad CRC", "[sygnal_h
   REQUIRE_FALSE(hpo.parseControlResponse(frame).has_value());
 }
 
-TEST_CASE("SygnalHpoInterface parses ErrorStatus", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice parses ErrorStatus", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoErrorStatus(TEST_BUS_ADDRESS, 1, 5, 0x1234, 6, 2);
 
   auto err = hpo.parseErrorFrame(frame);
@@ -341,17 +341,17 @@ TEST_CASE("SygnalHpoInterface parses ErrorStatus", "[sygnal_hpo_interface]")
   REQUIRE(err->config_interface_id == 2);
 }
 
-TEST_CASE("SygnalHpoInterface rejects error frame for a different bus", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects error frame for a different bus", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoErrorStatus(OTHER_BUS_ADDRESS, 1, 5, 0x1234, 6, 2);
 
   REQUIRE_FALSE(hpo.parseErrorFrame(frame).has_value());
 }
 
-TEST_CASE("SygnalHpoInterface rejects error frame with bad CRC", "[sygnal_hpo_interface]")
+TEST_CASE("SygnalHpoDevice rejects error frame with bad CRC", "[sygnal_hpo_device]")
 {
-  SygnalHpoInterface hpo(TEST_BUS_ADDRESS);
+  SygnalHpoDevice hpo(TEST_BUS_ADDRESS);
   auto frame = buildHpoErrorStatus(TEST_BUS_ADDRESS, 1, 5, 0x1234, 6, 2);
   auto bytes = frame.get_data();
   bytes[7] ^= 0xFF;

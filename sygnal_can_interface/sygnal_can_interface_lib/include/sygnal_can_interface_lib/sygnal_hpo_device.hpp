@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SYGNAL_CAN_INTERFACE_LIB__SYGNAL_HPO_INTERFACE_HPP_
-#define SYGNAL_CAN_INTERFACE_LIB__SYGNAL_HPO_INTERFACE_HPP_
+#pragma once
 
 #include <array>
 #include <chrono>
@@ -21,6 +20,7 @@
 #include <string>
 
 #include "socketcan_adapter/can_frame.hpp"
+#include "sygnal_can_interface_lib/sygnal_device.hpp"
 #include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
@@ -35,19 +35,18 @@ constexpr uint8_t HPO_NUM_INTERFACES = 4;
 ///
 /// Owns the per-interface control-state bits (one per HPO interface, 0-3) and produces /
 /// consumes the CAN frames the HPO understands. Frames are routed to the right
-/// instance by `bus_address_`: every parse helper rejects frames that do not match
-/// this device's bus address. Command frames are populated with `bus_address_`
+/// instance by bus address: every parse helper rejects frames that do not match
+/// this device's bus address. Command frames are populated with the bus address
 /// automatically so callers cannot mismatch addresses.
 ///
 /// Unlike the MCM, the HPO does not hold a Sygnal state machine. Each per-interface
 /// heartbeat signal is a 1-bit boolean (true = HPO in control, false = released). The
 /// MCM's SystemState byte is not tracked here.
-class SygnalHpoInterface
+class SygnalHpoDevice : public SygnalDevice
 {
 public:
-  SygnalHpoInterface();
-  explicit SygnalHpoInterface(uint8_t bus_address);
-  ~SygnalHpoInterface() = default;
+  SygnalHpoDevice();
+  explicit SygnalHpoDevice(uint8_t bus_address);
 
   /// @brief Try to parse a CAN frame as an HPO heartbeat addressed to this device.
   /// @param frame Raw CAN frame.
@@ -81,11 +80,6 @@ public:
   std::optional<socketcan::CanFrame> createControlCommandFrame(
     uint8_t message_id, double value, std::string & error_message);
 
-  uint8_t get_bus_address() const
-  {
-    return bus_address_;
-  }
-
   std::array<bool, HPO_NUM_INTERFACES> get_interface_states() const
   {
     return hpo_interface_states_;
@@ -97,11 +91,8 @@ public:
   }
 
 private:
-  uint8_t bus_address_;
   std::array<bool, HPO_NUM_INTERFACES> hpo_interface_states_;
   std::chrono::system_clock::time_point last_heartbeat_timestamp_;
 };
 
 }  // namespace polymath::sygnal
-
-#endif  // SYGNAL_CAN_INTERFACE_LIB__SYGNAL_HPO_INTERFACE_HPP_
