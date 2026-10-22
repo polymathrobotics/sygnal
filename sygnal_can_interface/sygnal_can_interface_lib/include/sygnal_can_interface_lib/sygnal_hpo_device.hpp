@@ -17,7 +17,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
 
@@ -26,38 +25,51 @@
 namespace polymath::sygnal
 {
 
-/// @brief Interfaces an HPO reports in its heartbeat.
+/// @brief Max number of interfaces an HPO reports in its heartbeat.
 constexpr uint8_t HPO_NUM_INTERFACES = 4;
 
-/// @brief One HPO board: HPO_IF endpoints, where endpoint_id is the HPO MessageID.
-///        Endpoint state is known for message IDs 0-3, the interfaces in the heartbeat.
-///        An HPO has no subsystems: its subsystem_id is ignored and it receives frames with either bit 7 value.
+/// @brief One HPO board: HPO_INTERFACE endpoints, where endpoint_id is the HPO message ID (0-255).
+///        Adds HPO-specific handling for interface states and command values.
+///        Interface state is only reported for message IDs 0-3.
+///        Receives frames with either subsystem bit value.
 class SygnalHpoDevice : public SygnalDevice
 {
 public:
   /// @param socketcan_adapter Adapter that commands go out on.
-  SygnalHpoDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, uint8_t bus_id);
+  /// @param device HPO descriptor: bus_id.
+  /// @param command_timeout How long a command waits for its response before its promise is dropped.
+  SygnalHpoDevice(
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+    const SygnalControlDevice & device,
+    std::chrono::steady_clock::duration command_timeout);
 
-  SygnalSystemState get_endpoint_state(const SygnalEndpoint & endpoint) const override;
-  double get_endpoint_value(const SygnalEndpoint & endpoint) const override;
-  EndpointStateCommandResult send_endpoint_state_command(
+  /// @brief State of an HPO_INTERFACE endpoint, from the latest heartbeat or enable response; FAIL_HARD until the first.
+  /// @throws std::invalid_argument for type != HPO_INTERFACE, or a message ID of 4 or above.
+  Stamped<SygnalSystemState> get_interface_control_state(const SygnalEndpoint & endpoint) const override;
+
+  /// @brief Latest value of an HPO_INTERFACE endpoint; 0 until the first.
+  ///        Message IDs 0-3 also take the heartbeat's pin state: 0 HiZ, 1 Pull_Down, 2 Pull_Up.
+  ///        Message IDs 4-255 come from command responses only.
+  /// @throws std::invalid_argument for type != HPO_INTERFACE.
+  Stamped<double> get_control_command_value(const SygnalEndpoint & endpoint) const override;
+
+  /// @brief Enable or disable control of an HPO_INTERFACE endpoint.
+  ControlEnableCommandResult send_control_enable_command(
     const SygnalEndpoint & endpoint, bool enable, bool expect_reply) override;
-  EndpointValueCommandResult send_endpoint_value_command(
-    const SygnalEndpoint & endpoint, double value, bool expect_reply) override;
+
+  /// @brief Set an HPO_INTERFACE endpoint's value.
+  ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply) override;
 
 private:
-  /// @brief The bus ID this HPO device is on.
-  uint8_t bus_id_;
+  /// @brief Register callbacks for handling incoming CAN messages.
+  ///        This defines the logic for handling all HPO CAN messages.
+  void initializeCANHandlerCallbacks();
 
-  /// @brief Mutex protecting access to the interface states and values.
+  /// @brief State of the HPO interfaces based on the last heartbeat or enable response.
+  std::array<Stamped<SygnalSystemState>, HPO_NUM_INTERFACES> interface_states_;
 
-  /// @brief The SygnalSystemState of each HPO interface as reported in the heartbeat.
-  ///        FAIL_HARD until a heartbeat is received.
-  std::array<SygnalSystemState, HPO_NUM_INTERFACES> interface_states_;
-
-  /// @brief The last known value of each HPO interface as reported in the control command response.
-  ///        Zero until a response is received.
-  std::array<double, UINT8_MAX + 1> values_{};  ///< Indexed by MessageID.
+  /// @brief State of the HPO values based on the last heartbeat or command response, indexed by message ID.
+  std::array<Stamped<double>, UINT8_MAX + 1> values_{};
 };
 
 }  // namespace polymath::sygnal
