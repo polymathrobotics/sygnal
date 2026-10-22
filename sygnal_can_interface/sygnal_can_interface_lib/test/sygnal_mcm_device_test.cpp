@@ -30,6 +30,7 @@
 
 #include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
 
+using polymath::sygnal::McmFaultCause;
 using polymath::sygnal::SygnalControlDevice;
 using polymath::sygnal::SygnalControlDeviceType;
 using polymath::sygnal::SygnalControlEndpointType;
@@ -178,6 +179,7 @@ TEST_CASE("MCM getters carry the bus time of the frame that set them", "[mcm_dev
   TestMcmDevice device(adapter(), MCM, COMMAND_TIMEOUT);
   const std::chrono::system_clock::time_point heartbeat_time{std::chrono::milliseconds(100)};
   const std::chrono::system_clock::time_point enable_time{std::chrono::milliseconds(200)};
+  const std::chrono::system_clock::time_point fault_time{std::chrono::milliseconds(300)};
 
   CHECK(std::chrono::system_clock::time_point{} == device.get_device_system_state().timestamp);
 
@@ -188,6 +190,70 @@ TEST_CASE("MCM getters carry the bus time of the frame that set them", "[mcm_dev
   CHECK(heartbeat_time == device.get_device_system_state().timestamp);
   CHECK(heartbeat_time == device.get_interface_control_state(mcm_if(0)).timestamp);
   CHECK(enable_time == device.get_interface_control_state(mcm_if(1)).timestamp);
+
+  REQUIRE(device.handle(sygnal_test::mcm_fault_increment(BUS, SUBSYSTEM, 0x32, 1), {}, fault_time));
+  CHECK(fault_time == device.get_device_faults().timestamp);
+}
+
+TEST_CASE("MCM fault messages populate the fault status", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), MCM, COMMAND_TIMEOUT);
+  REQUIRE(device.handle(sygnal_test::mcm_fault_state(BUS, SUBSYSTEM, SygnalSystemState::FAIL_HARD, 0x01)));
+  REQUIRE(device.handle(sygnal_test::mcm_fault_increment(BUS, SUBSYSTEM, 0x32, 3)));
+  REQUIRE(device.handle(sygnal_test::mcm_fault_list(BUS, SUBSYSTEM, 0x33, 4)));
+  REQUIRE(device.handle(sygnal_test::mcm_fault_root_cause(BUS, SUBSYSTEM, 0x32, 0x00, 0x01)));
+
+  const auto faults = device.get_device_faults().value;
+  CHECK(SygnalSystemState::FAIL_HARD == faults.system_state);
+  CHECK(McmFaultCause::EMERGENCY_STOP == faults.state_cause);
+  CHECK(McmFaultCause::CONTROL_TIMEOUT == faults.fail_op1_cause);
+  CHECK(McmFaultCause::NONE == faults.fail_op2_cause);
+  CHECK(McmFaultCause::EMERGENCY_STOP == faults.fail_hard_cause);
+  CHECK(3 == faults.counts.at(McmFaultCause::CONTROL_TIMEOUT));  // NOLINT(readability/check)
+  CHECK(4 == faults.counts.at(McmFaultCause::CONTROL_COUNT));  // NOLINT(readability/check)
+}
+
+TEST_CASE("MCM fault counts take the latest absolute count", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), MCM, COMMAND_TIMEOUT);
+  REQUIRE(device.handle(sygnal_test::mcm_fault_increment(BUS, SUBSYSTEM, 0x32, 5)));
+  REQUIRE(device.handle(sygnal_test::mcm_fault_list(BUS, SUBSYSTEM, 0x32, 5)));
+
+  CHECK(5 == device.get_device_faults().value.counts.at(McmFaultCause::CONTROL_TIMEOUT));  // NOLINT(readability/check)
+}
+
+TEST_CASE("MCM faults clear only when a heartbeat leaves a fail state", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), MCM, COMMAND_TIMEOUT);
+  REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::MCM_CONTROL)));
+  REQUIRE(device.handle(sygnal_test::mcm_fault_increment(BUS, SUBSYSTEM, 0x33, 1)));
+
+  SECTION("a healthy heartbeat keeps sub-threshold counts")
+  {
+    REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::MCM_CONTROL)));
+    CHECK(1 == device.get_device_faults().value.counts.at(McmFaultCause::CONTROL_COUNT));  // NOLINT(readability/check)
+  }
+
+  SECTION("a fail state followed by human control clears everything")
+  {
+    REQUIRE(device.handle(sygnal_test::mcm_fault_state(BUS, SUBSYSTEM, SygnalSystemState::FAIL_HARD, 0x01)));
+    REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::FAIL_HARD)));
+    CHECK(McmFaultCause::EMERGENCY_STOP == device.get_device_faults().value.state_cause);
+
+    REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::HUMAN_CONTROL)));
+    const auto faults = device.get_device_faults().value;
+    CHECK(SygnalSystemState::HUMAN_CONTROL == faults.system_state);
+    CHECK(McmFaultCause::NONE == faults.state_cause);
+    CHECK(faults.counts.empty());
+  }
+
+  SECTION("a human override followed by human control clears everything")
+  {
+    REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::FAIL_OPERATIONAL_1)));
+    REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::HUMAN_OVERRIDE)));
+    REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::HUMAN_CONTROL)));
+    CHECK(device.get_device_faults().value.counts.empty());
+  }
 }
 
 TEST_CASE("MCM device rejects endpoints and values it does not have", "[mcm_device]")

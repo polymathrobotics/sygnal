@@ -91,4 +91,10 @@ ControlCommandResult SygnalDevice::send_control_command(const SygnalEndpoint & e
     " does not support Control commands.");
 }
 
+Stamped<McmFaultStatus> SygnalDevice::get_device_faults() const
+{
+  throw std::invalid_argument(
+    "Sygnal device type " + std::string(magic_enum::enum_name(device_.type)) + " does not support Fault feedback.");
+}
+
 }  // namespace polymath::sygnal

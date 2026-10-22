@@ -58,6 +58,11 @@ public:
   /// @throws std::invalid_argument if the device is unknown or has no such endpoint.
   Stamped<double> get_control_command_value(const SygnalEndpoint & endpoint) const;
 
+  /// @brief Fault status of the device.
+  /// @details MCMs only send this when there is an active fault. Struct is empty otherwise.
+  /// @throws std::invalid_argument if the device is unknown or does not report faults.
+  Stamped<McmFaultStatus> get_device_faults(const SygnalControlDevice & device) const;
+
   /// @brief Enable or disable control of an endpoint.
   /// @param expect_reply Return a future that resolves from the endpoint's enable response.
   /// @return success false with the reason if the send fails; response_future is empty unless expect_reply.

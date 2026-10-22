@@ -134,6 +134,12 @@ Stamped<double> SygnalInterfaceSocketcan::get_control_command_value(const Sygnal
   return device_at(endpoint.device).get_control_command_value(endpoint);
 }
 
+Stamped<McmFaultStatus> SygnalInterfaceSocketcan::get_device_faults(const SygnalControlDevice & device) const
+{
+  // Pass through to the device function.
+  return device_at(device).get_device_faults();
+}
+
 ControlEnableCommandResult SygnalInterfaceSocketcan::send_control_enable_command(
   const SygnalEndpoint & endpoint, bool enable, bool expect_reply)
 {
