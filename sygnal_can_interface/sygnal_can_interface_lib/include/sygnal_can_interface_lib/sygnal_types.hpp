@@ -36,6 +36,7 @@ enum class SygnalControlDeviceType : uint8_t
 {
   MCM,
   HPO,
+  CB,
   IO
 };
 
@@ -45,6 +46,7 @@ enum class SygnalControlEndpointType : uint8_t
   MCM_INTERFACE,
   MCM_RELAY,
   HPO_INTERFACE,
+  CB_INTERFACE,
   IO_INTERFACE
 };
 
@@ -131,7 +133,7 @@ struct SygnalControlDevice
 };
 
 /// @brief One controllable endpoint on a device.
-///        endpoint_id is generic for InterfaceID on MCMs and IOs, or for MessageID on HPOs.
+///        endpoint_id is generic for InterfaceID on MCMs and IOs, or for MessageID on HPOs and CBs.
 ///        Values are float32 on the wire; an MCM relay takes and reports 1.0 or 0.0.
 struct SygnalEndpoint
 {

@@ -19,6 +19,8 @@
 #include <array>
 #include <cstdint>
 
+#include "cb_control/cb_control.hpp"
+#include "cb_heartbeat/cb_heartbeat.hpp"
 #include "hpo_control/hpo_control.hpp"
 #include "hpo_error/hpo_error.hpp"
 #include "hpo_heartbeat/hpo_heartbeat.hpp"
@@ -204,6 +206,38 @@ inline can_frame hpo_enable_response(uint8_t bus_id, uint8_t message_id, bool en
 inline can_frame hpo_command_response(uint8_t bus_id, uint8_t message_id, double value)
 {
   hpo_control::ControlCommandResponse msg;
+  msg.bus_address = bus_id;
+  msg.message_id = message_id;
+  msg.count8 = 0;
+  msg.value = value;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame cb_heartbeat(uint8_t bus_id, polymath::sygnal::SygnalSystemState state, uint8_t subsystem_id = 0)
+{
+  cb_heartbeat::Heartbeat msg;
+  msg.bus_address = bus_id;
+  msg.subsystem_id = subsystem_id;
+  msg.system_state = static_cast<uint8_t>(state);
+  msg.count16 = 0;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame cb_enable_response(uint8_t bus_id, uint8_t message_id, bool enable)
+{
+  cb_control::ControlEnableResponse msg;
+  msg.bus_address = bus_id;
+  msg.message_id = message_id;
+  msg.enable = enable;
+  msg.crc = 0;
+  return to_frame(msg);
+}
+
+inline can_frame cb_command_response(uint8_t bus_id, uint8_t message_id, double value)
+{
+  cb_control::ControlCommandResponse msg;
   msg.bus_address = bus_id;
   msg.message_id = message_id;
   msg.count8 = 0;
