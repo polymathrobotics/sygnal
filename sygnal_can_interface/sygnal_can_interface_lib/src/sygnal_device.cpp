@@ -15,21 +15,32 @@
 #include "sygnal_can_interface_lib/sygnal_device.hpp"
 
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <stdexcept>
+#include <string>
 #include <utility>
+
+#include "sygnal_can_interface_lib/crc8.hpp"
 
 namespace polymath::sygnal
 {
 
 SygnalDevice::SygnalDevice(
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-  uint8_t bus_address,
+  SygnalControlDevice device,
   std::chrono::steady_clock::duration command_timeout)
 : socketcan_adapter_(std::move(socketcan_adapter))
 , command_timeout_(command_timeout)
-, bus_address_(bus_address)
+, control_enable_responses_(command_timeout_)
+, control_command_responses_(command_timeout_)
+, device_(device)
 {}
 
-bool SygnalDevice::handle(const can_frame & frame)
+bool SygnalDevice::handle(
+  const can_frame & frame,
+  std::chrono::steady_clock::time_point receive_time,
+  std::chrono::system_clock::time_point bus_time)
 {
   // Reject frames that are not 8 bytes since every sygnal message puts the CRC in the 8th byte.
   // Then check the CRC of the frame.
@@ -38,12 +49,46 @@ bool SygnalDevice::handle(const can_frame & frame)
   }
 
   // Pass the frame to can handler.
-  return can_handler_.handle(frame);
+  return can_handler_.handle(frame, receive_time, bus_time);
 }
 
-uint8_t SygnalDevice::get_bus_address() const
+const SygnalControlDevice & SygnalDevice::device() const
 {
-  return bus_address_;
+  return device_;
+}
+
+Stamped<SygnalSystemState> SygnalDevice::get_device_system_state() const
+{
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  return system_state_;
+}
+
+Stamped<SygnalSystemState> SygnalDevice::get_interface_control_state(const SygnalEndpoint & endpoint) const
+{
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Interface Control State feedback.");
+}
+
+Stamped<double> SygnalDevice::get_control_command_value(const SygnalEndpoint & endpoint) const
+{
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Control Command Value feedback.");
+}
+
+ControlEnableCommandResult SygnalDevice::send_control_enable_command(const SygnalEndpoint & endpoint, bool, bool)
+{
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Control Enable commands.");
+}
+
+ControlCommandResult SygnalDevice::send_control_command(const SygnalEndpoint & endpoint, double, bool)
+{
+  throw std::invalid_argument(
+    "Sygnal Endpoint Type " + std::string(magic_enum::enum_name(endpoint.type)) +
+    " does not support Control commands.");
 }
 
 }  // namespace polymath::sygnal

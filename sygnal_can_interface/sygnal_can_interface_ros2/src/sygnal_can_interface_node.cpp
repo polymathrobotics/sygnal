@@ -47,7 +47,7 @@ static std::vector<T> iife_vector(const std::vector<U> & input, F transform)
   return result;
 }
 
-static polymath::sygnal::McmId parse_mcm_id(const std::string & endpoint)
+static polymath::sygnal::SygnalControlDevice parse_mcm_device(const std::string & endpoint)
 {
   const auto sep = endpoint.find('-');
   if (std::string::npos == sep) {
@@ -58,16 +58,43 @@ static polymath::sygnal::McmId parse_mcm_id(const std::string & endpoint)
   if (0 > bus || bus > 255 || 0 > sub || sub > 255) {
     throw std::invalid_argument("Invalid mcm_endpoints entry '" + endpoint + "': values must fit in uint8");
   }
-  return {static_cast<uint8_t>(bus), static_cast<uint8_t>(sub)};
+  return {polymath::sygnal::SygnalControlDeviceType::MCM, static_cast<uint8_t>(bus), static_cast<uint8_t>(sub)};
 }
 
-static polymath::sygnal::HpoId parse_hpo_id(int64_t value)
+static polymath::sygnal::SygnalControlDevice parse_hpo_device(int64_t value)
 {
   if (0 > value || value > 127) {
     throw std::invalid_argument(
       "Invalid hpo_endpoints entry '" + std::to_string(value) + "': bus address must be in [0, 127]");
   }
-  return {static_cast<uint8_t>(value)};
+  return {polymath::sygnal::SygnalControlDeviceType::HPO, static_cast<uint8_t>(value)};
+}
+
+/// @brief Interfaces published in McmHeartbeat and diagnostics.
+constexpr uint8_t NUM_HEARTBEAT_INTERFACES = 5;
+
+polymath::sygnal::SygnalControlDevice mcm_device(uint8_t bus_id, uint8_t subsystem_id)
+{
+  return {polymath::sygnal::SygnalControlDeviceType::MCM, bus_id, subsystem_id};
+}
+
+/// @brief An MCM interface endpoint built from a request; the library does not use min, max or is_int.
+polymath::sygnal::SygnalEndpoint mcm_interface(uint8_t bus_id, uint8_t subsystem_id, uint8_t interface_id)
+{
+  return {
+    polymath::sygnal::SygnalControlEndpointType::MCM_INTERFACE,
+    mcm_device(bus_id, subsystem_id),
+    interface_id,
+    -1,
+    1,
+    false,
+    "interface"};
+}
+
+polymath::sygnal::SygnalEndpoint mcm_relay(uint8_t bus_id, uint8_t subsystem_id)
+{
+  return {
+    polymath::sygnal::SygnalControlEndpointType::MCM_RELAY, mcm_device(bus_id, subsystem_id), 0, 0, 1, true, "relay"};
 }
 
 }  // namespace
@@ -79,8 +106,8 @@ SygnalCanInterfaceNode::SygnalCanInterfaceNode(const rclcpp::NodeOptions & optio
 : rclcpp_lifecycle::LifecycleNode("sygnal_can_interface_node", "", options)
 , param_listener_(get_node_parameters_interface())
 , params_(param_listener_.get_params())
-, mcm_ids_(iife_vector<McmId>(params_.mcm_endpoints, parse_mcm_id))
-, hpo_ids_(iife_vector<HpoId>(params_.hpo_endpoints, parse_hpo_id))
+, mcm_devices_(iife_vector<SygnalControlDevice>(params_.mcm_endpoints, parse_mcm_device))
+, hpo_devices_(iife_vector<SygnalControlDevice>(params_.hpo_endpoints, parse_hpo_device))
 {}
 
 SygnalCanInterfaceNode::~SygnalCanInterfaceNode()
@@ -108,10 +135,11 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
       return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE;
     }
 
-    // Initialize Sygnal Interface SocketCAN controller. Constructor throws if MCM and HPO bus addresses
-    // overlap; we let that propagate up so on_configure returns FAILURE in the catch block below.
-    sygnal_interface_ =
-      std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_, mcm_ids_, hpo_ids_);
+    // Initialize Sygnal Interface SocketCAN controller. Constructor throws if two devices share an address;
+    // we let that propagate up so on_configure returns FAILURE in the catch block below.
+    std::vector<SygnalControlDevice> devices = mcm_devices_;
+    devices.insert(devices.end(), hpo_devices_.begin(), hpo_devices_.end());
+    sygnal_interface_ = std::make_unique<polymath::sygnal::SygnalInterfaceSocketcan>(socketcan_adapter_, devices);
 
     // Set up callback to parse incoming messages
     socketcan_adapter_->setOnReceiveCallback(
@@ -127,9 +155,9 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
     diagnostics_pub_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", rclcpp::QoS(10));
 
     // Initialize MCM heartbeat publishers from configured endpoints
-    mcm_heartbeat_entries_.reserve(mcm_ids_.size());
-    for (const auto & id : mcm_ids_) {
-      mcm_heartbeat_entries_.push_back({id.bus_id, id.subsystem_id, {}, {}});
+    mcm_heartbeat_entries_.reserve(mcm_devices_.size());
+    for (const auto & device : mcm_devices_) {
+      mcm_heartbeat_entries_.push_back({device.bus_id, device.subsystem_id, {}, {}});
     }
 
     for (auto & entry : mcm_heartbeat_entries_) {
@@ -226,19 +254,14 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
 void SygnalCanInterfaceNode::timerCallback()
 {
   for (auto & entry : mcm_heartbeat_entries_) {
-    auto mcm_state_opt = sygnal_interface_->get_sygnal_mcm_state(entry.bus_id, entry.subsystem_id);
-    auto interface_states_opt = sygnal_interface_->get_interface_state(entry.bus_id, entry.subsystem_id);
-
-    if (!mcm_state_opt || !interface_states_opt) {
-      continue;
-    }
-
     sygnal_can_msgs::msg::McmHeartbeat msg;
     msg.header.stamp = now();
-    msg.state = static_cast<uint8_t>(mcm_state_opt.value());
+    msg.state = static_cast<uint8_t>(
+      sygnal_interface_->get_device_system_state(mcm_device(entry.bus_id, entry.subsystem_id)).value);
 
-    for (const auto & state : interface_states_opt.value()) {
-      msg.interface_states.push_back(static_cast<uint8_t>(state));
+    for (uint8_t i = 0; i < NUM_HEARTBEAT_INTERFACES; ++i) {
+      msg.interface_states.push_back(static_cast<uint8_t>(
+        sygnal_interface_->get_interface_control_state(mcm_interface(entry.bus_id, entry.subsystem_id, i)).value));
     }
 
     entry.current_state = msg;
@@ -264,18 +287,20 @@ void SygnalCanInterfaceNode::setControlStateCallback(
     request->subsystem_id,
     request->control_state);
 
-  // Convert uint8 to SygnalControlState enum
-  SygnalControlState control_state =
-    request->control_state == 1 ? SygnalControlState::MCM_CONTROL : SygnalControlState::HUMAN_CONTROL;
-
   // Send control state command
-  std::string error_message;
-  auto result = sygnal_interface_->sendControlStateCommand(
-    request->bus_id, request->interface_id, request->subsystem_id, control_state, request->expect_reply, error_message);
+  ControlEnableCommandResult result{false, "", std::nullopt};
+  try {
+    result = sygnal_interface_->send_control_enable_command(
+      mcm_interface(request->bus_id, request->subsystem_id, request->interface_id),
+      1 == request->control_state,
+      request->expect_reply);
+  } catch (const std::invalid_argument & e) {
+    result.error_message = e.what();
+  }
 
   if (!result.success) {
     response->success = false;
-    response->message = "Failed to send control state command: " + error_message;
+    response->message = "Failed to send control state command: " + result.error_message;
     RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
     return;
   }
@@ -289,9 +314,10 @@ void SygnalCanInterfaceNode::setControlStateCallback(
       auto command_response = future.get();
       RCLCPP_INFO(
         get_logger(),
-        "Control state command acknowledged - bus_id: %d, interface_id: %d",
-        command_response.bus_id,
-        command_response.interface_id);
+        "Control state command acknowledged - bus_id: %d, interface_id: %d, state: %s",
+        request->bus_id,
+        request->interface_id,
+        std::string(magic_enum::enum_name(command_response.value)).c_str());
       response->success = true;
       response->message = "Control state command successful";
     } else {
@@ -319,18 +345,19 @@ void SygnalCanInterfaceNode::sendControlCommandCallback(
     request->command.value);
 
   // Send control command
-  std::string error_message;
-  auto result = sygnal_interface_->sendControlCommand(
-    request->command.bus_id,
-    request->command.interface_id,
-    request->command.subsystem_id,
-    request->command.value,
-    request->expect_reply,
-    error_message);
+  ControlCommandResult result{false, "", std::nullopt};
+  try {
+    result = sygnal_interface_->send_control_command(
+      mcm_interface(request->command.bus_id, request->command.subsystem_id, request->command.interface_id),
+      request->command.value,
+      request->expect_reply);
+  } catch (const std::invalid_argument & e) {
+    result.error_message = e.what();
+  }
 
   if (!result.success) {
     response->success = false;
-    response->message = "Failed to send control command: " + error_message;
+    response->message = "Failed to send control command: " + result.error_message;
     RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
     return;
   }
@@ -345,8 +372,8 @@ void SygnalCanInterfaceNode::sendControlCommandCallback(
       RCLCPP_INFO(
         get_logger(),
         "Control command acknowledged - bus_id: %d, interface_id: %d, value: %f",
-        command_response.bus_id,
-        command_response.interface_id,
+        request->command.bus_id,
+        request->command.interface_id,
         command_response.value);
       response->success = true;
       response->message = "Control command successful";
@@ -375,12 +402,16 @@ void SygnalCanInterfaceNode::controlCommandCallback(const sygnal_can_msgs::msg::
     msg->value);
 
   // Send control command without expecting a reply
-  std::string error_message;
-  auto result = sygnal_interface_->sendControlCommand(
-    msg->bus_id, msg->interface_id, msg->subsystem_id, msg->value, false, error_message);
+  ControlCommandResult result{false, "", std::nullopt};
+  try {
+    result = sygnal_interface_->send_control_command(
+      mcm_interface(msg->bus_id, msg->subsystem_id, msg->interface_id), msg->value, false);
+  } catch (const std::invalid_argument & e) {
+    result.error_message = e.what();
+  }
 
   if (!result.success) {
-    RCLCPP_WARN(get_logger(), "Failed to send control command from subscription: %s", error_message.c_str());
+    RCLCPP_WARN(get_logger(), "Failed to send control command from subscription: %s", result.error_message.c_str());
   } else {
     RCLCPP_DEBUG(
       get_logger(),
@@ -405,13 +436,17 @@ void SygnalCanInterfaceNode::sendRelayCommandCallback(
   bool relay_state = (request->relay_state == 1);
 
   // Send relay command
-  std::string error_message;
-  auto result = sygnal_interface_->sendRelayCommand(
-    request->bus_id, request->subsystem_id, relay_state, request->expect_reply, error_message);
+  ControlCommandResult result{false, "", std::nullopt};
+  try {
+    result = sygnal_interface_->send_control_command(
+      mcm_relay(request->bus_id, request->subsystem_id), relay_state ? 1.0 : 0.0, request->expect_reply);
+  } catch (const std::invalid_argument & e) {
+    result.error_message = e.what();
+  }
 
   if (!result.success) {
     response->success = false;
-    response->message = "Failed to send relay command: " + error_message;
+    response->message = "Failed to send relay command: " + result.error_message;
     RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
     return;
   }
@@ -425,9 +460,10 @@ void SygnalCanInterfaceNode::sendRelayCommandCallback(
       auto command_response = future.get();
       RCLCPP_INFO(
         get_logger(),
-        "Relay command acknowledged - bus_id: %d, subsystem_id: %d",
-        command_response.bus_id,
-        static_cast<uint8_t>(command_response.value));
+        "Relay command acknowledged - bus_id: %d, subsystem_id: %d, state: %d",
+        request->bus_id,
+        request->subsystem_id,
+        static_cast<int>(command_response.value));
       response->success = true;
       response->message = "Relay command successful";
     } else {
@@ -451,14 +487,8 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
   array_msg.header.frame_id = "";
 
   for (const auto & entry : mcm_heartbeat_entries_) {
-    auto mcm_state_opt = sygnal_interface_->get_sygnal_mcm_state(entry.bus_id, entry.subsystem_id);
-    auto interface_states_opt = sygnal_interface_->get_interface_state(entry.bus_id, entry.subsystem_id);
-
-    if (!mcm_state_opt) {
-      continue;
-    }
-
-    auto mcm_state = mcm_state_opt.value();
+    const auto mcm_state =
+      sygnal_interface_->get_device_system_state(mcm_device(entry.bus_id, entry.subsystem_id)).value;
     std::string mcm_name =
       "sygnal_mcm_bus" + std::to_string(entry.bus_id) + "_sub" + std::to_string(entry.subsystem_id);
 
@@ -476,42 +506,41 @@ diagnostic_msgs::msg::DiagnosticArray SygnalCanInterfaceNode::createDiagnosticsM
       mcm_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
     }
 
-    mcm_diag.message = mcm_name + " state: " + sygnalSystemStateToString(mcm_state);
+    mcm_diag.message = mcm_name + " state: " + std::string(magic_enum::enum_name(mcm_state));
 
     diagnostic_msgs::msg::KeyValue kv;
     kv.key = "state";
-    kv.value = sygnalSystemStateToString(mcm_state);
+    kv.value = std::string(magic_enum::enum_name(mcm_state));
     mcm_diag.values.push_back(kv);
 
     array_msg.status.push_back(mcm_diag);
 
-    // Create per-interface diagnostics if available
-    if (interface_states_opt) {
-      const auto & interface_states = interface_states_opt.value();
-      for (size_t i = 0; i < interface_states.size(); ++i) {
-        auto state = interface_states[i];
+    // Create per-interface diagnostics
+    for (uint8_t i = 0; i < NUM_HEARTBEAT_INTERFACES; ++i) {
+      const auto state =
+        sygnal_interface_->get_interface_control_state(mcm_interface(entry.bus_id, entry.subsystem_id, i)).value;
 
-        diagnostic_msgs::msg::DiagnosticStatus interface_diag;
-        interface_diag.name = mcm_name + "_interface_" + std::to_string(i);
-        interface_diag.hardware_id = "sygnal_can_interface";
+      diagnostic_msgs::msg::DiagnosticStatus interface_diag;
+      interface_diag.name = mcm_name + "_interface_" + std::to_string(i);
+      interface_diag.hardware_id = "sygnal_can_interface";
 
-        if (state == SygnalSystemState::MCM_CONTROL || state == SygnalSystemState::HUMAN_CONTROL) {
-          interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
-        } else if (state == SygnalSystemState::FAIL_OPERATIONAL_1 || state == SygnalSystemState::FAIL_OPERATIONAL_2) {
-          interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
-        } else {
-          interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
-        }
-
-        interface_diag.message = "Interface " + std::to_string(i) + " state: " + sygnalSystemStateToString(state);
-
-        diagnostic_msgs::msg::KeyValue interface_kv;
-        interface_kv.key = "state";
-        interface_kv.value = sygnalSystemStateToString(state);
-        interface_diag.values.push_back(interface_kv);
-
-        array_msg.status.push_back(interface_diag);
+      if (state == SygnalSystemState::MCM_CONTROL || state == SygnalSystemState::HUMAN_CONTROL) {
+        interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
+      } else if (state == SygnalSystemState::FAIL_OPERATIONAL_1 || state == SygnalSystemState::FAIL_OPERATIONAL_2) {
+        interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::WARN;
+      } else {
+        interface_diag.level = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
       }
+
+      interface_diag.message =
+        "Interface " + std::to_string(i) + " state: " + std::string(magic_enum::enum_name(state));
+
+      diagnostic_msgs::msg::KeyValue interface_kv;
+      interface_kv.key = "state";
+      interface_kv.value = std::string(magic_enum::enum_name(state));
+      interface_diag.values.push_back(interface_kv);
+
+      array_msg.status.push_back(interface_diag);
     }
   }
 

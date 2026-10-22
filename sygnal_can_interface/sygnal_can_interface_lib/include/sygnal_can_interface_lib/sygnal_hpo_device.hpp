@@ -15,14 +15,12 @@
 #pragma once
 
 #include <array>
-#include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
-#include "sygnal_can_interface_lib/response_queues.hpp"
 #include "sygnal_can_interface_lib/sygnal_device.hpp"
-#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
@@ -30,47 +28,48 @@ namespace polymath::sygnal
 /// @brief Max number of interfaces an HPO reports in its heartbeat.
 constexpr uint8_t HPO_NUM_INTERFACES = 4;
 
-/// @brief One HPO board, where each endpoint is an HPO message ID (0-255).
+/// @brief One HPO board: HPO_INTERFACE endpoints, where endpoint_id is the HPO message ID (0-255).
+///        Adds HPO-specific handling for interface states and command values.
 ///        Interface state is only reported for message IDs 0-3.
 ///        Receives frames with either subsystem bit value.
 class SygnalHpoDevice : public SygnalDevice
 {
 public:
   /// @param socketcan_adapter Adapter that commands go out on.
-  /// @param bus_address Bus address of the HPO.
+  /// @param device HPO descriptor: bus_id.
   /// @param command_timeout How long a command waits for its response before its promise is dropped.
   SygnalHpoDevice(
     std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-    uint8_t bus_address,
+    const SygnalControlDevice & device,
     std::chrono::steady_clock::duration command_timeout);
 
-  /// @brief Interface bits from the latest heartbeat (true = HPO in control); false until the first.
-  std::array<bool, HPO_NUM_INTERFACES> get_interface_states() const;
+  /// @brief State of an HPO_INTERFACE endpoint, from the latest heartbeat or enable response; FAIL_HARD until the first.
+  /// @throws std::invalid_argument for type != HPO_INTERFACE, or a message ID of 4 or above.
+  Stamped<SygnalSystemState> get_interface_control_state(const SygnalEndpoint & endpoint) const override;
 
-  /// @brief Enable or disable control of a message ID.
-  /// @param expect_reply Return a future that resolves from the message's enable response.
-  /// @param[out] error_message Populated on failure.
-  SendHpoCommandResult send_control_enable(
-    uint8_t message_id, bool enable, bool expect_reply, std::string & error_message);
+  /// @brief Latest value of an HPO_INTERFACE endpoint; 0 until the first.
+  ///        Message IDs 0-3 also take the heartbeat's pin state: 0 HiZ, 1 Pull_Down, 2 Pull_Up.
+  ///        Message IDs 4-255 come from command responses only.
+  /// @throws std::invalid_argument for type != HPO_INTERFACE.
+  Stamped<double> get_control_command_value(const SygnalEndpoint & endpoint) const override;
 
-  /// @brief Set a message ID's value.
-  /// @param expect_reply Return a future that resolves from the message's command response.
-  /// @param[out] error_message Populated on failure.
-  SendHpoCommandResult send_control_command(
-    uint8_t message_id, double value, bool expect_reply, std::string & error_message);
+  /// @brief Enable or disable control of an HPO_INTERFACE endpoint.
+  ControlEnableCommandResult send_control_enable_command(
+    const SygnalEndpoint & endpoint, bool enable, bool expect_reply) override;
 
-protected:
-  /// @brief Pending replies, keyed by message ID. Push before sending, withdraw_newest if the send fails,
-  ///        and fulfill from the reply's handler.
-  ResponseQueues<uint8_t, HpoControlResponse> control_enable_responses_;
-  ResponseQueues<uint8_t, HpoControlResponse> control_command_responses_;
+  /// @brief Set an HPO_INTERFACE endpoint's value.
+  ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply) override;
 
 private:
   /// @brief Register callbacks for handling incoming CAN messages.
   ///        This defines the logic for handling all HPO CAN messages.
   void initializeCANHandlerCallbacks();
 
-  std::array<bool, HPO_NUM_INTERFACES> interface_states_{};
+  /// @brief State of the HPO interfaces based on the last heartbeat or enable response.
+  std::array<Stamped<SygnalSystemState>, HPO_NUM_INTERFACES> interface_states_;
+
+  /// @brief State of the HPO values based on the last heartbeat or command response, indexed by message ID.
+  std::array<Stamped<double>, UINT8_MAX + 1> values_{};
 };
 
 }  // namespace polymath::sygnal

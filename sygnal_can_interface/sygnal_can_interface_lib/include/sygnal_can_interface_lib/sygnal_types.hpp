@@ -14,16 +14,38 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstdint>
-#include <future>
-#include <optional>
 #include <string>
 #include <string_view>
+
+#if __has_include(<magic_enum/magic_enum.hpp>)
+  #include <magic_enum/magic_enum.hpp>
+#elif __has_include(<magic_enum.hpp>)
+  #include <magic_enum.hpp>
+#else
+  #error "magic_enum headers not found. Please install magic_enum."
+#endif
 
 namespace polymath::sygnal
 {
 
-/// @brief Enum representing the overall state of the system
+/// @brief Types of Sygnal control devices.
+enum class SygnalControlDeviceType : uint8_t
+{
+  MCM,
+  HPO
+};
+
+/// @brief Types of Sygnal control endpoints. Separate from device types since MCM has both interfaces and relays.
+enum class SygnalControlEndpointType : uint8_t
+{
+  MCM_INTERFACE,
+  MCM_RELAY,
+  HPO_INTERFACE
+};
+
+/// @brief Sygnal system state, as reported in Heartbeat (0x170).
 enum class SygnalSystemState : uint8_t
 {
   FAIL_HARD = 254,
@@ -34,132 +56,55 @@ enum class SygnalSystemState : uint8_t
   HUMAN_CONTROL = 0
 };
 
-/// @brief Get the string of the Sygnal System State
-/// @param state input SygnalSystemState
-/// @return string of the state value
-inline std::string sygnalSystemStateToString(SygnalSystemState state)
+/// @brief One device on the bus. subsystem_id applies to only MCMs; Other devices ignore it.
+///        name label is used in errors and diagnostics only;
+struct SygnalControlDevice
 {
-  switch (state) {
-    case SygnalSystemState::FAIL_HARD:
-      return "FAIL_HARD";
-    case SygnalSystemState::HUMAN_OVERRIDE:
-      return "HUMAN_OVERRIDE";
-    case SygnalSystemState::FAIL_OPERATIONAL_2:
-      return "FAIL_OPERATIONAL_2";
-    case SygnalSystemState::FAIL_OPERATIONAL_1:
-      return "FAIL_OPERATIONAL_1";
-    case SygnalSystemState::MCM_CONTROL:
-      return "MCM_CONTROL";
-    case SygnalSystemState::HUMAN_CONTROL:
-      return "HUMAN_CONTROL";
-    default:
-      return "UNKNOWN_STATE";
-  }
-}
-
-/// @brief Enum representing whether the system is under MCM or human control
-enum class SygnalControlState : uint8_t
-{
-  MCM_CONTROL = 1,
-  HUMAN_CONTROL = 0
-};
-
-/// @brief Enum representing whether the relay is enabled or disabled
-enum class SygnalRelayState : uint8_t
-{
-  ENABLE = 1,
-  DISABLE = 0
-};
-
-enum class SygnalControlCommandResponseType : uint8_t
-{
-  ENABLE = 0,
-  CONTROL = 1,
-  RELAY = 2
-};
-
-struct SygnalControlCommandResponse
-{
-  SygnalControlCommandResponseType response_type;
-  uint8_t interface_id;
+  SygnalControlDeviceType type;
   uint8_t bus_id;
-  uint8_t subsystem_id;
-  // Value can represent different things based on response type
-  double value;
+  uint8_t subsystem_id = 0;
+  std::string_view name{};
 };
 
-/// @brief Parsed HPO ControlEnableResponse / ControlCommandResponse.
-///        is_enable_response disambiguates which payload is meaningful:
-///        when true, the `enable` field carries the response; when false,
-///        the `value` field carries the float command response.
-struct HpoControlResponse
+/// @brief One controllable endpoint on a device.
+///        endpoint_id is generic for InterfaceID on MCMs, or for MessageID on HPOs.
+///        Values are float32 on the wire; an MCM relay takes and reports 1.0 or 0.0.
+struct SygnalEndpoint
 {
-  uint8_t bus_address;
-  uint8_t message_id;
-  double value;
-  bool enable;
-  bool is_enable_response;
-};
-
-/// @brief Parsed HPO ErrorStatus frame fields.
-struct HpoErrorStatus
-{
-  uint8_t bus_address;
-  uint8_t subsystem_id;
-  uint8_t error_type;
-  uint16_t error_can_id;
-  uint8_t config_section_id;
-  uint8_t config_interface_id;
-};
-
-/// @brief Result of a send command operation
-struct SendCommandResult
-{
-  bool success;
-  std::optional<std::future<SygnalControlCommandResponse>> response_future;
-};
-
-/// @brief Identifies one MCM endpoint by its CAN bus and subsystem ID.
-struct McmId
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-};
-
-/// @brief Identifies one HPO endpoint by its CAN bus address.
-struct HpoId
-{
-  uint8_t bus_id;
-};
-
-/// @brief Result of an HPO send operation. Mirrors SendCommandResult but is typed for HpoControlResponse
-///        because the HPO response carries a `message_id` instead of MCM's interface_id/subsystem_id.
-struct SendHpoCommandResult
-{
-  bool success;
-  std::optional<std::future<HpoControlResponse>> response_future;
-};
-
-/// @brief Represents a single control interface in Sygnal's System.
-///        Interfaces can either take floats(default) or ints as inputs.
-struct InterfaceEndpoint
-{
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-  uint8_t interface_id;
+  SygnalControlEndpointType type;
+  SygnalControlDevice device;
+  uint8_t endpoint_id;
   int min_value;
   int max_value;
   bool is_int;
   std::string_view name;
 };
 
-/// @brief Represents a single relay in Sygnal's System.
-struct RelayEndpoint
+/// @brief Struct to help bundle a feedback value with its associated timestamp.
+template <typename T>
+struct Stamped
 {
-  uint8_t bus_id;
-  uint8_t subsystem_id;
-  uint8_t relay_id;
-  std::string_view name;
+  T value;
+  std::chrono::system_clock::time_point timestamp;
 };
 
+/// @brief Helper to generate a human-readable description of a Sygnal control device.
+inline std::string describe(const SygnalControlDevice & device)
+{
+  std::string text = std::string(magic_enum::enum_name(device.type)) + " bus_id " + std::to_string(device.bus_id);
+  if (SygnalControlDeviceType::MCM == device.type) {
+    text += " subsystem_id " + std::to_string(device.subsystem_id);
+  }
+  return device.name.empty() ? text : std::string(device.name) + " (" + text + ")";
+}
+
 }  // namespace polymath::sygnal
+
+/// @brief Change magic_enum to use the range 0..255 for SygnalSystemState (which goes up to 255),
+///        instead of the default -128..128.
+template <>
+struct magic_enum::customize::enum_range<polymath::sygnal::SygnalSystemState>
+{
+  static constexpr int min = 0;
+  static constexpr int max = 255;
+};
