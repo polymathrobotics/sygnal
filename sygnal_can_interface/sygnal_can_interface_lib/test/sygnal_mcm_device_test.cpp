@@ -14,8 +14,10 @@
 
 #include "sygnal_can_interface_lib/sygnal_mcm_device.hpp"
 
+#include <chrono>
+#include <future>
+#include <memory>
 #include <string>
-#include <vector>
 
 #if __has_include(<catch2/catch_all.hpp>)
   #include <catch2/catch_all.hpp>
@@ -25,278 +27,155 @@
   #error "Catch2 headers not found. Please install Catch2 (v2 or v3)."
 #endif
 
-#include "socketcan_adapter/can_frame.hpp"
+#include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
 
-// Frame IDs from DBC
-constexpr uint32_t HEARTBEAT_FRAME_ID = 0x170;
-constexpr uint32_t CONTROL_ENABLE_FRAME_ID = 0x060;
-constexpr uint32_t CONTROL_ENABLE_RESPONSE_FRAME_ID = 0x061;
-constexpr uint32_t CONTROL_COMMAND_FRAME_ID = 0x160;
-constexpr uint32_t CONTROL_COMMAND_RESPONSE_FRAME_ID = 0x161;
-constexpr uint32_t RELAY_COMMAND_FRAME_ID = 0x0B0;
-constexpr uint32_t RELAY_COMMAND_RESPONSE_FRAME_ID = 0x0B1;
+using polymath::sygnal::SygnalControlState;
+using polymath::sygnal::SygnalDevice;
+using polymath::sygnal::SygnalMcmDevice;
+using polymath::sygnal::SygnalSystemState;
 
-static polymath::socketcan::CanFrame createTestFrame(uint32_t can_id, const std::vector<uint8_t> & data)
+namespace
 {
-  polymath::socketcan::CanFrame frame;
-  frame.set_can_id(can_id);
-  std::array<unsigned char, CAN_MAX_DLC> frame_data;
-  frame_data.fill(0);
-  for (size_t i = 0; i < data.size() && i < CAN_MAX_DLC; ++i) {
-    frame_data[i] = data[i];
+
+/// @brief Unopened adapter; every send fails.
+std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
+{
+  return std::make_shared<polymath::socketcan::SocketcanAdapter>("vcan0");
+}
+
+/// @brief Exposes the response queues, so replies can be awaited without sending.
+class TestMcmDevice : public SygnalMcmDevice
+{
+public:
+  using SygnalMcmDevice::control_command_responses_;
+  using SygnalMcmDevice::control_enable_responses_;
+  using SygnalMcmDevice::relay_responses_;
+  using SygnalMcmDevice::SygnalMcmDevice;
+};
+
+constexpr uint8_t BUS = 1;
+constexpr uint8_t SUBSYSTEM = 1;
+constexpr std::chrono::seconds COMMAND_TIMEOUT{1};
+
+template <typename T>
+bool is_ready(const std::future<T> & future)
+{
+  return std::future_status::ready == future.wait_for(std::chrono::seconds(0));
+}
+
+}  // namespace
+
+TEST_CASE("MCM device reports FAIL_HARD until its first heartbeat", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
+  CHECK(SygnalSystemState::FAIL_HARD == device.get_mcm_state());
+  CHECK(SygnalSystemState::FAIL_HARD == device.get_interface_states()[0]);
+}
+
+TEST_CASE("MCM heartbeat sets system and interface state", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
+  REQUIRE(device.handle(sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::MCM_CONTROL, {false, true})));
+
+  CHECK(SygnalSystemState::MCM_CONTROL == device.get_mcm_state());
+  CHECK(SygnalSystemState::HUMAN_CONTROL == device.get_interface_states()[0]);
+  CHECK(SygnalSystemState::MCM_CONTROL == device.get_interface_states()[1]);
+}
+
+TEST_CASE("MCM device rejects a frame with a bad CRC or length", "[mcm_device]")
+{
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
+  can_frame frame = sygnal_test::mcm_heartbeat(BUS, SUBSYSTEM, SygnalSystemState::MCM_CONTROL);
+
+  SECTION("bad CRC")
+  {
+    frame.data[CAN_MAX_DLC - 1] ^= 0xFF;
   }
-  frame.set_data(frame_data);
-  frame.set_len(data.size());
-  return frame;
-}
 
-TEST_CASE("SygnalMcmDevice constructor initializes to FAIL_HARD for subsystem 0", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
-
-  REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
-
-  auto states = interface.get_interface_states();
-  for (const auto & state : states) {
-    REQUIRE(state == polymath::sygnal::SygnalSystemState::FAIL_HARD);
+  SECTION("short frame")
+  {
+    frame.len = CAN_MAX_DLC - 1;
   }
+
+  CHECK_FALSE(device.handle(frame));
+  CHECK(SygnalSystemState::FAIL_HARD == device.get_mcm_state());
 }
 
-TEST_CASE("SygnalMcmDevice constructor initializes to FAIL_HARD for subsystem 1", "[sygnal_mcm_device]")
+TEST_CASE("MCM enable response fulfills only its interface's future", "[mcm_device]")
 {
-  polymath::sygnal::SygnalMcmDevice interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 1);
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
+  auto interface0 = device.control_enable_responses_.push(0);
+  auto interface2 = device.control_enable_responses_.push(2);
 
-  REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
+  REQUIRE(device.handle(sygnal_test::mcm_enable_response(BUS, SUBSYSTEM, 2, true)));
 
-  auto states = interface.get_interface_states();
-  for (const auto & state : states) {
-    REQUIRE(state == polymath::sygnal::SygnalSystemState::FAIL_HARD);
-  }
+  CHECK_FALSE(is_ready(interface0));
+  REQUIRE(is_ready(interface2));
+  const auto response = interface2.get();
+  CHECK(2 == response.interface_id);  // NOLINT(readability/check)
+  CHECK(1.0 == response.value);
 }
 
-TEST_CASE("SygnalMcmDevice parses MCM_CONTROL heartbeat", "[sygnal_mcm_device]")
+TEST_CASE("MCM command response fulfills its interface's future", "[mcm_device]")
 {
-  polymath::sygnal::SygnalMcmDevice interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
+  auto future = device.control_command_responses_.push(3);
 
-  // Generated from DBC: MCM_CONTROL state, subsystem 0, all interfaces MCM_CONTROL
-  std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0x98};
-  auto frame = createTestFrame(HEARTBEAT_FRAME_ID, data);
+  REQUIRE(device.handle(sygnal_test::mcm_command_response(BUS, SUBSYSTEM, 3, 0.25)));
 
-  REQUIRE(interface.parseMcmHeartbeatFrame(frame) == true);
-  REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
-
-  auto states = interface.get_interface_states();
-  for (size_t i = 0; i < 5; ++i) {
-    REQUIRE(states[i] == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
-  }
+  REQUIRE(is_ready(future));
+  CHECK(0.25 == future.get().value);
 }
 
-TEST_CASE("SygnalMcmDevice parses HUMAN_CONTROL heartbeat", "[sygnal_mcm_device]")
+TEST_CASE("MCM relay response fulfills the relay future only", "[mcm_device]")
 {
-  polymath::sygnal::SygnalMcmDevice interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 1);
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
+  auto interface0 = device.control_command_responses_.push(0);
+  auto relay = device.relay_responses_.push(0);
 
-  // Generated from DBC: HUMAN_CONTROL state, subsystem 1
-  std::vector<uint8_t> data = {0x81, 0x00, 0x00, 0x00, 0x00, 0x32, 0x00, 0x86};
-  auto frame = createTestFrame(HEARTBEAT_FRAME_ID, data);
+  REQUIRE(device.handle(sygnal_test::mcm_relay_response(BUS, SUBSYSTEM, true)));
 
-  REQUIRE(interface.parseMcmHeartbeatFrame(frame) == true);
-  REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
-
-  auto states = interface.get_interface_states();
-  for (size_t i = 0; i < 5; ++i) {
-    REQUIRE(states[i] == polymath::sygnal::SygnalSystemState::HUMAN_CONTROL);
-  }
+  CHECK_FALSE(is_ready(interface0));
+  REQUIRE(is_ready(relay));
+  CHECK(1.0 == relay.get().value);
 }
 
-TEST_CASE("SygnalMcmDevice rejects wrong frame ID", "[sygnal_mcm_device]")
+TEST_CASE("MCM withdrawn response promise does not take the next response", "[mcm_device]")
 {
-  polymath::sygnal::SygnalMcmDevice interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
+  auto withdrawn = device.control_enable_responses_.push(1);
+  device.control_enable_responses_.withdraw_newest(1);
+  auto next = device.control_enable_responses_.push(1);
 
-  std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0x98};
-  auto frame = createTestFrame(0x999, data);  // Wrong ID
+  REQUIRE(device.handle(sygnal_test::mcm_enable_response(BUS, SUBSYSTEM, 1, true)));
 
-  REQUIRE(interface.parseMcmHeartbeatFrame(frame) == false);
-  // State should remain FAIL_HARD
-  REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
+  CHECK_THROWS_AS(withdrawn.get(), std::future_error);
+  REQUIRE(is_ready(next));
 }
 
-TEST_CASE("SygnalMcmDevice rejects bad CRC", "[sygnal_mcm_device]")
+TEST_CASE("MCM failed send leaves no pending reply", "[mcm_device]")
 {
-  polymath::sygnal::SygnalMcmDevice interface(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
-
-  // Valid data but corrupted CRC (last byte)
-  std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0xFF};
-  auto frame = createTestFrame(HEARTBEAT_FRAME_ID, data);
-
-  REQUIRE(interface.parseMcmHeartbeatFrame(frame) == false);
-  REQUIRE(interface.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
-}
-
-TEST_CASE("SygnalMcmDevice only parses matching subsystem_id", "[sygnal_mcm_device]")
-{
-  // Interface configured for subsystem 0 should ignore subsystem 1 frames
-  polymath::sygnal::SygnalMcmDevice interface_0(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 0);
-
-  // Heartbeat frame for subsystem 1
-  std::vector<uint8_t> data_sub1 = {0x81, 0x00, 0x00, 0x00, 0x00, 0x32, 0x00, 0x86};
-  auto frame_sub1 = createTestFrame(HEARTBEAT_FRAME_ID, data_sub1);
-
-  // Should return false and state should remain FAIL_HARD
-  REQUIRE(interface_0.parseMcmHeartbeatFrame(frame_sub1) == false);
-  REQUIRE(interface_0.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
-
-  // Interface configured for subsystem 1 should ignore subsystem 0 frames
-  polymath::sygnal::SygnalMcmDevice interface_1(polymath::sygnal::DEFAULT_MCM_BUS_ADDRESS, 1);
-
-  // Heartbeat frame for subsystem 0
-  std::vector<uint8_t> data_sub0 = {0x01, 0x00, 0x01, 0x9F, 0x00, 0x64, 0x00, 0x98};
-  auto frame_sub0 = createTestFrame(HEARTBEAT_FRAME_ID, data_sub0);
-
-  // Should return false and state should remain FAIL_HARD
-  REQUIRE(interface_1.parseMcmHeartbeatFrame(frame_sub0) == false);
-  REQUIRE(interface_1.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
-}
-
-TEST_CASE("sygnalSystemStateToString returns correct strings", "[sygnal_mcm_device]")
-{
-  using polymath::sygnal::SygnalSystemState;
-  using polymath::sygnal::sygnalSystemStateToString;
-
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::FAIL_HARD) == "FAIL_HARD");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::HUMAN_OVERRIDE) == "HUMAN_OVERRIDE");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::FAIL_OPERATIONAL_2) == "FAIL_OPERATIONAL_2");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::FAIL_OPERATIONAL_1) == "FAIL_OPERATIONAL_1");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::MCM_CONTROL) == "MCM_CONTROL");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::HUMAN_CONTROL) == "HUMAN_CONTROL");
-}
-
-TEST_CASE("SygnalMcmDevice creates ControlEnable frame", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface;
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
   std::string error_message;
 
-  auto frame_opt =
-    interface.createControlStateCommandFrame(1, 3, 0, polymath::sygnal::SygnalControlState::MCM_CONTROL, error_message);
+  const auto result = device.send_control_command(4, 0.5, true, error_message);
 
-  REQUIRE(frame_opt.has_value());
-  REQUIRE(error_message.empty());
+  CHECK_FALSE(result.success);
+  CHECK_FALSE(result.response_future.has_value());
+  CHECK_FALSE(error_message.empty());
 
-  auto frame = frame_opt.value();
-  REQUIRE(frame.get_id() == CONTROL_ENABLE_FRAME_ID);
-
-  // Expected from DBC: {0x01, 0x60, 0x01, 0x00, 0x00, 0x00, 0x00, 0xF0}
-  auto data = frame.get_data();
-  REQUIRE(data[0] == 0x01);  // BusAddress = 1
-  REQUIRE((data[1] & 0x0F) == 0x00);  // InterfaceID lower bits
-  REQUIRE(((data[1] >> 4) & 0x0F) == 0x06);  // InterfaceID = 3 encoded
+  // The reply to the failed send must reach the next caller, not the withdrawn promise.
+  auto next = device.control_command_responses_.push(4);
+  REQUIRE(device.handle(sygnal_test::mcm_command_response(BUS, SUBSYSTEM, 4, 0.5)));
+  CHECK(is_ready(next));
 }
 
-TEST_CASE("SygnalMcmDevice creates ControlCommand frame", "[sygnal_mcm_device]")
+TEST_CASE("MCM device rejects an interface ID out of range", "[mcm_device]")
 {
-  polymath::sygnal::SygnalMcmDevice interface;
+  TestMcmDevice device(adapter(), BUS, SUBSYSTEM, COMMAND_TIMEOUT);
   std::string error_message;
 
-  auto frame_opt = interface.createControlCommandFrame(1, 0, 0, 0.5, error_message);
-
-  REQUIRE(frame_opt.has_value());
-  REQUIRE(error_message.empty());
-
-  auto frame = frame_opt.value();
-  REQUIRE(frame.get_id() == CONTROL_COMMAND_FRAME_ID);
-
-  auto data = frame.get_data();
-  REQUIRE(data[0] == 0x01);  // BusAddress = 1
-}
-
-TEST_CASE("SygnalMcmDevice creates RelayCommand frame", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface;
-  std::string error_message;
-
-  auto frame_opt = interface.createRelayCommandFrame(1, 0, true, error_message);
-
-  REQUIRE(frame_opt.has_value());
-  REQUIRE(error_message.empty());
-
-  auto frame = frame_opt.value();
-  REQUIRE(frame.get_id() == RELAY_COMMAND_FRAME_ID);
-
-  // Expected from DBC: {0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xBD}
-  auto data = frame.get_data();
-  REQUIRE(data[0] == 0x01);  // BusAddress = 1
-  REQUIRE(data[2] == 0x01);  // Enable = 1
-}
-
-TEST_CASE("SygnalMcmDevice parses ControlEnableResponse", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface;
-
-  // Generated from DBC: ControlEnableResponse (bus=1, interface=3, enable=1)
-  std::vector<uint8_t> data = {0x01, 0x60, 0x01, 0x00, 0x00, 0x00, 0x00, 0xF0};
-  auto frame = createTestFrame(CONTROL_ENABLE_RESPONSE_FRAME_ID, data);
-
-  auto response = interface.parseCommandResponseFrame(frame);
-
-  REQUIRE(response.has_value());
-  REQUIRE(response->response_type == polymath::sygnal::SygnalControlCommandResponseType::ENABLE);
-  REQUIRE(response->bus_id == 1);
-  REQUIRE(response->value == 1.0);
-}
-
-TEST_CASE("SygnalMcmDevice parses ControlCommandResponse", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface;
-
-  // Generated from DBC: ControlCommandResponse (bus=1, interface=0, value=0.5)
-  std::vector<uint8_t> data = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3F, 0x62};
-  auto frame = createTestFrame(CONTROL_COMMAND_RESPONSE_FRAME_ID, data);
-
-  auto response = interface.parseCommandResponseFrame(frame);
-
-  REQUIRE(response.has_value());
-  REQUIRE(response->response_type == polymath::sygnal::SygnalControlCommandResponseType::CONTROL);
-  REQUIRE(response->bus_id == 1);
-  REQUIRE(response->interface_id == 0);
-}
-
-TEST_CASE("SygnalMcmDevice parses RelayCommandResponse", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface;
-
-  // Generated from DBC: RelayCommandResponse (bus=1, subsystem=0, enable=1)
-  std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xBD};
-  auto frame = createTestFrame(RELAY_COMMAND_RESPONSE_FRAME_ID, data);
-
-  auto response = interface.parseCommandResponseFrame(frame);
-
-  REQUIRE(response.has_value());
-  REQUIRE(response->response_type == polymath::sygnal::SygnalControlCommandResponseType::RELAY);
-  REQUIRE(response->bus_id == 1);
-  REQUIRE(response->interface_id == 0);  // subsystem_id
-  REQUIRE(response->value == 1.0);
-}
-
-TEST_CASE("SygnalMcmDevice rejects unknown frame ID", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface;
-
-  std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xBD};
-  auto frame = createTestFrame(0x999, data);
-
-  auto response = interface.parseCommandResponseFrame(frame);
-
-  REQUIRE_FALSE(response.has_value());
-}
-
-TEST_CASE("SygnalMcmDevice rejects bad CRC in response", "[sygnal_mcm_device]")
-{
-  polymath::sygnal::SygnalMcmDevice interface;
-
-  // Valid data but corrupted CRC
-  std::vector<uint8_t> data = {0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xFF};
-  auto frame = createTestFrame(RELAY_COMMAND_RESPONSE_FRAME_ID, data);
-
-  auto response = interface.parseCommandResponseFrame(frame);
-
-  REQUIRE_FALSE(response.has_value());
+  CHECK_FALSE(device.send_control_state_command(6, SygnalControlState::MCM_CONTROL, false, error_message).success);
+  CHECK_FALSE(device.send_control_command(6, 1.0, false, error_message).success);
+  CHECK_FALSE(error_message.empty());
 }

@@ -14,8 +14,8 @@
 
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
 
-#include <algorithm>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -24,116 +24,91 @@
 namespace polymath::sygnal
 {
 
+namespace
+{
+
+constexpr uint8_t BUS_ADDRESS_MASK = 0x7F;
+
+/// @brief Lookup table address of a device: bus ID, with the subsystem ID in bit 7.
+uint8_t address_of(uint8_t bus_id, uint8_t subsystem_id)
+{
+  return static_cast<uint8_t>(subsystem_id << 7 | bus_id);
+}
+
+}  // namespace
+
 SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
   const std::vector<McmId> & mcm_ids,
-  const std::vector<HpoId> & hpo_ids)
-: socketcan_adapter_(socketcan_adapter)
+  const std::vector<HpoId> & hpo_ids,
+  std::chrono::steady_clock::duration command_timeout)
 {
-  // Sygnal overloads CAN IDs across MCM/HPO/IO devices: a single frame ID (e.g. 0x161 ControlCommandResponse)
-  // carries different byte layouts depending on which device type produced it. The only field with stable
-  // semantics across layouts is the 7-bit BusAddress. Per-board parsers filter by bus_address to claim only
-  // their own frames; the MCM control-response parser (SygnalMcmDevice::parseCommandResponseFrame) does not filter, so it would
-  // misinterpret an HPO response if it ever saw one. We sidestep this by (a) running HPO parsers first in
-  // parse() so HPO frames never reach the MCM parser, and (b) requiring disjoint bus addresses so the
-  // ordering can correctly route by elimination. The second invariant is enforced here.
-  for (const auto & hpo : hpo_ids) {
-    for (const auto & mcm : mcm_ids) {
-      if (hpo.bus_id == mcm.bus_id) {
-        throw std::invalid_argument(
-          "Bus address " + std::to_string(hpo.bus_id) +
-          " is assigned to both an MCM and an HPO; bus addresses must be disjoint across device types "
-          "until Sygnal CAN-ID overlap is resolved structurally.");
+  // Add a device to every lookup table slot it needs, throwing if a slot is already used.
+  const auto add = [this](std::unique_ptr<SygnalDevice> device, const std::vector<uint8_t> & slots) {
+    for (const uint8_t slot : slots) {
+      if (nullptr != id_to_device_[slot]) {
+        throw std::invalid_argument("Sygnal bus address " + std::to_string(slot & BUS_ADDRESS_MASK) + " is used twice");
       }
     }
+    for (const uint8_t slot : slots) {
+      id_to_device_[slot] = device.get();
+    }
+    devices_.push_back(std::move(device));
+  };
+
+  for (const McmId & id : mcm_ids) {
+    if (BUS_ADDRESS_MASK < id.bus_id || MAX_SYGNAL_SUBSYSTEMS <= id.subsystem_id) {
+      throw std::invalid_argument("MCM bus_id exceeds 7 bits or subsystem_id exceeds 1 bit");
+    }
+    add(
+      std::make_unique<SygnalMcmDevice>(socketcan_adapter, id.bus_id, id.subsystem_id, command_timeout),
+      {address_of(id.bus_id, id.subsystem_id)});
   }
 
-  mcms_.reserve(mcm_ids.size());
-  for (const auto & id : mcm_ids) {
-    mcms_.emplace_back(id.bus_id, id.subsystem_id);
-  }
-
-  hpos_.reserve(hpo_ids.size());
-  for (const auto & id : hpo_ids) {
-    hpos_.emplace_back(id.bus_id);
+  for (const HpoId & id : hpo_ids) {
+    if (BUS_ADDRESS_MASK < id.bus_id) {
+      throw std::invalid_argument("HPO bus_id exceeds 7 bits");
+    }
+    // HPOs ignore the subsystem bit, so they take the slots for both subsystem IDs.
+    add(
+      std::make_unique<SygnalHpoDevice>(socketcan_adapter, id.bus_id, command_timeout),
+      {address_of(id.bus_id, 0), address_of(id.bus_id, 1)});
   }
 }
 
 bool SygnalInterfaceSocketcan::parse(const socketcan::CanFrame & frame)
 {
-  // DO NOT REORDER without re-reading the rationale in the constructor comment:
-  // HPO parsers MUST run before SygnalMcmDevice::parseCommandResponseFrame because the latter does
-  // not filter by bus_address, and HPO control responses share CAN IDs (0x61 / 0x161) with MCM responses.
-  // Heartbeats and HPO error frames already filter by bus_address inside each per-board parser, so the
-  // order between MCM heartbeats and HPO heartbeats is arbitrary, but we keep the HPO block contiguous
-  // for clarity.
+  // Get the raw CAN frame.
+  const can_frame raw = frame.get_frame();
 
-  // --- HPO first ---
-  for (auto & hpo : hpos_) {
-    if (hpo.parseHeartbeatFrame(frame)) {
-      return true;
-    }
-  }
-
-  for (auto & hpo : hpos_) {
-    auto hpo_response = hpo.parseControlResponse(frame);
-    if (!hpo_response.has_value()) {
-      continue;
-    }
-    hpo_responses_.fulfill(hpo_response->is_enable_response, *hpo_response);
-    return true;
-  }
-
-  for (auto & hpo : hpos_) {
-    // Error frames are parsed (and CRC-checked) but not yet surfaced to callers; see design doc open
-    // question #2. Claim the frame so the MCM error path (if/when added) doesn't double-handle it.
-    if (hpo.parseErrorFrame(frame).has_value()) {
-      return true;
-    }
-  }
-
-  // --- MCM ---
-  for (auto & mcm : mcms_) {
-    if (mcm.parseMcmHeartbeatFrame(frame)) {
-      return true;
-    }
-  }
-
-  // Try parsing as a (legacy unified) MCM command response. Safe to run last: every HPO-addressed frame
-  // has already been claimed above, so anything reaching this line is either an MCM frame or unrelated.
-  auto response = SygnalMcmDevice::parseCommandResponseFrame(frame);
-  if (!response.has_value()) {
+  // Ignore empty frames since we need the first byte for arbitration.
+  if (0 == raw.len) {
     return false;
   }
 
-  // Fulfill the oldest promise for this response type.
-  mcm_responses_.fulfill(response->response_type, *response);
-
-  return true;
+  // Byte 0 holds the BUS_ID + SUBSYSTEM_ID; an HPO fills both subsystem slots for its bus.
+  SygnalDevice * device = id_to_device_[raw.data[0]];
+  return nullptr != device && device->handle(raw);
 }
 
 std::optional<std::array<SygnalSystemState, 5>> SygnalInterfaceSocketcan::get_interface_state(
   const uint8_t bus_address, const uint8_t subsystem_id) const
 {
-  auto it = std::find_if(mcms_.begin(), mcms_.end(), [bus_address, subsystem_id](const SygnalMcmDevice & m) {
-    return m.get_bus_address() == bus_address && m.get_subsystem_id() == subsystem_id;
-  });
-  if (it != mcms_.end()) {
-    return it->get_interface_states();
+  const SygnalMcmDevice * mcm = find_mcm(bus_address, subsystem_id);
+  if (nullptr == mcm) {
+    return std::nullopt;
   }
-  return std::nullopt;
+  return mcm->get_interface_states();
 }
 
 std::optional<SygnalSystemState> SygnalInterfaceSocketcan::get_sygnal_mcm_state(
   const uint8_t bus_address, const uint8_t subsystem_id) const
 {
-  auto it = std::find_if(mcms_.begin(), mcms_.end(), [bus_address, subsystem_id](const SygnalMcmDevice & m) {
-    return m.get_bus_address() == bus_address && m.get_subsystem_id() == subsystem_id;
-  });
-  if (it != mcms_.end()) {
-    return it->get_mcm_state();
+  const SygnalMcmDevice * mcm = find_mcm(bus_address, subsystem_id);
+  if (nullptr == mcm) {
+    return std::nullopt;
   }
-  return std::nullopt;
+  return mcm->get_mcm_state();
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
@@ -144,25 +119,13 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
   bool expect_reply,
   std::string & error_message)
 {
-  auto frame_opt =
-    SygnalMcmDevice::createControlStateCommandFrame(bus_id, interface_id, subsystem_id, control_state, error_message);
-
-  if (!frame_opt.has_value()) {
+  SygnalMcmDevice * mcm = find_mcm(bus_id, subsystem_id);
+  if (nullptr == mcm) {
+    error_message += "No MCM registered at bus address " + std::to_string(bus_id) + " subsystem " +
+                     std::to_string(subsystem_id) + "\n";
     return {false, std::nullopt};
   }
-
-  std::optional<std::future<SygnalControlCommandResponse>> future_opt;
-  if (expect_reply) {
-    future_opt = mcm_responses_.push(SygnalControlCommandResponseType::ENABLE);
-  }
-
-  auto err = socketcan_adapter_->send(*frame_opt);
-  if (err.has_value()) {
-    error_message += "Failed to send control state command: " + err.value() + "\n";
-    return {false, std::nullopt};
-  }
-
-  return {true, std::move(future_opt)};
+  return mcm->send_control_state_command(interface_id, control_state, expect_reply, error_message);
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlStateCommand(
@@ -180,25 +143,13 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
   bool expect_reply,
   std::string & error_message)
 {
-  // TODO(ryan): update function def to include min max values and check the value before sending.
-  auto frame_opt = SygnalMcmDevice::createControlCommandFrame(bus_id, interface_id, subsystem_id, value, error_message);
-
-  if (!frame_opt.has_value()) {
+  SygnalMcmDevice * mcm = find_mcm(bus_id, subsystem_id);
+  if (nullptr == mcm) {
+    error_message += "No MCM registered at bus address " + std::to_string(bus_id) + " subsystem " +
+                     std::to_string(subsystem_id) + "\n";
     return {false, std::nullopt};
   }
-
-  std::optional<std::future<SygnalControlCommandResponse>> future_opt;
-  if (expect_reply) {
-    future_opt = mcm_responses_.push(SygnalControlCommandResponseType::CONTROL);
-  }
-
-  auto err = socketcan_adapter_->send(*frame_opt);
-  if (err.has_value()) {
-    error_message += "Failed to send control command: " + err.value() + "\n";
-    return {false, std::nullopt};
-  }
-
-  return {true, std::move(future_opt)};
+  return mcm->send_control_command(interface_id, value, expect_reply, error_message);
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
@@ -211,24 +162,13 @@ SendCommandResult SygnalInterfaceSocketcan::sendControlCommand(
 SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
   uint8_t bus_id, uint8_t subsystem_id, bool relay_state, bool expect_reply, std::string & error_message)
 {
-  auto frame_opt = SygnalMcmDevice::createRelayCommandFrame(bus_id, subsystem_id, relay_state, error_message);
-
-  if (!frame_opt.has_value()) {
+  SygnalMcmDevice * mcm = find_mcm(bus_id, subsystem_id);
+  if (nullptr == mcm) {
+    error_message += "No MCM registered at bus address " + std::to_string(bus_id) + " subsystem " +
+                     std::to_string(subsystem_id) + "\n";
     return {false, std::nullopt};
   }
-
-  std::optional<std::future<SygnalControlCommandResponse>> future_opt;
-  if (expect_reply) {
-    future_opt = mcm_responses_.push(SygnalControlCommandResponseType::RELAY);
-  }
-
-  auto err = socketcan_adapter_->send(*frame_opt);
-  if (err.has_value()) {
-    error_message += "Failed to send relay command: " + err.value() + "\n";
-    return {false, std::nullopt};
-  }
-
-  return {true, std::move(future_opt)};
+  return mcm->send_relay_command(relay_state, expect_reply, error_message);
 }
 
 SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
@@ -240,73 +180,49 @@ SendCommandResult SygnalInterfaceSocketcan::sendRelayCommand(
 SendHpoCommandResult SygnalInterfaceSocketcan::sendHpoControlEnable(
   uint8_t bus_id, uint8_t message_id, bool enable, bool expect_reply, std::string & error_message)
 {
-  auto it = std::find_if(
-    hpos_.begin(), hpos_.end(), [bus_id](const SygnalHpoDevice & h) { return h.get_bus_address() == bus_id; });
-  if (it == hpos_.end()) {
+  SygnalHpoDevice * hpo = find_hpo(bus_id);
+  if (nullptr == hpo) {
     error_message += "No HPO registered at bus address " + std::to_string(bus_id) + "\n";
     return {false, std::nullopt};
   }
-
-  auto frame_opt = it->createControlEnableFrame(message_id, enable, error_message);
-  if (!frame_opt.has_value()) {
-    return {false, std::nullopt};
-  }
-
-  std::optional<std::future<HpoControlResponse>> future_opt;
-  if (expect_reply) {
-    future_opt = hpo_responses_.push(true);
-  }
-
-  auto err = socketcan_adapter_->send(*frame_opt);
-  if (err.has_value()) {
-    error_message += "Failed to send HPO control enable: " + err.value() + "\n";
-    // The promise was already pushed before the send attempt; surface the future regardless so the caller
-    // can choose to wait on it (or discard) instead of leaving a dangling future the harness can't observe.
-    return {false, std::move(future_opt)};
-  }
-
-  return {true, std::move(future_opt)};
+  return hpo->send_control_enable(message_id, enable, expect_reply, error_message);
 }
 
 SendHpoCommandResult SygnalInterfaceSocketcan::sendHpoControlCommand(
   uint8_t bus_id, uint8_t message_id, double value, bool expect_reply, std::string & error_message)
 {
-  auto it = std::find_if(
-    hpos_.begin(), hpos_.end(), [bus_id](const SygnalHpoDevice & h) { return h.get_bus_address() == bus_id; });
-  if (it == hpos_.end()) {
+  SygnalHpoDevice * hpo = find_hpo(bus_id);
+  if (nullptr == hpo) {
     error_message += "No HPO registered at bus address " + std::to_string(bus_id) + "\n";
     return {false, std::nullopt};
   }
-
-  auto frame_opt = it->createControlCommandFrame(message_id, value, error_message);
-  if (!frame_opt.has_value()) {
-    return {false, std::nullopt};
-  }
-
-  std::optional<std::future<HpoControlResponse>> future_opt;
-  if (expect_reply) {
-    future_opt = hpo_responses_.push(false);
-  }
-
-  auto err = socketcan_adapter_->send(*frame_opt);
-  if (err.has_value()) {
-    error_message += "Failed to send HPO control command: " + err.value() + "\n";
-    return {false, std::move(future_opt)};
-  }
-
-  return {true, std::move(future_opt)};
+  return hpo->send_control_command(message_id, value, expect_reply, error_message);
 }
 
 std::optional<std::array<bool, HPO_NUM_INTERFACES>> SygnalInterfaceSocketcan::get_hpo_interface_states(
   uint8_t bus_address) const
 {
-  auto it = std::find_if(hpos_.begin(), hpos_.end(), [bus_address](const SygnalHpoDevice & h) {
-    return h.get_bus_address() == bus_address;
-  });
-  if (it == hpos_.end()) {
+  const SygnalHpoDevice * hpo = find_hpo(bus_address);
+  if (nullptr == hpo) {
     return std::nullopt;
   }
-  return it->get_interface_states();
+  return hpo->get_interface_states();
+}
+
+SygnalMcmDevice * SygnalInterfaceSocketcan::find_mcm(uint8_t bus_address, uint8_t subsystem_id) const
+{
+  if (BUS_ADDRESS_MASK < bus_address || MAX_SYGNAL_SUBSYSTEMS <= subsystem_id) {
+    return nullptr;
+  }
+  return dynamic_cast<SygnalMcmDevice *>(id_to_device_[address_of(bus_address, subsystem_id)]);
+}
+
+SygnalHpoDevice * SygnalInterfaceSocketcan::find_hpo(uint8_t bus_address) const
+{
+  if (BUS_ADDRESS_MASK < bus_address) {
+    return nullptr;
+  }
+  return dynamic_cast<SygnalHpoDevice *>(id_to_device_[bus_address]);
 }
 
 }  // namespace polymath::sygnal
