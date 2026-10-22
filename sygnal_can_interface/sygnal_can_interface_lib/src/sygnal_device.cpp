@@ -26,8 +26,14 @@
 namespace polymath::sygnal
 {
 
-SygnalDevice::SygnalDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, SygnalControlDevice device)
+SygnalDevice::SygnalDevice(
+  std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+  SygnalControlDevice device,
+  std::chrono::steady_clock::duration command_timeout)
 : socketcan_adapter_(std::move(socketcan_adapter))
+, command_timeout_(command_timeout)
+, control_enable_responses_(command_timeout_)
+, control_command_responses_(command_timeout_)
 , device_(device)
 {}
 

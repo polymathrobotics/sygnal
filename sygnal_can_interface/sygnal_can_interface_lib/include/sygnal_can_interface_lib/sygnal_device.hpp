@@ -113,7 +113,11 @@ public:
 protected:
   /// @param socketcan_adapter Adapter that commands go out on.
   /// @param device Descriptor of this device.
-  SygnalDevice(std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter, SygnalControlDevice device);
+  /// @param command_timeout How long a command waits for its response before its promise is dropped.
+  SygnalDevice(
+    std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
+    SygnalControlDevice device,
+    std::chrono::steady_clock::duration command_timeout);
 
   /// @brief Pack msg into a frame. A message with a crc signal gets the CRC8 of bytes 0-6 written to it;
   ///        callers leave crc unset.
@@ -138,6 +142,9 @@ protected:
 
   /// @brief Written by subclass message handlers on the reception thread.
   Stamped<SygnalSystemState> system_state_{SygnalSystemState::FAIL_HARD, {}};
+
+  /// @brief How long any command waits for its response. Declared before the queues that are built from it.
+  const std::chrono::steady_clock::duration command_timeout_;
 
   /// @brief Pending replies, keyed by the endpoint ID in the response frame.
   ///        Push before sending a command that expects a reply, withdraw_newest if the send fails,

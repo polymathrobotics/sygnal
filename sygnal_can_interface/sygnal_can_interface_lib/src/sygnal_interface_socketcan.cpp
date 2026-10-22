@@ -55,7 +55,8 @@ std::optional<uint8_t> address_of(const SygnalControlDevice & device)
 
 SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(
   std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-  const std::vector<SygnalControlDevice> & control_devices)
+  const std::vector<SygnalControlDevice> & control_devices,
+  std::chrono::steady_clock::duration command_timeout)
 {
   // Loop over all control devices passed.
   for (const SygnalControlDevice & device : control_devices) {
@@ -72,10 +73,10 @@ SygnalInterfaceSocketcan::SygnalInterfaceSocketcan(
     std::vector<uint8_t> addresses{*address};
     switch (device.type) {
       case SygnalControlDeviceType::MCM:
-        instance = std::make_unique<SygnalMcmDevice>(socketcan_adapter, device);
+        instance = std::make_unique<SygnalMcmDevice>(socketcan_adapter, device, command_timeout);
         break;
       case SygnalControlDeviceType::HPO:
-        instance = std::make_unique<SygnalHpoDevice>(socketcan_adapter, device);
+        instance = std::make_unique<SygnalHpoDevice>(socketcan_adapter, device, command_timeout);
         // Non-MCM devices ignore the subsystem bit, so they take the slots for both subsystem IDs.
         // That way, arbitration can index the lookup table with byte 0 from the CAN message and
         // still find the device, regardless of the subsystem bit.

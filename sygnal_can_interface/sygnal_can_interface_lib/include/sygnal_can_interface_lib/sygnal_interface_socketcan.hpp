@@ -16,6 +16,7 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -26,16 +27,20 @@
 namespace polymath::sygnal
 {
 
+constexpr std::chrono::seconds DEFAULT_COMMAND_TIMEOUT{1};
+
 /// @brief A single interface for all Sygnal devices.
 class SygnalInterfaceSocketcan
 {
 public:
   /// @param socketcan_adapter Adapter that devices send commands on.
   /// @param control_devices Devices to manage.
+  /// @param command_timeout How long a command waits for its response before its promise is dropped.
   /// @throws std::invalid_argument on a bus_id above 127, an MCM subsystem_id above 1, or duplicate device addresses.
   SygnalInterfaceSocketcan(
     std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-    const std::vector<SygnalControlDevice> & control_devices);
+    const std::vector<SygnalControlDevice> & control_devices,
+    std::chrono::steady_clock::duration command_timeout = DEFAULT_COMMAND_TIMEOUT);
 
   /// @brief Route a received frame to the device it addresses.
   /// @return true if a configured device consumed the frame.
