@@ -35,6 +35,7 @@ using polymath::sygnal::SygnalControlDeviceType;
 using polymath::sygnal::SygnalControlEndpointType;
 using polymath::sygnal::SygnalDevice;
 using polymath::sygnal::SygnalEndpoint;
+using polymath::sygnal::SygnalErrorType;
 using polymath::sygnal::SygnalHpoDevice;
 using polymath::sygnal::SygnalSystemState;
 
@@ -158,4 +159,21 @@ TEST_CASE("HPO device rejects endpoints and values it does not have", "[hpo_devi
   CHECK_THROWS_AS(device.get_interface_control_state(hpo_if(4)), std::invalid_argument);
   CHECK_THROWS_AS(device.get_control_command_value(mcm_if), std::invalid_argument);
   CHECK_THROWS_AS(device.get_device_faults(), std::invalid_argument);
+}
+
+TEST_CASE("HPO get_new_device_errors returns its errors and clears them", "[hpo_device]")
+{
+  TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
+
+  REQUIRE(device.handle(
+    sygnal_test::error_status<hpo_error::ErrorStatus>(BUS, 0, SygnalErrorType::INTERFACE_ID, 0x160),
+    {},
+    RESPONSE_TIME));
+
+  const auto errors = device.get_new_device_errors();
+  REQUIRE(1 == errors.size());  // NOLINT(readability/check)
+  CHECK(SygnalErrorType::INTERFACE_ID == errors[0].value.type);
+  CHECK(0x160 == errors[0].value.can_id);  // NOLINT(readability/check)
+  CHECK(RESPONSE_TIME == errors[0].timestamp);
+  CHECK(device.get_new_device_errors().empty());
 }

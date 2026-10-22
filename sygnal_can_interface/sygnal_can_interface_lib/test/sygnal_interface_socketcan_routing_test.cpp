@@ -41,6 +41,7 @@ using polymath::sygnal::SygnalControlDevice;
 using polymath::sygnal::SygnalControlDeviceType;
 using polymath::sygnal::SygnalControlEndpointType;
 using polymath::sygnal::SygnalEndpoint;
+using polymath::sygnal::SygnalErrorType;
 using polymath::sygnal::SygnalInterfaceSocketcan;
 using polymath::sygnal::SygnalSystemState;
 
@@ -161,4 +162,17 @@ TEST_CASE(
   const SygnalControlDevice mcm_at_hpo_address{SygnalControlDeviceType::MCM, 3, 0, "wrong_type"};
 
   CHECK_THROWS_AS(sygnal.get_device_system_state(mcm_at_hpo_address), std::invalid_argument);
+}
+
+TEST_CASE("SygnalInterfaceSocketcan returns new errors from the addressed device only", "[socketcan_routing]")
+{
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  REQUIRE(sygnal.parse(CanFrame(sygnal_test::error_status<mcm_error::ErrorStatus>(1, 1, SygnalErrorType::KEY, 0x7F))));
+
+  CHECK(sygnal.get_new_device_errors(MCM_SUBSYSTEM_0).empty());
+  CHECK(sygnal.get_new_device_errors(HPO).empty());
+  const auto errors = sygnal.get_new_device_errors(MCM_SUBSYSTEM_1);
+  REQUIRE(1 == errors.size());  // NOLINT(readability/check)
+  CHECK(SygnalErrorType::KEY == errors[0].value.type);
+  CHECK_THROWS_AS(sygnal.get_new_device_errors(UNCONFIGURED), std::invalid_argument);
 }
