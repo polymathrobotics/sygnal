@@ -15,10 +15,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(sygnal_can_interface_lib)
 
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
-endif()
-
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -Werror=switch)
   add_link_options("-Wl,--no-undefined")
@@ -26,6 +22,19 @@ endif()
 
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+
+# Header-only target for sygnal_types.hpp, for packages that need the types and not the CAN interface.
+add_library(sygnal_types INTERFACE)
+
+# The headers use C++20, so every consumer compiles with at least C++20.
+target_compile_features(sygnal_types INTERFACE cxx_std_20)
+
+target_include_directories(sygnal_types INTERFACE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:include>"
+)
+
+target_link_libraries(sygnal_types INTERFACE magic_enum::magic_enum)
 
 add_library(
   ${PROJECT_NAME} SHARED
@@ -36,16 +45,12 @@ add_library(
   src/sygnal_mcm_device.cpp
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-  "$<INSTALL_INTERFACE:include>"
-)
-
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     dbc_gen_cpp::dbc_gen_cpp
     socketcan_adapter::socketcan_adapter
     sygnal_dbc::sygnal_dbc
+    sygnal_types
 )
 
 install(
@@ -54,7 +59,7 @@ install(
 )
 
 install(
-  TARGETS ${PROJECT_NAME}
+  TARGETS ${PROJECT_NAME} sygnal_types
   EXPORT ${PROJECT_NAME}_TARGETS
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -71,6 +76,7 @@ install(
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_export_dependencies(
   dbc_gen_cpp
+  magic_enum
   socketcan_adapter
   sygnal_dbc
 )
