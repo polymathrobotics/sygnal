@@ -17,6 +17,7 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #if __has_include(<catch2/catch_all.hpp>)
@@ -29,14 +30,18 @@
 
 #include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
 
+using polymath::sygnal::SygnalControlDevice;
+using polymath::sygnal::SygnalControlDeviceType;
+using polymath::sygnal::SygnalControlEndpointType;
 using polymath::sygnal::SygnalDevice;
+using polymath::sygnal::SygnalEndpoint;
 using polymath::sygnal::SygnalHpoDevice;
 using polymath::sygnal::SygnalSystemState;
 
 namespace
 {
 
-/// @brief Unopened adapter; every send fails.
+/// @brief Unopened adapter; these tests never send.
 std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 {
   return std::make_shared<polymath::socketcan::SocketcanAdapter>("vcan0");
@@ -46,13 +51,20 @@ std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 class TestHpoDevice : public SygnalHpoDevice
 {
 public:
-  using SygnalHpoDevice::control_command_responses_;
-  using SygnalHpoDevice::control_enable_responses_;
+  using SygnalDevice::control_command_responses_;
+  using SygnalDevice::control_enable_responses_;
   using SygnalHpoDevice::SygnalHpoDevice;
 };
 
 constexpr uint8_t BUS = 3;
+constexpr SygnalControlDevice HPO{SygnalControlDeviceType::HPO, BUS, 0, "hpo"};
+constexpr std::chrono::system_clock::time_point RESPONSE_TIME{std::chrono::milliseconds(200)};
 constexpr std::chrono::seconds COMMAND_TIMEOUT{1};
+
+SygnalEndpoint hpo_if(uint8_t id)
+{
+  return {SygnalControlEndpointType::HPO_INTERFACE, HPO, id, 0, 1, false, "test"};
+}
 
 template <typename T>
 bool is_ready(const std::future<T> & future)
@@ -62,62 +74,87 @@ bool is_ready(const std::future<T> & future)
 
 }  // namespace
 
-TEST_CASE("HPO heartbeat sets interface states", "[hpo_device]")
+TEST_CASE("HPO heartbeat sets system and interface state", "[hpo_device]")
 {
-  TestHpoDevice device(adapter(), BUS, COMMAND_TIMEOUT);
-  CHECK_FALSE(device.get_interface_states()[2]);
+  TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
+  CHECK(SygnalSystemState::FAIL_HARD == device.get_device_system_state().value);
+  CHECK(SygnalSystemState::FAIL_HARD == device.get_interface_control_state(hpo_if(0)).value);
 
   REQUIRE(device.handle(sygnal_test::hpo_heartbeat(BUS, SygnalSystemState::HUMAN_CONTROL, {false, false, true})));
 
-  CHECK_FALSE(device.get_interface_states()[0]);
-  CHECK(device.get_interface_states()[2]);
+  CHECK(SygnalSystemState::HUMAN_CONTROL == device.get_device_system_state().value);
+  CHECK(SygnalSystemState::HUMAN_CONTROL == device.get_interface_control_state(hpo_if(0)).value);
+  CHECK(SygnalSystemState::MCM_CONTROL == device.get_interface_control_state(hpo_if(2)).value);
 }
 
-TEST_CASE("HPO device rejects a frame with a bad CRC", "[hpo_device]")
+TEST_CASE("HPO heartbeat sets interface values from the pin state", "[hpo_device]")
 {
-  TestHpoDevice device(adapter(), BUS, COMMAND_TIMEOUT);
-  can_frame frame = sygnal_test::hpo_heartbeat(BUS, SygnalSystemState::HUMAN_CONTROL, {true});
-  frame.data[CAN_MAX_DLC - 1] ^= 0xFF;
+  TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
 
-  CHECK_FALSE(device.handle(frame));
-  CHECK_FALSE(device.get_interface_states()[0]);
+  REQUIRE(device.handle(
+    sygnal_test::hpo_heartbeat(BUS, SygnalSystemState::MCM_CONTROL, {}, {0, 1, 2, 1}), {}, RESPONSE_TIME));
+
+  CHECK(0.0 == device.get_control_command_value(hpo_if(0)).value);
+  CHECK(1.0 == device.get_control_command_value(hpo_if(1)).value);
+  CHECK(2.0 == device.get_control_command_value(hpo_if(2)).value);
+  CHECK(1.0 == device.get_control_command_value(hpo_if(3)).value);
+  CHECK(RESPONSE_TIME == device.get_control_command_value(hpo_if(3)).timestamp);
 }
 
 TEST_CASE("HPO enable response fulfills only its message's future", "[hpo_device]")
 {
-  TestHpoDevice device(adapter(), BUS, COMMAND_TIMEOUT);
+  TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
   auto message0 = device.control_enable_responses_.push(0);
   auto message1 = device.control_enable_responses_.push(1);
 
-  REQUIRE(device.handle(sygnal_test::hpo_enable_response(BUS, 1, true)));
+  REQUIRE(device.handle(sygnal_test::hpo_enable_response(BUS, 1, true), {}, RESPONSE_TIME));
 
   CHECK_FALSE(is_ready(message0));
   REQUIRE(is_ready(message1));
   const auto response = message1.get();
-  CHECK(response.is_enable_response);
-  CHECK(response.enable);
-  CHECK(1 == response.message_id);  // NOLINT(readability/check)
+  CHECK(SygnalSystemState::MCM_CONTROL == response.value);
+  CHECK(RESPONSE_TIME == response.timestamp);
+  CHECK(SygnalSystemState::MCM_CONTROL == device.get_interface_control_state(hpo_if(1)).value);
 }
 
-TEST_CASE("HPO command response fulfills its message's future", "[hpo_device]")
+TEST_CASE("HPO command response fulfills its future and caches the value", "[hpo_device]")
 {
-  TestHpoDevice device(adapter(), BUS, COMMAND_TIMEOUT);
+  TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
   auto future = device.control_command_responses_.push(10);
 
-  REQUIRE(device.handle(sygnal_test::hpo_command_response(BUS, 10, 1.5)));
+  REQUIRE(device.handle(sygnal_test::hpo_command_response(BUS, 10, 1.5), {}, RESPONSE_TIME));
 
   REQUIRE(is_ready(future));
-  CHECK(1.5 == future.get().value);
+  const auto response = future.get();
+  CHECK(1.5 == response.value);
+  CHECK(RESPONSE_TIME == response.timestamp);
+  CHECK(1.5 == device.get_control_command_value(hpo_if(10)).value);
 }
 
-TEST_CASE("HPO failed send leaves no pending reply", "[hpo_device]")
+TEST_CASE("HPO getters carry the bus time of the frame that set them", "[hpo_device]")
 {
-  TestHpoDevice device(adapter(), BUS, COMMAND_TIMEOUT);
-  std::string error_message;
+  TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
+  const std::chrono::system_clock::time_point heartbeat_time{std::chrono::milliseconds(100)};
+  const std::chrono::system_clock::time_point response_time{std::chrono::milliseconds(200)};
 
-  const auto result = device.send_control_enable(0x42, true, true, error_message);
+  CHECK(std::chrono::system_clock::time_point{} == device.get_device_system_state().timestamp);
 
-  CHECK_FALSE(result.success);
-  CHECK_FALSE(result.response_future.has_value());
-  CHECK_FALSE(error_message.empty());
+  REQUIRE(device.handle(
+    sygnal_test::hpo_heartbeat(BUS, SygnalSystemState::HUMAN_CONTROL, {false, true}), {}, heartbeat_time));
+  REQUIRE(device.handle(sygnal_test::hpo_command_response(BUS, 1, 0.5), {}, response_time));
+
+  CHECK(heartbeat_time == device.get_device_system_state().timestamp);
+  CHECK(heartbeat_time == device.get_interface_control_state(hpo_if(1)).timestamp);
+  CHECK(response_time == device.get_control_command_value(hpo_if(1)).timestamp);
+}
+
+TEST_CASE("HPO device rejects endpoints and values it does not have", "[hpo_device]")
+{
+  TestHpoDevice device(adapter(), HPO, COMMAND_TIMEOUT);
+  const SygnalEndpoint mcm_if{SygnalControlEndpointType::MCM_INTERFACE, HPO, 0, 0, 1, false, "test"};
+
+  CHECK_THROWS_AS(device.send_control_enable_command(mcm_if, true, false), std::invalid_argument);
+  CHECK_THROWS_AS(device.send_control_command(mcm_if, 1.0, false), std::invalid_argument);
+  CHECK_THROWS_AS(device.get_interface_control_state(hpo_if(4)), std::invalid_argument);
+  CHECK_THROWS_AS(device.get_control_command_value(mcm_if), std::invalid_argument);
 }

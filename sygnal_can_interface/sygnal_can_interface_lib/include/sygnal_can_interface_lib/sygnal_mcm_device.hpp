@@ -15,80 +15,72 @@
 #pragma once
 
 #include <array>
-#include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <string>
 
-#include "sygnal_can_interface_lib/response_queues.hpp"
 #include "sygnal_can_interface_lib/sygnal_device.hpp"
-#include "sygnal_can_interface_lib/sygnal_types.hpp"
 
 namespace polymath::sygnal
 {
 
-constexpr uint8_t DEFAULT_MCM_BUS_ADDRESS = 1;
-constexpr uint8_t SECONDARY_MCM_BUS_ADDRESS = 2;
+/// @brief Max number of Interfaces an MCM subsystem can have.
+constexpr uint8_t MCM_NUM_INTERFACES = 7;
 
-constexpr uint32_t MAX_SYGNAL_INTERFACES = 6;
-constexpr uint32_t MAX_SYGNAL_SUBSYSTEMS = 2;
-
-/// @brief One MCM subsystem: interface endpoints (interface ID 0-5) and one relay.
+/// @brief One MCM subsystem: MCM_INTERFACE endpoints (interface ID 0-6) and one MCM_RELAY endpoint.
+///        Adds MCM-specific handling for interfaces and relays.
 class SygnalMcmDevice : public SygnalDevice
 {
 public:
   /// @param socketcan_adapter Adapter that commands go out on.
-  /// @param bus_address Bus address of the MCM.
-  /// @param subsystem_id Subsystem of the MCM, 0 or 1.
+  /// @param device MCM descriptor: bus_id and subsystem_id.
   /// @param command_timeout How long a command waits for its response before its promise is dropped.
   SygnalMcmDevice(
     std::shared_ptr<socketcan::SocketcanAdapter> socketcan_adapter,
-    uint8_t bus_address,
-    uint8_t subsystem_id,
+    const SygnalControlDevice & device,
     std::chrono::steady_clock::duration command_timeout);
 
-  uint8_t get_subsystem_id() const;
+  /// @brief MCM_CONTROL or HUMAN_CONTROL for an MCM_INTERFACE endpoint, from the latest heartbeat or enable response.
+  /// @throws std::invalid_argument for type != MCM_INTERFACE, or an interface ID of 7 or above.
+  Stamped<SygnalSystemState> get_interface_control_state(const SygnalEndpoint & endpoint) const override;
 
-  /// @brief Interface states from the latest heartbeat; FAIL_HARD until the first.
-  std::array<SygnalSystemState, 5> get_interface_states() const;
+  /// @brief Latest command response value of an MCM_INTERFACE endpoint, or the relay state of MCM_RELAY; 0 until the first.
+  /// @throws std::invalid_argument for type != MCM_INTERFACE or MCM_RELAY, or an interface ID of 7 or above.
+  Stamped<double> get_control_command_value(const SygnalEndpoint & endpoint) const override;
 
-  /// @brief System state from the latest heartbeat; FAIL_HARD until the first.
-  SygnalSystemState get_mcm_state() const;
+  /// @brief Enable or disable control of an MCM_INTERFACE endpoint.
+  ControlEnableCommandResult send_control_enable_command(
+    const SygnalEndpoint & endpoint, bool enable, bool expect_reply) override;
 
-  /// @brief Enable or disable control of an interface.
-  /// @param expect_reply Return a future that resolves from the interface's enable response.
-  /// @param[out] error_message Populated on failure.
-  SendCommandResult send_control_state_command(
-    uint8_t interface_id, SygnalControlState control_state, bool expect_reply, std::string & error_message);
-
-  /// @brief Set an interface's value.
-  /// @param expect_reply Return a future that resolves from the interface's command response.
-  /// @param[out] error_message Populated on failure.
-  SendCommandResult send_control_command(
-    uint8_t interface_id, double value, bool expect_reply, std::string & error_message);
-
-  /// @brief Close the relay when relay_state is true, open it otherwise.
-  /// @param expect_reply Return a future that resolves from the relay command response.
-  /// @param[out] error_message Populated on failure.
-  SendCommandResult send_relay_command(bool relay_state, bool expect_reply, std::string & error_message);
+  /// @brief Set an MCM_INTERFACE endpoint's value, or close the MCM_RELAY on a nonzero value and open it on zero.
+  ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply) override;
 
 protected:
-  /// @brief Pending replies, keyed by interface ID. Push before sending, withdraw_newest if the send fails,
-  ///        and fulfill from the reply's handler.
-  ResponseQueues<uint8_t, SygnalControlCommandResponse> control_enable_responses_;
-  ResponseQueues<uint8_t, SygnalControlCommandResponse> control_command_responses_;
-
   /// @brief Pending relay replies, always on key 0; RelayCommandResponse carries no ID.
-  ResponseQueues<uint8_t, SygnalControlCommandResponse> relay_responses_;
+  ///        Kept separate from interface responses to avoid fulfilling the wrong promises.
+  ResponseQueues<uint8_t, Stamped<double>> relay_responses_;
 
 private:
   /// @brief Register callbacks for handling incoming CAN messages.
   ///        This defines the logic for handling all MCM CAN messages.
   void initializeCANHandlerCallbacks();
 
-  const uint8_t subsystem_id_;
-  SygnalSystemState mcm_state_{SygnalSystemState::FAIL_HARD};
-  std::array<SygnalSystemState, 5> interface_states_;
+  /// @brief Helper to send a command to an MCM interface endpoint.
+  ControlCommandResult send_interface_command(const SygnalEndpoint & endpoint, double value, bool expect_reply);
+
+  /// @brief Helper to send a command to the MCM relay endpoint.
+  ControlCommandResult send_relay_command(double value, bool expect_reply);
+
+  /// @brief State of the MCM interfaces and relay based on the last heartbeat or command response.
+  std::array<Stamped<bool>, MCM_NUM_INTERFACES> interface_enabled_{};
+
+  /// @brief State of the MCM interface values based on the last command response.
+  std::array<Stamped<double>, MCM_NUM_INTERFACES> interface_values_{};
+
+  /// @brief State of the MCM relay based on the last command response.
+  Stamped<double> relay_value_{};
 };
 
 }  // namespace polymath::sygnal

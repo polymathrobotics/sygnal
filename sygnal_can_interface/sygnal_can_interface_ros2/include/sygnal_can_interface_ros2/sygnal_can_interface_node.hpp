@@ -100,8 +100,8 @@ private:
   // Parameters
   sygnal_can_interface_ros2::ParamListener param_listener_;
   sygnal_can_interface_ros2::Params params_;
-  const std::vector<polymath::sygnal::McmId> mcm_ids_;
-  const std::vector<polymath::sygnal::HpoId> hpo_ids_;
+  const std::vector<polymath::sygnal::SygnalControlDevice> mcm_devices_;
+  const std::vector<polymath::sygnal::SygnalControlDevice> hpo_devices_;
 
   // SocketCAN and Sygnal components
   std::shared_ptr<polymath::socketcan::SocketcanAdapter> socketcan_adapter_;

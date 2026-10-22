@@ -16,13 +16,10 @@
 // constructor invariants and the parse() routing rules between HPO and MCM. End-to-end vcan tests live in
 // sygnal_interface_socketcan_test.cpp.
 
-#include <algorithm>
-#include <array>
-#include <cstdint>
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 #if __has_include(<catch2/catch_all.hpp>)
@@ -35,234 +32,120 @@
 
 #include "socketcan_adapter/can_frame.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
-#include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
-#include "sygnal_dbc/hpo_heartbeat.h"
-#include "sygnal_dbc/mcm_heartbeat.h"
 #include "sygnal_test_frames.hpp"  // NOLINT(build/include_subdir)
+
+using polymath::socketcan::CanFrame;
+using polymath::sygnal::SygnalControlDevice;
+using polymath::sygnal::SygnalControlDeviceType;
+using polymath::sygnal::SygnalControlEndpointType;
+using polymath::sygnal::SygnalEndpoint;
+using polymath::sygnal::SygnalInterfaceSocketcan;
+using polymath::sygnal::SygnalSystemState;
 
 namespace
 {
 
-constexpr uint8_t MCM_BUS = 1;
-constexpr uint8_t HPO_BUS = 3;
+const SygnalControlDevice MCM_SUBSYSTEM_0{SygnalControlDeviceType::MCM, 1, 0, "mcm_0"};
+const SygnalControlDevice MCM_SUBSYSTEM_1{SygnalControlDeviceType::MCM, 1, 1, "mcm_1"};
+const SygnalControlDevice HPO{SygnalControlDeviceType::HPO, 3, 0, "hpo"};
+const SygnalControlDevice UNCONFIGURED{SygnalControlDeviceType::MCM, 9, 0, "missing"};
 
-polymath::socketcan::CanFrame makeFrame(uint32_t can_id, const uint8_t * buffer, uint8_t len)
-{
-  polymath::socketcan::CanFrame frame;
-  frame.set_can_id(can_id);
-  std::array<unsigned char, CAN_MAX_DLC> data;
-  data.fill(0);
-  for (size_t i = 0; i < len && i < CAN_MAX_DLC; ++i) {
-    data[i] = buffer[i];
-  }
-  frame.set_data(data);
-  frame.set_len(len);
-  return frame;
-}
-
-polymath::socketcan::CanFrame buildHpoHeartbeat(uint8_t bus_address)
-{
-  hpo_heartbeat_heartbeat_t msg;
-  hpo_heartbeat_heartbeat_init(&msg);
-  msg.bus_address = bus_address;
-  msg.subsystem_id = 0;
-  msg.system_state = 0;
-  msg.interface0_state = 1;
-  msg.interface1_state = 0;
-  msg.interface2_state = 1;
-  msg.interface3_state = 0;
-  msg.count16 = 0;
-  msg.crc = 0;
-
-  uint8_t buffer[CAN_MAX_DLC];
-  hpo_heartbeat_heartbeat_pack(buffer, &msg, sizeof(buffer));
-  msg.crc = polymath::sygnal::generate_crc8(buffer);
-  hpo_heartbeat_heartbeat_pack(buffer, &msg, sizeof(buffer));
-  return makeFrame(HPO_HEARTBEAT_HEARTBEAT_FRAME_ID, buffer, HPO_HEARTBEAT_HEARTBEAT_LENGTH);
-}
-
-polymath::socketcan::CanFrame buildMcmHeartbeat(uint8_t bus_address, uint8_t subsystem_id, uint8_t system_state)
-{
-  mcm_heartbeat_heartbeat_t msg;
-  mcm_heartbeat_heartbeat_init(&msg);
-  msg.bus_address = bus_address;
-  msg.subsystem_id = subsystem_id;
-  msg.system_state = system_state;
-  msg.interface0_state = 1;
-  msg.interface1_state = 1;
-  msg.interface2_state = 1;
-  msg.interface3_state = 1;
-  msg.interface4_state = 1;
-  msg.interface5_state = 0;
-  msg.interface6_state = 0;
-  msg.overall_interface_state = 0;
-  msg.count16 = 0;
-  msg.crc = 0;
-
-  uint8_t buffer[CAN_MAX_DLC];
-  mcm_heartbeat_heartbeat_pack(buffer, &msg, sizeof(buffer));
-  msg.crc = polymath::sygnal::generate_crc8(buffer);
-  mcm_heartbeat_heartbeat_pack(buffer, &msg, sizeof(buffer));
-  return makeFrame(MCM_HEARTBEAT_HEARTBEAT_FRAME_ID, buffer, MCM_HEARTBEAT_HEARTBEAT_LENGTH);
-}
-
-// SocketcanAdapter constructor stores config only; no socket is opened until openSocket() is called.
-// We never open a socket in this file, so these tests work without CAN being available.
-std::shared_ptr<polymath::socketcan::SocketcanAdapter> makeUnopenedAdapter()
+std::shared_ptr<polymath::socketcan::SocketcanAdapter> adapter()
 {
   return std::make_shared<polymath::socketcan::SocketcanAdapter>("vcan0");
 }
 
+SygnalInterfaceSocketcan make_interface()
+{
+  return SygnalInterfaceSocketcan(adapter(), {MCM_SUBSYSTEM_0, MCM_SUBSYSTEM_1, HPO});
+}
+
 }  // namespace
 
-TEST_CASE("Constructor throws when an HPO and MCM share a bus address", "[sygnal_socketcan_routing]")
+TEST_CASE("SygnalInterfaceSocketcan rejects invalid device lists", "[socketcan_routing]")
 {
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{1, 0}, {2, 0}};
-  std::vector<polymath::sygnal::HpoId> hpos{{2}};  // collides with second MCM
+  using Devices = std::vector<SygnalControlDevice>;
+  const auto construct = [](const Devices & devices) { SygnalInterfaceSocketcan(adapter(), devices); };
 
-  REQUIRE_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, mcms, hpos), std::invalid_argument);
+  CHECK_THROWS_AS(construct(Devices{MCM_SUBSYSTEM_0, MCM_SUBSYSTEM_0}), std::invalid_argument);
+  CHECK_THROWS_AS(construct(Devices{{SygnalControlDeviceType::MCM, 128, 0}}), std::invalid_argument);
+  CHECK_THROWS_AS(construct(Devices{{SygnalControlDeviceType::MCM, 1, 2}}), std::invalid_argument);
+  CHECK_THROWS_AS(construct(Devices{HPO, {SygnalControlDeviceType::HPO, 3, 1}}), std::invalid_argument);
+  CHECK_THROWS_AS(construct(Devices{{SygnalControlDeviceType::HPO, 1, 0}, MCM_SUBSYSTEM_1}), std::invalid_argument);
+  CHECK_THROWS_AS(construct(Devices{MCM_SUBSYSTEM_1, {SygnalControlDeviceType::HPO, 1, 0}}), std::invalid_argument);
+  CHECK_NOTHROW(construct(Devices{MCM_SUBSYSTEM_0, MCM_SUBSYSTEM_1, HPO}));
 }
 
-TEST_CASE("Constructor with empty hpo_ids preserves legacy behavior", "[sygnal_socketcan_routing]")
+TEST_CASE("SygnalInterfaceSocketcan routes frames by bus address and subsystem", "[socketcan_routing]")
 {
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{1, 0}, {1, 1}};
+  SygnalInterfaceSocketcan sygnal = make_interface();
 
-  // Two-argument form (legacy) must still compile and not throw.
-  REQUIRE_NOTHROW(polymath::sygnal::SygnalInterfaceSocketcan(adapter, mcms));
+  REQUIRE(sygnal.parse(CanFrame(sygnal_test::mcm_heartbeat(1, 1, SygnalSystemState::MCM_CONTROL))));
+  CHECK(SygnalSystemState::FAIL_HARD == sygnal.get_device_system_state(MCM_SUBSYSTEM_0).value);
+  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_device_system_state(MCM_SUBSYSTEM_1).value);
+  CHECK(SygnalSystemState::FAIL_HARD == sygnal.get_device_system_state(HPO).value);
 
-  // Three-argument form with empty HPO list must also work and behave identically.
-  REQUIRE_NOTHROW(polymath::sygnal::SygnalInterfaceSocketcan(adapter, mcms, {}));
+  REQUIRE(sygnal.parse(CanFrame(sygnal_test::hpo_heartbeat(3, SygnalSystemState::HUMAN_CONTROL))));
+  CHECK(SygnalSystemState::HUMAN_CONTROL == sygnal.get_device_system_state(HPO).value);
+
+  CHECK_FALSE(sygnal.parse(CanFrame(sygnal_test::mcm_heartbeat(9, 0, SygnalSystemState::MCM_CONTROL))));
 }
 
-TEST_CASE("parse() routes HPO heartbeat to HPO state and leaves MCM untouched", "[sygnal_socketcan_routing]")
+TEST_CASE("SygnalInterfaceSocketcan routes endpoint reads to the endpoint's device", "[socketcan_routing]")
 {
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
-  std::vector<polymath::sygnal::HpoId> hpos{{HPO_BUS}};
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const SygnalEndpoint hpo_if{SygnalControlEndpointType::HPO_INTERFACE, HPO, 2, 0, 1, false, "hpo"};
+  const SygnalEndpoint mcm_if{SygnalControlEndpointType::MCM_INTERFACE, MCM_SUBSYSTEM_0, 2, 0, 1, false, "mcm"};
 
-  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms, hpos);
+  REQUIRE(sygnal.parse(CanFrame(sygnal_test::hpo_enable_response(3, 2, true))));
 
-  auto frame = buildHpoHeartbeat(HPO_BUS);
-  REQUIRE(sygnal.parse(frame));
-
-  auto hpo_interfaces = sygnal.get_hpo_interface_states(HPO_BUS);
-  REQUIRE(hpo_interfaces.has_value());
-  REQUIRE((*hpo_interfaces)[0]);
-  REQUIRE_FALSE((*hpo_interfaces)[1]);
-  REQUIRE((*hpo_interfaces)[2]);
-  REQUIRE_FALSE((*hpo_interfaces)[3]);
-
-  // MCM state untouched: still default FAIL_HARD.
-  auto mcm_state = sygnal.get_sygnal_mcm_state(MCM_BUS, 0);
-  REQUIRE(mcm_state.has_value());
-  REQUIRE(mcm_state.value() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
+  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_interface_control_state(hpo_if).value);
+  CHECK(SygnalSystemState::HUMAN_CONTROL == sygnal.get_interface_control_state(mcm_if).value);
 }
 
-TEST_CASE("parse() routes MCM heartbeat to MCM state and leaves HPO untouched", "[sygnal_socketcan_routing]")
+TEST_CASE("SygnalInterfaceSocketcan routes HPO frames regardless of bit 7", "[socketcan_routing]")
 {
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
-  std::vector<polymath::sygnal::HpoId> hpos{{HPO_BUS}};
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const SygnalEndpoint hpo_if{SygnalControlEndpointType::HPO_INTERFACE, HPO, 1, 0, 1, false, "hpo"};
 
-  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms, hpos);
-
-  auto frame = buildMcmHeartbeat(MCM_BUS, 0, static_cast<uint8_t>(polymath::sygnal::SygnalSystemState::MCM_CONTROL));
-  REQUIRE(sygnal.parse(frame));
-
-  auto mcm_state = sygnal.get_sygnal_mcm_state(MCM_BUS, 0);
-  REQUIRE(mcm_state.has_value());
-  REQUIRE(mcm_state.value() == polymath::sygnal::SygnalSystemState::MCM_CONTROL);
-
-  // HPO interface states stay at their default false.
-  auto hpo_interfaces = sygnal.get_hpo_interface_states(HPO_BUS);
-  REQUIRE(hpo_interfaces.has_value());
-  for (bool state : *hpo_interfaces) {
-    REQUIRE_FALSE(state);
-  }
-}
-
-TEST_CASE("parse() routes MCM frames by bus address and subsystem", "[sygnal_socketcan_routing]")
-{
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}, {MCM_BUS, 1}};
-
-  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
-
-  REQUIRE(sygnal.parse(polymath::socketcan::CanFrame(
-    sygnal_test::mcm_heartbeat(MCM_BUS, 1, polymath::sygnal::SygnalSystemState::MCM_CONTROL))));
-
-  CHECK(polymath::sygnal::SygnalSystemState::FAIL_HARD == sygnal.get_sygnal_mcm_state(MCM_BUS, 0).value());
-  CHECK(polymath::sygnal::SygnalSystemState::MCM_CONTROL == sygnal.get_sygnal_mcm_state(MCM_BUS, 1).value());
-}
-
-TEST_CASE("parse() routes HPO frames regardless of bit 7", "[sygnal_socketcan_routing]")
-{
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
-  std::vector<polymath::sygnal::HpoId> hpos{{HPO_BUS}};
-
-  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms, hpos);
-
-  can_frame frame = sygnal_test::hpo_heartbeat(HPO_BUS, polymath::sygnal::SygnalSystemState::HUMAN_CONTROL, {true});
+  can_frame frame = sygnal_test::hpo_enable_response(3, 1, true);
   frame.data[0] |= 0x80;
   frame.data[CAN_MAX_DLC - 1] = polymath::sygnal::generate_crc8(frame.data);
 
-  REQUIRE(sygnal.parse(polymath::socketcan::CanFrame(frame)));
-  CHECK((*sygnal.get_hpo_interface_states(HPO_BUS))[0]);
+  REQUIRE(sygnal.parse(CanFrame(frame)));
+  CHECK(SygnalSystemState::MCM_CONTROL == sygnal.get_interface_control_state(hpo_if).value);
 }
 
-TEST_CASE("parse() ignores frames from an unconfigured address", "[sygnal_socketcan_routing]")
+TEST_CASE("SygnalInterfaceSocketcan passes the frame's bus time to the getters", "[socketcan_routing]")
 {
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const std::chrono::system_clock::time_point bus_time{std::chrono::milliseconds(1234)};
 
-  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
+  CanFrame frame(sygnal_test::mcm_heartbeat(1, 0, SygnalSystemState::HUMAN_CONTROL));
+  frame.set_bus_timestamp(bus_time);
+  REQUIRE(sygnal.parse(frame));
 
-  CHECK_FALSE(sygnal.parse(
-    polymath::socketcan::CanFrame(sygnal_test::mcm_heartbeat(9, 0, polymath::sygnal::SygnalSystemState::MCM_CONTROL))));
-  CHECK(polymath::sygnal::SygnalSystemState::FAIL_HARD == sygnal.get_sygnal_mcm_state(MCM_BUS, 0).value());
+  CHECK(bus_time == sygnal.get_device_system_state(MCM_SUBSYSTEM_0).timestamp);
+  CHECK(std::chrono::system_clock::time_point{} == sygnal.get_device_system_state(MCM_SUBSYSTEM_1).timestamp);
 }
 
-TEST_CASE("Constructor throws on duplicate or out-of-range addresses", "[sygnal_socketcan_routing]")
+TEST_CASE("SygnalInterfaceSocketcan rejects unconfigured devices", "[socketcan_routing]")
 {
-  auto adapter = makeUnopenedAdapter();
-  using Mcms = std::vector<polymath::sygnal::McmId>;
-  using Hpos = std::vector<polymath::sygnal::HpoId>;
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const SygnalEndpoint endpoint{SygnalControlEndpointType::MCM_INTERFACE, UNCONFIGURED, 0, 0, 1, false, "missing"};
 
-  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{{1, 0}, {1, 0}}), std::invalid_argument);
-  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{{128, 0}}), std::invalid_argument);
-  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{{1, 2}}), std::invalid_argument);
-  CHECK_THROWS_AS(polymath::sygnal::SygnalInterfaceSocketcan(adapter, Mcms{}, Hpos{{3}, {3}}), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.get_device_system_state(UNCONFIGURED), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.get_control_command_value(endpoint), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.send_control_enable_command(endpoint, true, true), std::invalid_argument);
+  CHECK_THROWS_AS(sygnal.send_control_command(endpoint, 1.0, true), std::invalid_argument);
 }
 
-TEST_CASE("sendControlCommand to an unregistered MCM fails cleanly", "[sygnal_socketcan_routing]")
+TEST_CASE(
+  "SygnalInterfaceSocketcan rejects a descriptor whose type differs from the configured device", "[socketcan_routing]")
 {
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
+  SygnalInterfaceSocketcan sygnal = make_interface();
+  const SygnalControlDevice mcm_at_hpo_address{SygnalControlDeviceType::MCM, 3, 0, "wrong_type"};
 
-  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms);
-
-  std::string err;
-  auto result = sygnal.sendControlCommand(MCM_BUS, 0, /*subsystem_id=*/1, 0.5, true, err);
-  REQUIRE_FALSE(result.success);
-  REQUIRE_FALSE(result.response_future.has_value());
-  REQUIRE_FALSE(err.empty());
-}
-
-TEST_CASE("sendHpoControlEnable to an unregistered bus address fails cleanly", "[sygnal_socketcan_routing]")
-{
-  auto adapter = makeUnopenedAdapter();
-  std::vector<polymath::sygnal::McmId> mcms{{MCM_BUS, 0}};
-  std::vector<polymath::sygnal::HpoId> hpos{{HPO_BUS}};
-
-  polymath::sygnal::SygnalInterfaceSocketcan sygnal(adapter, mcms, hpos);
-
-  std::string err;
-  auto result = sygnal.sendHpoControlEnable(/*bus_id=*/99, 0x10, true, false, err);
-  REQUIRE_FALSE(result.success);
-  REQUIRE_FALSE(result.response_future.has_value());
-  REQUIRE_FALSE(err.empty());
+  CHECK_THROWS_AS(sygnal.get_device_system_state(mcm_at_hpo_address), std::invalid_argument);
 }
