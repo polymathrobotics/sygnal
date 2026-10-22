@@ -70,19 +70,18 @@ public:
   std::vector<Stamped<SygnalError>> get_new_device_errors(const SygnalControlDevice & device);
 
   /// @brief Enable or disable control of an endpoint.
-  /// @param expect_reply Return a future that resolves from the response message.
-  /// @return A future. Resolves immediately if expect_reply is false,
-  ///         otherwise resolves from the response message.
+  /// @param expect_reply Return a future that resolves from the endpoint's enable response.
+  /// @return success false with the reason if the send fails; response_future is empty unless expect_reply.
   /// @throws std::invalid_argument if the device is unknown or does not support the endpoint.
   ControlEnableCommandResult send_control_enable_command(
-    const SygnalEndpoint & endpoint, bool enable, bool expect_reply);
+    const SygnalEndpoint & endpoint, bool enable, bool expect_reply = true);
 
   /// @brief Set an endpoint's value.
   /// @param expect_reply Return a future that resolves from the endpoint's command response.
-  /// @return A future. Resolves immediately if expect_reply is false,
-  ///         otherwise resolves from the endpoint's command response.
+  /// @return success false with the reason if the send fails; response_future is empty unless expect_reply.
   /// @throws std::invalid_argument if the device is unknown or does not support the endpoint.
-  ControlCommandResult send_control_command(const SygnalEndpoint & endpoint, double value, bool expect_reply);
+  ControlCommandResult send_control_command(
+    const SygnalEndpoint & endpoint, double value, bool expect_reply = true);
 
 private:
   /// @throws std::invalid_argument if no device of device.type is configured at its address.
