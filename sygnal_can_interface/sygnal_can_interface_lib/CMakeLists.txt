@@ -43,6 +43,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
+    dbc_gen_cpp::dbc_gen_cpp
     socketcan_adapter::socketcan_adapter
     sygnal_dbc::sygnal_dbc
 )
@@ -69,6 +70,7 @@ install(
 
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_export_dependencies(
+  dbc_gen_cpp
   socketcan_adapter
   sygnal_dbc
 )
