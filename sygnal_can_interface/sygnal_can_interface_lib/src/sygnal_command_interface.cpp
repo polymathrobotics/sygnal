@@ -16,9 +16,9 @@
 
 #include <string>
 
+#include "mcm_control/mcm_control.hpp"
+#include "mcm_relay/mcm_relay.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
-#include "sygnal_dbc/mcm_control.h"
-#include "sygnal_dbc/mcm_relay.h"
 
 namespace polymath::sygnal
 {

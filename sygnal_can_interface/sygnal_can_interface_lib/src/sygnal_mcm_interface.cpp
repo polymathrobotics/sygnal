@@ -16,8 +16,8 @@
 
 #include <chrono>
 
+#include "mcm_heartbeat/mcm_heartbeat.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
-#include "sygnal_dbc/mcm_heartbeat.h"
 
 namespace polymath::sygnal
 {

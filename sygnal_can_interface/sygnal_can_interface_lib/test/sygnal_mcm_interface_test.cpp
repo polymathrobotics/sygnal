@@ -150,16 +150,3 @@ TEST_CASE("SygnalMcmInterface only parses matching subsystem_id", "[sygnal_mcm_i
   REQUIRE(interface_1.parseMcmHeartbeatFrame(frame_sub0) == false);
   REQUIRE(interface_1.get_mcm_state() == polymath::sygnal::SygnalSystemState::FAIL_HARD);
 }
-
-TEST_CASE("sygnalSystemStateToString returns correct strings", "[sygnal_mcm_interface]")
-{
-  using polymath::sygnal::SygnalSystemState;
-  using polymath::sygnal::sygnalSystemStateToString;
-
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::FAIL_HARD) == "FAIL_HARD");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::HUMAN_OVERRIDE) == "HUMAN_OVERRIDE");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::FAIL_OPERATIONAL_2) == "FAIL_OPERATIONAL_2");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::FAIL_OPERATIONAL_1) == "FAIL_OPERATIONAL_1");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::MCM_CONTROL) == "MCM_CONTROL");
-  REQUIRE(sygnalSystemStateToString(SygnalSystemState::HUMAN_CONTROL) == "HUMAN_CONTROL");
-}

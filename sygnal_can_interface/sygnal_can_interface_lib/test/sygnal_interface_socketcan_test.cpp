@@ -32,12 +32,12 @@ using Catch::Approx;
 #include <string>
 #include <vector>
 
+#include "mcm_control/mcm_control.hpp"
+#include "mcm_heartbeat/mcm_heartbeat.hpp"
+#include "mcm_relay/mcm_relay.hpp"
 #include "socketcan_adapter/socketcan_adapter.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
 #include "sygnal_can_interface_lib/sygnal_interface_socketcan.hpp"
-#include "sygnal_dbc/mcm_control.h"
-#include "sygnal_dbc/mcm_heartbeat.h"
-#include "sygnal_dbc/mcm_relay.h"
 
 namespace
 {

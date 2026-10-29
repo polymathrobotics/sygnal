@@ -27,11 +27,11 @@
   #error "Catch2 headers not found. Please install Catch2 (v2 or v3)."
 #endif
 
+#include "hpo_control/hpo_control.hpp"
+#include "hpo_error/hpo_error.hpp"
+#include "hpo_heartbeat/hpo_heartbeat.hpp"
 #include "socketcan_adapter/can_frame.hpp"
 #include "sygnal_can_interface_lib/crc8.hpp"
-#include "sygnal_dbc/hpo_control.h"
-#include "sygnal_dbc/hpo_error.h"
-#include "sygnal_dbc/hpo_heartbeat.h"
 
 using polymath::sygnal::HPO_NUM_INTERFACES;
 using polymath::sygnal::HpoControlResponse;
@@ -335,9 +335,9 @@ TEST_CASE("SygnalHpoInterface parses ErrorStatus", "[sygnal_hpo_interface]")
   REQUIRE(err.has_value());
   REQUIRE(err->bus_address == TEST_BUS_ADDRESS);
   REQUIRE(err->subsystem_id == 1);
-  REQUIRE(err->error_type == 5);
+  REQUIRE(err->error_type == polymath::sygnal::HpoErrorType::PERMISSIONS_ERROR);
   REQUIRE(err->error_can_id == 0x1234);
-  REQUIRE(err->config_section_id == 6);
+  REQUIRE(err->config_section_id == polymath::sygnal::HpoConfigSectionID::CONTROL);
   REQUIRE(err->config_interface_id == 2);
 }
 
