@@ -84,5 +84,30 @@ install(EXPORT ${PROJECT_NAME}_TARGETS
   DESTINATION share/${PROJECT_NAME}/cmake
 )
 
+if(BUILD_TESTING)
+  ament_auto_find_test_dependencies()
+  find_package(Catch2 REQUIRED)
+
+  # Needs a vcan0 interface: ip link add vcan0 type vcan && ip link set up vcan0
+  if(DEFINED ENV{CAN_AVAILABLE})
+    add_executable(sygnal_can_interface_node_lifecycle_tests
+      test/sygnal_can_interface_node_lifecycle_test.cpp
+    )
+    target_link_libraries(sygnal_can_interface_node_lifecycle_tests
+      PRIVATE ${PROJECT_NAME} sygnal_dbc::sygnal_dbc Catch2::Catch2WithMain
+    )
+    ament_add_test(
+      sygnal_can_interface_node_lifecycle_tests
+      GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+      COMMAND "$<TARGET_FILE:sygnal_can_interface_node_lifecycle_tests>"
+        -r junit -s
+        -o test_results/${PROJECT_NAME}/sygnal_can_interface_node_lifecycle_tests_output.xml
+      ENV CATCH_CONFIG_CONSOLE_WIDTH=120
+      WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+    message(STATUS "CAN_AVAILABLE set - including hardware tests")
+  endif()
+endif()
+
 ament_export_targets(${PROJECT_NAME}_TARGETS HAS_LIBRARY_TARGET)
 ament_package()

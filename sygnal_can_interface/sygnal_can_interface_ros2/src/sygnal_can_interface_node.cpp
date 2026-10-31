@@ -188,6 +188,9 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn SygnalCanInterfaceNode::on_deactivate(
   const rclcpp_lifecycle::State &)
 {
+  // Stop accepting control commands while inactive
+  control_command_sub_.reset();
+
   // Deactivate publishers
   diagnostics_pub_->on_deactivate();
   for (auto & entry : mcm_heartbeat_entries_) {
@@ -202,6 +205,7 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Sygnal
   const rclcpp_lifecycle::State &)
 {
   // Clean up resources
+  control_command_sub_.reset();
   timer_.reset();
   set_control_state_service_.reset();
   send_control_command_service_.reset();
