@@ -21,6 +21,9 @@
   <depend>socketcan_adapter</depend>
 
   <test_depend>ament_cmake_test</test_depend>
+  <test_depend>catch2</test_depend>
+  <test_depend>lifecycle_msgs</test_depend>
+  <test_depend>sygnal_dbc</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
